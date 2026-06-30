@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="data:image/png;base64,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">
+  <title>Comptes — LBF</title>
+  <style>
+    /* ============================================================
+       VARIABLES ET RESET
+       ============================================================ */
+    :root {
+      --rouge:      rgb(210, 35, 42);
+      --rouge-dark: rgb(170, 25, 30);
+      --noir:       rgb(30, 30, 35);
+      --vert:       rgb(45, 95, 50);
+      --or:         #856404;
+      --or-bg:      #fff3cd;
+      --or-bord:    #e0a800;
+      --gris-bg:    #f0f0f0;
+      --gris-clair: #e4e4e4;
+      --gris-bord:  #c4c4c4;
+      --blanc:      #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Tahoma, Geneva, sans-serif;
+      background: var(--gris-bg);
+      color: var(--noir);
+      font-size: 13px;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    header {
+      background: var(--noir);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 54px;
+      border-bottom: 3px solid var(--rouge);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo-zone { display: flex; align-items: center; gap: 10px; flex: 1; }
+    .logo-zone img { height: 42px; }
+
+    .app-title {
+      font-family: Impact, Haettenschweiler, sans-serif;
+      color: white;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .app-title span { color: var(--rouge); }
+
+    .header-droite { display: flex; align-items: center; gap: 10px; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 2px;
+      font-family: Impact, sans-serif;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .badge-rouge { background: var(--rouge); color: white; }
+    .badge-vert  { background: var(--vert);  color: white; }
+    .badge-or    { background: var(--or);    color: white; }
+
+    #header-user { color: #aaa; font-size: 12px; }
+
+    .btn-deco {
+      background: none;
+      border: 1px solid #555;
+      color: #aaa;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 2px;
+      font-family: Tahoma;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-deco:hover { border-color: #888; color: #ccc; }
+
+    /* ── NAVIGATION ─────────────────────────────────────────── */
+    .main-nav {
+      background: var(--blanc);
+      border-bottom: 2px solid var(--gris-clair);
+      display: flex;
+      padding: 0 20px;
+      align-items: center;
+    }
+
+    .nav-item {
+      padding: 10px 18px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      font-family: Tahoma;
+      font-size: 13px;
+      font-weight: bold;
+      color: #777;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .nav-item:hover { color: var(--noir); }
+    .nav-item.active { color: var(--rouge); border-bottom-color: var(--rouge); }
+    .nav-item-droite { margin-left: auto; color: var(--or) !important; }
+
+    /* ── CONTENU PRINCIPAL ───────────────────────────────────── */
+    .page-contenu {
+      max-width: 900px;
+      margin: 24px auto;
+      padding: 0 20px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .page-titre {
+      font-family: Impact, Haettenschweiler, sans-serif;
+      font-size: 20px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--noir);
+    }
+
+    /* ── TABLEAU DES COMPTES ─────────────────────────────────── */
+    .table-wrap {
+      background: var(--blanc);
+      border: 1px solid var(--gris-clair);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      background: var(--noir);
+      color: white;
+      font-family: Impact, sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 10px 12px;
+      text-align: left;
+    }
+
+    tbody tr { border-bottom: 1px solid #eee; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+    tbody td { padding: 10px 12px; vertical-align: middle; }
+
+    .profil-label {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-family: Impact, sans-serif;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
+    .profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
+    .profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+
+    .statut-actif    { color: var(--vert); font-weight: bold; }
+    .statut-inactif  { color: #aaa; }
+
+    /* ── BOUTONS ─────────────────────────────────────────────── */
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: Tahoma;
+      font-size: 13px;
+      font-weight: bold;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-rouge  { background: var(--rouge); color: white; }
+    .btn-vert   { background: var(--vert);  color: white; }
+    .btn-gris   { background: #e0e0e0; color: var(--noir); }
+    .btn-danger { background: #dc3545; color: white; }
+
+    .btn-ligne {
+      padding: 4px 9px;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: Tahoma;
+      font-size: 11px;
+      font-weight: bold;
+      margin-right: 3px;
+      transition: opacity .15s;
+    }
+    .btn-ligne:hover { opacity: .85; }
+    .btn-ligne:disabled { opacity: .35; cursor: not-allowed; }
+    .bl-modifier { background: var(--vert);  color: white; }
+    .bl-supprimer { background: #dc3545; color: white; }
+    .bl-mdp      { background: #6c757d; color: white; }
+
+    /* ── ZONE VIDE ───────────────────────────────────────────── */
+    .zone-vide {
+      text-align: center;
+      padding: 32px;
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    /* ── NOTIFICATION ────────────────────────────────────────── */
+    #notif {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 18px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: bold;
+      color: white;
+      z-index: 9999;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      display: none;
+      animation: slideIn .2s ease-out;
+    }
+    .notif-succes  { background: var(--vert); }
+    .notif-erreur  { background: var(--rouge); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── MODALES ─────────────────────────────────────────────── */
+    .modale-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+    }
+    .modale-bg.open { display: flex; }
+
+    .modale {
+      background: white;
+      border-top: 4px solid var(--rouge);
+      border-radius: 4px;
+      width: 480px;
+      max-width: 96vw;
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 24px 26px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+      animation: apparition .2s ease-out;
+    }
+
+    @keyframes apparition {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modale-titre {
+      font-family: Impact, Haettenschweiler, sans-serif;
+      font-size: 17px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      color: var(--noir);
+    }
+
+    .champ {
+      margin-bottom: 14px;
+    }
+
+    .champ label {
+      display: block;
+      font-size: 10px;
+      font-weight: bold;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 5px;
+    }
+
+    .champ input,
+    .champ select {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--gris-bord);
+      border-radius: 3px;
+      font-family: Tahoma;
+      font-size: 13px;
+      color: var(--noir);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .champ input:focus,
+    .champ select:focus {
+      border-color: var(--rouge);
+      box-shadow: 0 0 0 2px rgba(210,35,42,.12);
+    }
+
+    .champ-mdp-wrap { position: relative; }
+    .champ-mdp-wrap input { padding-right: 38px; }
+    .btn-oeil {
+      position: absolute;
+      right: 8px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      cursor: pointer; color: #aaa; font-size: 15px;
+      transition: color .15s;
+    }
+    .btn-oeil:hover { color: var(--rouge); }
+
+    .modale-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid var(--gris-clair);
+    }
+
+    .note-info {
+      background: #e8f0fe;
+      border: 1px solid #a8c4f8;
+      padding: 8px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      color: #1a56c4;
+      margin-bottom: 12px;
+    }
+
+    .note-danger {
+      background: #fde8e8;
+      border: 1px solid var(--rouge);
+      padding: 8px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      color: var(--rouge);
+      margin-bottom: 12px;
+    }
+
+    /* ── Erreur champ ────────────────────────────────────────── */
+    .msg-erreur-modale {
+      display: none;
+      color: var(--rouge);
+      font-size: 12px;
+      margin-top: -8px;
+      margin-bottom: 10px;
+    }
+    .msg-erreur-modale.visible { display: block; }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .page-contenu { padding: 0 12px; margin: 14px auto; }
+      .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      thead th:nth-child(3),
+      tbody td:nth-child(3) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════
+     HEADER
+══════════════════════ -->
+<header>
+  <div class="logo-zone">
+    <img src="../assets/Logo_LBF2.png" alt="Le Bras Frères"
+         onerror="this.style.display='none'">
+  </div>
+  <div class="app-title">Stock <span>Métallerie</span></div>
+  <div class="header-droite">
+    <span id="header-badge" class="badge badge-or">Administration</span>
+    <span id="header-user" class="user-info">Admin</span>
+    <button class="btn-deco" onclick="Auth.logout()">Déconnexion</button>
+  </div>
+</header>
+
+<!-- ══════════════════════
+     NAVIGATION
+══════════════════════ -->
+<nav class="main-nav">
+  <a href="stock.html" class="nav-item"><span class="nav-icon">📦</span> Stock</a>
+  <a href="bibliotheque.html" class="nav-item"><span class="nav-icon">📚</span> Bibliothèque</a>
+  <a href="comptes.html" class="nav-item active nav-item-droite"><span class="nav-icon">⚙</span> Comptes</a>
+</nav>
+
+<!-- ══════════════════════
+     CONTENU
+══════════════════════ -->
+<div class="page-contenu">
+
+  <div class="page-header">
+    <h1 class="page-titre">Gestion des comptes</h1>
+    <button class="btn btn-rouge" onclick="ouvrirCreation()">+ Ajouter un compte</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="tableau-comptes">
+      <thead>
+        <tr>
+          <th>Identifiant</th>
+          <th>Nom complet</th>
+          <th>Profil</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="comptes-tbody">
+        <tr><td colspan="5" class="zone-vide">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══════════════════════
+     NOTIFICATION
+══════════════════════ -->
+<div id="notif"></div>
+
+<!-- ══════════════════════════════════════
+     MODALE — CRÉER / MODIFIER COMPTE
+══════════════════════════════════════ -->
+<div id="m-compte" class="modale-bg" onclick="bgClose(event,'m-compte')">
+  <div class="modale" onclick="event.stopPropagation()">
+    <div class="modale-titre" id="m-compte-titre">Nouveau compte</div>
+
+    <div class="note-info" id="m-compte-info" style="display:none"></div>
+
+    <div class="champ">
+      <label for="mc-identifiant">Identifiant *</label>
+      <input type="text" id="mc-identifiant" placeholder="ex : p.dupont"
+             autocapitalize="none" spellcheck="false">
+    </div>
+
+    <div class="champ">
+      <label for="mc-nom">Nom complet *</label>
+      <input type="text" id="mc-nom" placeholder="ex : Pierre Dupont">
+    </div>
+
+    <div class="champ">
+      <label for="mc-profil">Profil *</label>
+      <select id="mc-profil">
+        <option value="consultation">Consultation — lecture seule</option>
+        <option value="gestion">Gestion — ajouts soumis à validation</option>
+        <option value="administration">Administration — accès complet</option>
+      </select>
+    </div>
+
+    <div class="champ" id="mc-mdp-zone">
+      <label for="mc-mdp">Mot de passe *</label>
+      <div class="champ-mdp-wrap">
+        <input type="password" id="mc-mdp" placeholder="Mot de passe">
+        <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
+      </div>
+    </div>
+
+    <div class="champ" id="mc-mdp2-zone">
+      <label for="mc-mdp2">Confirmer le mot de passe *</label>
+      <div class="champ-mdp-wrap">
+        <input type="password" id="mc-mdp2" placeholder="Confirmation">
+        <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp2','mc-oeil2')" id="mc-oeil2">👁</button>
+      </div>
+    </div>
+
+    <div class="champ">
+      <label for="mc-actif">Statut</label>
+      <select id="mc-actif">
+        <option value="true">Actif</option>
+        <option value="false">Désactivé</option>
+      </select>
+    </div>
+
+    <div class="msg-erreur-modale" id="mc-erreur"></div>
+
+    <div class="modale-footer">
+      <button class="btn btn-gris" onclick="fermerM('m-compte')">Annuler</button>
+      <button class="btn btn-rouge" onclick="sauvegarderCompte()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODALE — CHANGER MOT DE PASSE
+══════════════════════════════════════ -->
+<div id="m-mdp" class="modale-bg" onclick="bgClose(event,'m-mdp')">
+  <div class="modale" onclick="event.stopPropagation()">
+    <div class="modale-titre">Changer le mot de passe</div>
+    <p style="font-size:13px; color:#555; margin-bottom:14px">
+      Compte : <strong id="mdp-nom-compte"></strong>
+    </p>
+
+    <div class="champ">
+      <label for="mdp-nouveau">Nouveau mot de passe *</label>
+      <div class="champ-mdp-wrap">
+        <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe">
+        <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-nouveau','mdp-oeil1')" id="mdp-oeil1">👁</button>
+      </div>
+    </div>
+
+    <div class="champ">
+      <label for="mdp-confirme">Confirmer *</label>
+      <div class="champ-mdp-wrap">
+        <input type="password" id="mdp-confirme" placeholder="Confirmation">
+        <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-confirme','mdp-oeil2')" id="mdp-oeil2">👁</button>
+      </div>
+    </div>
+
+    <div class="msg-erreur-modale" id="mdp-erreur"></div>
+
+    <div class="modale-footer">
+      <button class="btn btn-gris" onclick="fermerM('m-mdp')">Annuler</button>
+      <button class="btn btn-rouge" onclick="sauvegarderMdp()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODALE — CONFIRMATION SUPPRESSION
+══════════════════════════════════════ -->
+<div id="m-supprimer" class="modale-bg" onclick="bgClose(event,'m-supprimer')">
+  <div class="modale" onclick="event.stopPropagation()">
+    <div class="modale-titre">Supprimer le compte</div>
+    <div class="note-danger">
+      ⚠ Cette action est irréversible. Le compte sera définitivement supprimé.
+    </div>
+    <p style="font-size:13px; color:#555; margin-bottom:16px">
+      Supprimer le compte <strong id="sup-nom-compte"></strong> ?
+    </p>
+    <div class="modale-footer">
+      <button class="btn btn-gris" onclick="fermerM('m-supprimer')">Annuler</button>
+      <button class="btn btn-danger" onclick="confirmerSuppression()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+     SCRIPTS
+══════════════════════ -->
+<script src="../js/supabase.js"></script>
+<script src="../auth/auth.js"></script>
+<script>
+/* ============================================================
+   GESTION DES COMPTES — comptes.html
+   Données lues depuis data/users.json
+   Modifications persistées dans localStorage (clé lbf_users_modifs)
+   Migration SharePoint Conv. 7 : remplacer _chargerUsers / _persisterUsers
+   ============================================================ */
+
+// ── Garde de route — Admin uniquement ───────────────────────
+const _session = Auth.requireAuth('administration');
+Auth.afficherInfosSession('#header-user', '#header-badge');
+
+// ── État local ───────────────────────────────────────────────
+let _users   = [];   // Tableau complet des comptes
+let _editId  = null; // ID du compte en cours de modification
+let _supId   = null; // ID du compte à supprimer
+
+// ── Clé localStorage ────────────────────────────────────────
+const CLE_USERS = 'lbf_users_modifs';
+
+/* ============================================================
+   CHARGEMENT DES DONNÉES
+   ============================================================ */
+
+/**
+ * Charge users.json et fusionne les modifications localStorage.
+ */
+async function chargerUsers() {
+  try {
+    _users = await window.SB.lire('users');
+  } catch (err) {
+    console.warn('[Comptes] Supabase indisponible, fallback JSON :', err);
+    try {
+      const rep = await fetch('../data/users.json');
+      if (!rep.ok) throw new Error('users.json introuvable');
+      const data = await rep.json();
+      _users = data.users || [];
+    } catch(e) {
+      afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
+      _users = [];
+    }
+  }
+  _rendreTableau();
+}
+
+/**
+ * Lit les comptes modifiés depuis localStorage.
+ * @returns {Array}
+ */
+function _chargerLocal() {
+  try {
+    const raw = localStorage.getItem(CLE_USERS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persiste un compte (ajout ou modification) dans localStorage.
+ * @param {Object} user
+ */
+async function _persisterUser(user) {
+  try {
+    await window.SB.upsert('users', user);
+  } catch(e) {
+    console.warn('[Comptes] Supabase indisponible, fallback localStorage :', e);
+    const local = _chargerLocal();
+    const idx = local.findIndex(u => u.id === user.id);
+    if (idx !== -1) { local[idx] = user; } else { local.push(user); }
+    localStorage.setItem(CLE_USERS, JSON.stringify(local));
+  }
+  // Mettre à jour l'état en mémoire
+  const idxData = _users.findIndex(u => u.id === user.id);
+  if (idxData !== -1) { _users[idxData] = user; } else { _users.push(user); }
+}
+
+/**
+ * Génère un nouvel ID de type USR-XXX.
+ * @returns {string}
+ */
+function _genIdUser() {
+  const nums = _users
+    .map(u => parseInt((u.id || '').replace('USR-', ''), 10))
+    .filter(n => !isNaN(n));
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'USR-' + String(max + 1).padStart(3, '0');
+}
+
+/* ============================================================
+   AFFICHAGE DU TABLEAU
+   ============================================================ */
+
+/**
+ * Rendu du tableau des comptes.
+ */
+function _rendreTableau() {
+  const tbody = document.getElementById('comptes-tbody');
+  if (!tbody) return;
+
+  if (!_users.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="zone-vide">Aucun compte trouvé.</td></tr>';
+    return;
+  }
+
+  const sessionCourante = Auth.getSession();
+
+  tbody.innerHTML = _users.map(u => {
+    const estMoi   = (u.id === sessionCourante?.id);
+    const estAdmin = (u.profil === 'administration');
+
+    const labelProfil = {
+      consultation:   'Consultation',
+      gestion:        'Gestion',
+      administration: 'Administration',
+    };
+
+    const profilHtml = `<span class="profil-label profil-${u.profil}">
+      ${labelProfil[u.profil] || u.profil}
+    </span>`;
+
+    const statutHtml = u.actif
+      ? '<span class="statut-actif">● Actif</span>'
+      : '<span class="statut-inactif">○ Désactivé</span>';
+
+    // Bouton supprimer désactivé pour son propre compte
+    const btnSup = estMoi
+      ? `<button class="btn-ligne bl-supprimer" disabled title="Impossible de supprimer son propre compte">Supprimer</button>`
+      : `<button class="btn-ligne bl-supprimer" onclick="ouvrirSuppression('${_esc(u.id)}','${_esc(u.nomComplet)}')">Supprimer</button>`;
+
+    return `<tr>
+      <td><strong>${_esc(u.identifiant)}</strong>${estMoi ? ' <span style="color:#aaa;font-size:10px">(vous)</span>' : ''}</td>
+      <td>${_esc(u.nomComplet)}</td>
+      <td>${profilHtml}</td>
+      <td>${statutHtml}</td>
+      <td>
+        <button class="btn-ligne bl-modifier" onclick="ouvrirModification('${_esc(u.id)}')">Modifier</button>
+        <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet)}')">🔑 MDP</button>
+        ${btnSup}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   MODALE CRÉATION
+   ============================================================ */
+
+function ouvrirCreation() {
+  _editId = null;
+  document.getElementById('m-compte-titre').textContent = 'Nouveau compte';
+  document.getElementById('mc-identifiant').value = '';
+  document.getElementById('mc-nom').value         = '';
+  document.getElementById('mc-profil').value      = 'consultation';
+  document.getElementById('mc-mdp').value         = '';
+  document.getElementById('mc-mdp2').value        = '';
+  document.getElementById('mc-actif').value       = 'true';
+  document.getElementById('mc-mdp-zone').style.display  = '';
+  document.getElementById('mc-mdp2-zone').style.display = '';
+  document.getElementById('m-compte-info').style.display = 'none';
+  _cacherErreur('mc-erreur');
+  ouvrirM('m-compte');
+  document.getElementById('mc-identifiant').focus();
+}
+
+/* ============================================================
+   MODALE MODIFICATION
+   ============================================================ */
+
+function ouvrirModification(id) {
+  const u = _users.find(u => u.id === id);
+  if (!u) return;
+
+  _editId = id;
+  document.getElementById('m-compte-titre').textContent = 'Modifier le compte';
+  document.getElementById('mc-identifiant').value = u.identifiant;
+  document.getElementById('mc-nom').value         = u.nomComplet;
+  document.getElementById('mc-profil').value      = u.profil;
+  document.getElementById('mc-actif').value       = String(u.actif);
+
+  // Pas de champs MDP en modification (utiliser modale dédiée)
+  document.getElementById('mc-mdp-zone').style.display  = 'none';
+  document.getElementById('mc-mdp2-zone').style.display = 'none';
+
+  const info = document.getElementById('m-compte-info');
+  info.textContent = 'Pour changer le mot de passe, utilisez le bouton 🔑 MDP dans la liste.';
+  info.style.display = 'block';
+
+  _cacherErreur('mc-erreur');
+  ouvrirM('m-compte');
+}
+
+/* ============================================================
+   SAUVEGARDE COMPTE (création + modification)
+   ============================================================ */
+
+async function sauvegarderCompte() {
+  const identifiant = document.getElementById('mc-identifiant').value.trim();
+  const nomComplet  = document.getElementById('mc-nom').value.trim();
+  const profil      = document.getElementById('mc-profil').value;
+  const actif       = document.getElementById('mc-actif').value === 'true';
+  const mdp1        = document.getElementById('mc-mdp').value;
+  const mdp2        = document.getElementById('mc-mdp2').value;
+
+  // Validations
+  if (!identifiant || !nomComplet) {
+    afficherErreurModale('mc-erreur', 'Identifiant et nom complet sont obligatoires.');
+    return;
+  }
+
+  // En création, vérifier unicité identifiant
+  if (!_editId) {
+    const doublon = _users.find(u => u.identifiant.toLowerCase() === identifiant.toLowerCase());
+    if (doublon) {
+      afficherErreurModale('mc-erreur', 'Cet identifiant est déjà utilisé.');
+      return;
+    }
+    if (!mdp1) {
+      afficherErreurModale('mc-erreur', 'Un mot de passe est requis pour créer un compte.');
+      return;
+    }
+    if (mdp1 !== mdp2) {
+      afficherErreurModale('mc-erreur', 'Les mots de passe ne correspondent pas.');
+      return;
+    }
+  }
+
+  // Construire l'objet
+  let user;
+  if (_editId) {
+    // Modification — conserver le MDP existant
+    user = { ..._users.find(u => u.id === _editId) };
+    user.identifiant = identifiant;
+    user.nomComplet  = nomComplet;
+    user.profil      = profil;
+    user.actif       = actif;
+  } else {
+    // Création — hacher le mot de passe
+    const hashMdp = await sha256(mdp1);
+    user = {
+      id:          _genIdUser(),
+      identifiant: identifiant,
+      nomComplet:  nomComplet,
+      profil:      profil,
+      motDePasse:  hashMdp,
+      actif:       actif,
+    };
+  }
+
+  await _persisterUser(user);
+  _rendreTableau();
+  fermerM('m-compte');
+  afficherNotif(_editId ? 'Compte modifié.' : 'Compte créé avec succès.', 'succes');
+}
+
+/* ============================================================
+   MODALE CHANGEMENT MOT DE PASSE
+   ============================================================ */
+
+function ouvrirChangeMdp(id, nom) {
+  _editId = id;
+  document.getElementById('mdp-nom-compte').textContent = nom;
+  document.getElementById('mdp-nouveau').value  = '';
+  document.getElementById('mdp-confirme').value = '';
+  _cacherErreur('mdp-erreur');
+  ouvrirM('m-mdp');
+  document.getElementById('mdp-nouveau').focus();
+}
+
+async function sauvegarderMdp() {
+  const mdp1 = document.getElementById('mdp-nouveau').value;
+  const mdp2 = document.getElementById('mdp-confirme').value;
+
+  if (!mdp1) {
+    afficherErreurModale('mdp-erreur', 'Le nouveau mot de passe est obligatoire.');
+    return;
+  }
+  if (mdp1 !== mdp2) {
+    afficherErreurModale('mdp-erreur', 'Les mots de passe ne correspondent pas.');
+    return;
+  }
+  if (mdp1.length < 6) {
+    afficherErreurModale('mdp-erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
+    return;
+  }
+
+  const user = _users.find(u => u.id === _editId);
+  if (!user) return;
+
+  const hashMdp = await sha256(mdp1);
+  const userMaj = { ...user, motDePasse: hashMdp };
+  await _persisterUser(userMaj);
+
+  fermerM('m-mdp');
+  afficherNotif('Mot de passe mis à jour.', 'succes');
+}
+
+/* ============================================================
+   SUPPRESSION
+   ============================================================ */
+
+function ouvrirSuppression(id, nom) {
+  _supId = id;
+  document.getElementById('sup-nom-compte').textContent = nom;
+  ouvrirM('m-supprimer');
+}
+
+async function confirmerSuppression() {
+  if (!_supId) return;
+
+  try {
+    await window.SB.supprimer('users', _supId);
+  } catch(e) {
+    console.warn('[Comptes] Supabase indisponible, fallback localStorage :', e);
+    const user = _users.find(u => u.id === _supId);
+    if (user) {
+      const local = _chargerLocal();
+      local.push({ ...user, _supprime: true });
+      localStorage.setItem(CLE_USERS, JSON.stringify(local));
+    }
+  }
+
+  _users = _users.filter(u => u.id !== _supId);
+  _supId = null;
+
+  _rendreTableau();
+  fermerM('m-supprimer');
+  afficherNotif('Compte supprimé.', 'succes');
+}
+
+/* ============================================================
+   UTILITAIRES CRYPTO
+   ============================================================ */
+
+/**
+ * Calcule le hash SHA-256 d'une chaîne via l'API Web Crypto native.
+ * @param {string} texte
+ * @returns {Promise<string>} hex
+ */
+async function sha256(texte) {
+  const buf = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(texte)
+  );
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/* ============================================================
+   UTILITAIRES UI
+   ============================================================ */
+
+function ouvrirM(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+function fermerM(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function bgClose(e, id) {
+  if (e.target === document.getElementById(id)) fermerM(id);
+}
+
+function toggleMdp(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const visible = inp.type === 'text';
+  inp.type = visible ? 'password' : 'text';
+  btn.textContent = visible ? '👁' : '🙈';
+}
+
+function afficherErreurModale(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function _cacherErreur(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('visible');
+}
+
+/**
+ * Notification temporaire en bas à droite.
+ * @param {string} msg
+ * @param {'succes'|'erreur'} type
+ */
+function afficherNotif(msg, type) {
+  const el = document.getElementById('notif');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `notif-${type}`;
+  el.style.display = 'block';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+/**
+ * Échappe les caractères HTML pour éviter les injections.
+ * @param {string} str
+ * @returns {string}
+ */
+function _esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ============================================================
+   DÉMARRAGE
+   ============================================================ */
+chargerUsers();
+</script>
+
+</body>
+</html>

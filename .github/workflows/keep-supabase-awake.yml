@@ -1,0 +1,40 @@
+name: Keep Supabase Awake
+
+# ───────────────────────────────────────────────────────────────
+#  Empêche la mise en pause du projet Supabase (plan gratuit).
+#  Le projet se met en pause après 7 jours SANS activité.
+#  Ce workflow envoie une petite requête de lecture tous les 2 jours
+#  pour que le compteur d'inactivité ne tombe jamais à zéro.
+#
+#  La clé utilisée est la clé "anon" (publique, déjà présente dans
+#  js/supabase.js et protégée par les politiques RLS). Aucun secret
+#  sensible n'est exposé ici.
+# ───────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # Tous les 2 jours à 06:00 UTC. (Bien < 7 jours de marge.)
+    - cron: '0 6 */2 * *'
+  # Permet aussi de lancer le réveil manuellement depuis l'onglet Actions.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping de la base Supabase
+        run: |
+          URL="https://ihpwdcndytxdnqjdcrsn.supabase.co/rest/v1/sections?select=id&limit=1"
+          KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocHdkY25keXR4ZG5xamRjcnNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjExMDksImV4cCI6MjA5MDEzNzEwOX0.19WoAzpF59KeKfEXD8kYrzQtVOET594ajSTD9NwtEcs"
+          echo "Réveil de la base Supabase…"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            "$URL")
+          echo "Code HTTP renvoyé : $HTTP_CODE"
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Base active, ping réussi."
+          else
+            echo "❌ Réponse inattendue ($HTTP_CODE) — la base est peut-être en pause ou la table a changé."
+            exit 1
+          fi

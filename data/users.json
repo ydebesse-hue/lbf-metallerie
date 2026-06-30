@@ -1,0 +1,61 @@
+{
+  "_commentaire": "Base utilisateurs — Stock Métallerie LBF",
+  "_note_securite": "En production : remplacer les mots de passe texte clair par des hash SHA-256",
+  "_hash_exemple": "SHA-256('motdepasse') = hash hex 64 caractères",
+
+  "users": [
+    {
+      "id": "usr_001",
+      "identifiant": "visiteur",
+      "nomComplet": "Visiteur",
+      "profil": "consultation",
+      "motDePasse": "",
+      "actif": true,
+      "_note": "Compte consultation — accès via lien sans connexion"
+    },
+    {
+      "id": "usr_002",
+      "identifiant": "p.dupont",
+      "nomComplet": "Pierre Dupont",
+      "profil": "gestion",
+      "motDePasse": "lbf2025",
+      "actif": true,
+      "_note": "Compte gestion — ajout/modification soumis à validation admin"
+    },
+    {
+      "id": "usr_003",
+      "identifiant": "m.leroy",
+      "nomComplet": "Marc Leroy",
+      "profil": "gestion",
+      "motDePasse": "lbf2025",
+      "actif": true,
+      "_note": "Compte gestion — second opérateur atelier"
+    },
+    {
+      "id": "usr_004",
+      "identifiant": "admin",
+      "nomComplet": "Administrateur LBF",
+      "profil": "administration",
+      "motDePasse": "Admin@LBF2025",
+      "actif": true,
+      "_note": "Compte admin — validation, gestion comptes, accès total. Ne jamais supprimer."
+    },
+    {
+      "id": "usr_005",
+      "identifiant": "michel",
+      "nomComplet": "michel",
+      "profil": "gestion",
+      "motDePasse": "mich",
+      "actif": true,
+      "_note": "Compte gestion — second opérateur atelier"
+    }
+  ],
+
+  "_profils_disponibles": ["consultation", "gestion", "administration"],
+
+  "_droits_rappel": {
+    "consultation":   ["can_view", "can_request"],
+    "gestion":        ["can_view", "can_request", "can_edit", "can_add"],
+    "administration": ["can_view", "can_request", "can_edit", "can_add", "can_validate", "can_manage_users"]
+  }
+}

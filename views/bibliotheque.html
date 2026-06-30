@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="data:image/png;base64,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">
+<title>Bibliothèque — LBF</title>
+<style>
+/* ══════════════════════════════════════════════
+   VARIABLES & RESET
+══════════════════════════════════════════════ */
+:root {
+  --rouge:    rgb(210, 35, 42);
+  --noir:     rgb(30, 30, 35);
+  --vert:     rgb(45, 95, 50);
+  --or:       #856404;
+  --or-bg:    #fff3cd;
+  --or-bord:  #e0a800;
+  --gris-bg:  #f0f0f0;
+  --gris-cl:  #e4e4e4;
+  --gris-bd:  #c4c4c4;
+  --blanc:    #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Tahoma, Geneva, sans-serif;
+  background: var(--gris-bg);
+  color: var(--noir);
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+/* ══════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════ */
+header {
+  background: var(--noir);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 54px;
+  border-bottom: 3px solid var(--rouge);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo-zone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.logo-zone img {
+  height: 42px;
+}
+
+.app-title {
+  font-family: Impact, Haettenschweiler, sans-serif;
+  color: white;
+  font-size: 18px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.app-title span { color: var(--rouge); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 2px;
+  font-family: Impact, sans-serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.badge-rouge  { background: var(--rouge); color: white; }
+.badge-vert   { background: var(--vert);  color: white; }
+.badge-or     { background: var(--or);    color: white; }
+
+.user-info  { color: #aaa; font-size: 12px; }
+.btn-header {
+  background: none;
+  border: 1px solid #555;
+  color: #aaa;
+  padding: 4px 9px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: Tahoma;
+}
+.btn-header:hover { border-color: #888; color: #ccc; }
+
+/* ══════════════════════════════════════════════
+   NAVIGATION PRINCIPALE
+══════════════════════════════════════════════ */
+.main-nav {
+  background: var(--blanc);
+  border-bottom: 2px solid var(--gris-cl);
+  display: flex;
+  padding: 0 20px;
+  align-items: center;
+}
+
+.nav-item {
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  font-family: Tahoma;
+  font-size: 13px;
+  font-weight: bold;
+  color: #777;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.nav-item:hover   { color: #444; }
+.nav-item.active  { color: var(--rouge); border-bottom-color: var(--rouge); }
+.nav-icon         { font-size: 14px; }
+
+/* ══════════════════════════════════════════════
+   SOUS-ONGLETS
+══════════════════════════════════════════════ */
+.sub-tabs {
+  background: #f8f8f8;
+  border-bottom: 1px solid var(--gris-cl);
+  display: flex;
+  padding: 0 20px;
+}
+
+.sub-tab {
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: Tahoma;
+  font-size: 12px;
+  font-weight: bold;
+  color: #888;
+  cursor: pointer;
+}
+.sub-tab.active { color: var(--vert); border-bottom-color: var(--vert); }
+
+/* ══════════════════════════════════════════════
+   TOOLBAR BIBLIOTHÈQUE
+══════════════════════════════════════════════ */
+.biblio-toolbar {
+  background: white;
+  padding: 9px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--gris-cl);
+}
+
+.toolbar-sep { flex: 1; min-width: 10px; }
+
+.btn {
+  padding: 7px 13px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: Tahoma;
+  font-size: 13px;
+  font-weight: bold;
+}
+.btn-rouge { background: var(--rouge); color: white; }
+.btn-vert  { background: var(--vert);  color: white; }
+.btn-gris  { background: #e0e0e0; color: var(--noir); }
+
+.lbl {
+  font-size: 11px;
+  color: #999;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.sel {
+  padding: 6px 8px;
+  border: 1px solid var(--gris-bd);
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: Tahoma;
+}
+
+.search {
+  padding: 6px 10px;
+  border: 1px solid var(--gris-bd);
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: Tahoma;
+  width: 200px;
+}
+.search:focus, .sel:focus { outline: none; border-color: var(--rouge); }
+
+.alerte-attente {
+  font-weight: bold;
+  color: var(--or);
+  font-size: 13px;
+}
+
+/* ══════════════════════════════════════════════
+   GRILLE BIBLIOTHÈQUE
+══════════════════════════════════════════════ */
+.biblio-wrapper {
+  padding: 14px 20px;
+}
+
+.biblio-separateur {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 4px 4px;
+  font-family: Impact, sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #aaa;
+  border-bottom: 1px solid var(--gris-cl);
+  margin-bottom: 10px;
+}
+.sep-count {
+  font-family: Tahoma;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #bbb;
+}
+
+.biblio-grille-famille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+/* ══ Carte famille ══ */
+.biblio-carte {
+  background: white;
+  border: 1px solid var(--gris-cl);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow .15s, transform .15s;
+}
+.biblio-carte:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+
+.carte-header {
+  background: var(--noir);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.carte-famille {
+  font-family: Impact, sans-serif;
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: white;
+  text-transform: uppercase;
+}
+
+.carte-svg-zone {
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+  border-bottom: 1px solid var(--gris-cl);
+}
+
+.carte-bas {
+  padding: 8px 12px;
+  text-align: center;
+}
+
+/* ══ Modale famille ══ */
+.mf-active td { color: white !important; }
+
+
+.carte-footer {
+  padding: 7px 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  align-items: center;
+}
+
+/* ══════════════════════════════════════════════
+   BOUTONS LIGNE
+══════════════════════════════════════════════ */
+.bl {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: Tahoma;
+  font-weight: bold;
+}
+.bl-detail  { background: #e8e8e8; color: var(--noir); }
+.bl-vert    { background: var(--vert);  color: white; }
+.bl-rouge   { background: var(--rouge); color: white; }
+.bl-valider { background: #198754; color: white; }
+.bl-refuser { background: #6c757d; color: white; }
+.bl:hover   { opacity: .85; }
+.bl:disabled{ opacity: .35; cursor: not-allowed; }
+
+/* ══════════════════════════════════════════════
+   COMPTEUR & VIDE
+══════════════════════════════════════════════ */
+.biblio-compteur {
+  padding: 4px 0 12px;
+  font-size: 12px;
+  color: #999;
+}
+
+.biblio-vide {
+  text-align: center;
+  padding: 40px 20px;
+  color: #aaa;
+}
+.biblio-vide p { margin-top: 10px; font-size: 14px; }
+
+/* ══════════════════════════════════════════════
+   MODALES
+══════════════════════════════════════════════ */
+.modale-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 16px;
+}
+.modale-bg.open { display: flex; }
+
+.modale {
+  background: white;
+  border-top: 4px solid var(--rouge);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 22px 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+}
+.modale-lg { max-width: 680px; }
+.modale-xl { max-width: 820px; }
+
+.modale-titre {
+  font-family: Impact, sans-serif;
+  font-size: 17px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  color: var(--noir);
+}
+
+.modale-sous-titre {
+  font-size: 12px;
+  color: #888;
+  margin-top: -10px;
+  margin-bottom: 14px;
+}
+
+.form-cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-cols3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+.fr { margin-bottom: 8px; }
+.fr label {
+  display: block;
+  font-size: 11px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.fr input, .fr select, .fr textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--gris-bd);
+  border-radius: 3px;
+  font-family: Tahoma;
+  font-size: 13px;
+}
+.fr input:focus, .fr select:focus, .fr textarea:focus {
+  outline: none;
+  border-color: var(--rouge);
+}
+
+.modale-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gris-cl);
+}
+
+/* Notes */
+.note-attente {
+  background: var(--or-bg);
+  border: 1px solid var(--or-bord);
+  padding: 8px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--or);
+  margin-top: 10px;
+}
+.note-info {
+  background: #e8f0fe;
+  border: 1px solid #a8c4f8;
+  padding: 8px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #1a56c4;
+  margin-top: 10px;
+}
+
+/* Zone schéma */
+.schema-zone {
+  background: #f7f7f7;
+  border: 1px solid var(--gris-bd);
+  border-radius: 3px;
+  padding: 14px;
+  margin: 12px 0;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.schema-titre {
+  font-family: Impact, sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--rouge);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.schema-dims { flex: 1; min-width: 180px; }
+.schema-dims h4 {
+  font-family: Impact, sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--noir);
+  margin-bottom: 10px;
+}
+
+.dim-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 12px;
+}
+.dim-label { color: #666; }
+.dim-val   { font-weight: bold; }
+
+/* Zone dimensions modale nouvelle section */
+.dims-inputs {
+  background: #f7f7f7;
+  border: 1px solid var(--gris-bd);
+  border-radius: 3px;
+  padding: 12px 14px;
+  margin: 10px 0;
+}
+.dims-inputs-title {
+  font-family: Impact, sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--noir);
+  margin-bottom: 10px;
+}
+
+/* Badge dispo */
+.dispo-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.d-std    { background: #e8f0fe; color: #1a56c4; border: 1px solid #1a56c4; }
+.d-custom { background: #f3e8ff; color: #6b21a8; border: 1px solid #6b21a8; }
+
+/* ══════════════════════════════════════════════
+   GRILLE PRINCIPALE
+══════════════════════════════════════════════ */
+
+#biblio-grille {
+  padding: 4px 0;
+}
+
+/* Séparateur famille */
+.biblio-sep-famille {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 2px 8px;
+  border-bottom: 2px solid var(--noir);
+  margin-bottom: 12px;
+  margin-top: 20px;
+}
+.biblio-sep-famille:first-child { margin-top: 4px; }
+
+.bsf-titre {
+  font-family: Impact, sans-serif;
+  font-size: 17px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--noir);
+}
+.bsf-norme {
+  font-size: 11px;
+  color: #999;
+  letter-spacing: .5px;
+}
+
+/* Grille des cartes série */
+.biblio-grille-series {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* ══════════════════════════════════════════════
+   CARTE SÉRIE
+══════════════════════════════════════════════ */
+.biblio-carte-serie {
+  background: white;
+  border: 1px solid var(--gris-cl);
+  border-top: 3px solid var(--rouge);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  transition: box-shadow .15s, transform .15s;
+  display: flex;
+  flex-direction: column;
+}
+.biblio-carte-serie:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+  transform: translateY(-2px);
+}
+
+/* En-tête carte série */
+.cs-header {
+  background: var(--noir);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cs-titre {
+  font-family: Impact, sans-serif;
+  font-size: 17px;
+  letter-spacing: 1.5px;
+  color: white;
+  text-transform: uppercase;
+}
+.cs-count {
+  font-size: 10px;
+  color: rgba(255,255,255,0.55);
+}
+
+/* Zone visuelle */
+.cs-visuel {
+  height: 130px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--gris-cl);
+}
+.cs-photo {
+  width: 100%;
+  height: 130px;
+  object-fit: contain;
+  object-position: center;
+  padding: 8px;
+  display: block;
+}
+.cs-svg-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #e8ecf0, #d4dce4);
+}
+/* Schémas SVG dans le fallback */
+.cfam-schema-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cfam-schema-label { font-size: 8px; color: #666; font-family: Tahoma; font-weight: bold; text-transform: uppercase; }
+
+/* Pied de carte */
+.cs-footer {
+  padding: 7px 12px;
+  background: #fafafa;
+}
+.cs-voir {
+  font-size: 11px;
+  color: var(--rouge);
+  font-weight: bold;
+}
+
+/* ══════════════════════════════════════════════
+   CARROUSEL PHOTOS (supprimé — remplacé par cs-*)
+   Styles conservés pour rétro-compatibilité éventuelle
+/* ══════════════════════════════════════════════
+   MODALE FAMILLE — accordéon + scroll
+
+══════════════════════════════════════════════ */
+
+/* Conteneur visuel : toujours 150px de haut */
+.cfam-visuel {
+  position: relative;
+  height: 150px;
+  overflow: hidden;
+  background: #e8ecf0;
+}
+
+/* Slides */
+.cfam-slide {
+  display: none;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.cfam-slide.cfam-slide-active { display: flex; align-items: center; justify-content: center; }
+
+/* Image dans la slide */
+.cfam-slide img {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  background: white;
+  padding: 8px;
+}
+
+/* Légende photo */
+.cfam-slide-label {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(30,30,35,0.65);
+  color: white;
+  font-family: Impact, sans-serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  text-align: center;
+}
+
+/* Placeholder SVG (quand pas de photos) */
+.cfam-placeholder {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #e8ecf0 0%, #d4dce4 100%);
+}
+.cfam-placeholder.cfam-slide-active { display: flex; }
+.cfam-placeholder-label {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 6px;
+  font-style: italic;
+  letter-spacing: .5px;
+}
+
+/* Boutons navigation ← → */
+.cfam-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(30,30,35,0.55);
+  color: white;
+  border: none;
+  width: 26px;
+  height: 36px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  padding: 0;
+}
+.cfam-nav:hover { background: rgba(210,35,42,0.8); }
+.cfam-nav-prev { left: 4px; }
+.cfam-nav-next { right: 4px; }
+
+/* Points indicateurs */
+.cfam-dots {
+  position: absolute;
+  bottom: 22px;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  z-index: 10;
+}
+.cfam-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.cfam-dot.cfam-dot-active {
+  background: white;
+  transform: scale(1.3);
+}
+
+/* Multi-schémas placeholder */
+.cfam-schemas {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 8px 0;
+}
+.cfam-schema-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.cfam-schema-label {
+  font-size: 8px;
+  color: #666;
+  font-family: Tahoma;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+/* ══════════════════════════════════════════════
+   MODALE FAMILLE — accordéon + scroll
+══════════════════════════════════════════════ */
+
+/* En-tête de groupe (HEA, HEB, HEM...) */
+.mf-groupe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--gris-bg);
+  border-bottom: 1px solid var(--gris-cl);
+  cursor: pointer;
+  user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.mf-groupe-header:hover { background: var(--gris-cl); }
+.mf-groupe-titre {
+  font-family: Impact, sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--noir);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mf-groupe-count {
+  font-family: Tahoma;
+  font-size: 11px;
+  color: #999;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mf-groupe-fleche {
+  font-size: 12px;
+  color: #999;
+  transition: transform .2s;
+}
+.mf-groupe-fleche.ouvert { transform: rotate(90deg); }
+
+/* Corps du groupe (table) */
+.mf-groupe-corps {
+  overflow: hidden;
+  transition: max-height .25s ease;
+}
+.mf-groupe-corps.ferme { max-height: 0 !important; }
+
+/* Tableau dans le groupe */
+.mf-groupe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mf-groupe-table thead th {
+  background: var(--noir);
+  color: white;
+  font-family: Impact, sans-serif;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 7px 8px;
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.mf-groupe-table thead th:not(:first-child) { text-align: right; }
+
+/* Ligne active dans le tableau famille */
+.mf-ligne { border-bottom: 1px solid #eee; cursor: pointer; }
+.mf-ligne:hover:not(.mf-active) { background: #fafafa; }
+.mf-ligne.mf-active { background: var(--rouge); }
+.mf-ligne.mf-active td { color: white !important; }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE MOBILE
+══════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  header { padding: 0 12px; height: 48px; }
+  .app-title { font-size: 15px; }
+  .user-info { display: none; }
+  .main-nav  { padding: 0 12px; }
+  .nav-item  { padding: 9px 12px; font-size: 12px; }
+  .biblio-toolbar { padding: 8px 12px; }
+  .biblio-wrapper { padding: 10px 12px; }
+  .biblio-grille-famille { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .form-cols2, .form-cols3 { grid-template-columns: 1fr; }
+  .modale { padding: 16px; }
+  .search { width: 140px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════
+     HEADER
+══════════════════════ -->
+<header>
+  <div class="logo-zone">
+    <img src="../assets/Logo_LBF2.png" alt="Le Bras Frères"
+         onerror="this.style.display='none'">
+  </div>
+  <div class="app-title">Stock <span>Métallerie</span></div>
+  <div class="header-right">
+    <!-- Badge profil — mis à jour par biblioSetProfil() -->
+    <span id="header-badge" class="badge badge-rouge">Consultation</span>
+    <span id="header-user"  class="user-info">Visiteur</span>
+    <button class="btn-header" onclick="Auth.logout()">Déconnexion</button>
+  </div>
+</header>
+
+<!-- ══════════════════════
+     NAVIGATION
+══════════════════════ -->
+<nav class="main-nav">
+  <a href="stock.html" class="nav-item"><span class="nav-icon">📦</span> Stock</a>
+  <button class="nav-item active"><span class="nav-icon">📚</span> Bibliothèque</button>
+  <a href="comptes.html" class="nav-item nav-item-droite" data-require="can_manage_users"><span class="nav-icon">⚙</span> Comptes</a>
+</nav>
+
+<!-- ══════════════════════
+     SOUS-ONGLETS
+══════════════════════ -->
+<div class="sub-tabs">
+  <button class="sub-tab active" onclick="switchOnglet('profils',this)">Profilés</button>
+  <button class="sub-tab"        onclick="switchOnglet('toles',this)">Tôles <span style="font-size:10px;color:#aaa">(à venir)</span></button>
+</div>
+
+<!-- ══════════════════════
+     TOOLBAR
+══════════════════════ -->
+<div class="biblio-toolbar">
+  <!-- Bouton ajout — visible Gestion + Admin seulement -->
+  <div id="biblio-btn-ajout"></div>
+
+  <!-- Alerte admin : sections en attente -->
+  <span id="biblio-alerte-attente" class="alerte-attente" style="display:none"></span>
+
+  <span class="lbl">Filtrer :</span>
+  <select class="sel" id="biblio-filtre-famille">
+    <option value="">Toutes les familles</option>
+    <option value="IPE">IPE · IPN</option>
+    <option value="HE">HEA · HEB · HEM</option>
+    <option value="U">UPN · UPE</option>
+    <option value="Cornière">Cornière</option>
+  </select>
+
+  <div class="toolbar-sep">
+</div>
+  <input class="search" type="text" id="biblio-recherche"
+         placeholder="🔍 Rechercher une désignation...">
+</div>
+
+<!-- ══════════════════════
+     CONTENU PRINCIPAL
+══════════════════════ -->
+<div class="biblio-wrapper">
+  <div id="biblio-compteur" class="biblio-compteur">Chargement...</div>
+  <div id="biblio-grille"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODALE — FICHE DÉTAIL SECTION
+══════════════════════════════════════════ -->
+<div id="m-detail-biblio" class="modale-bg" onclick="bgClose(event,'m-detail-biblio')">
+  <div class="modale modale-lg" onclick="event.stopPropagation()">
+
+    <div class="modale-titre" style="color:var(--rouge)">Fiche section</div>
+
+    <!-- Badge norme + description -->
+    <div class="detail-badge-zone" style="display:flex; gap:8px; align-items:center; margin-bottom:14px;"></div>
+
+    <!-- SVG coté + dimensions -->
+    <div class="schema-zone">
+      <div class="detail-svg-zone"></div>
+      <div class="schema-dims">
+        <h4>Dimensions normalisées</h4>
+        <div class="detail-dims-zone"></div>
+      </div>
+    </div>
+
+    <!-- Infos stock — sera alimenté depuis stock.json dans Conv. 4 -->
+    <div id="detail-stock-info"
+         style="padding:8px 12px; background:#f4f4f4; border-radius:3px;
+                font-size:12px; color:#666; border-left:3px solid var(--gris-bd);">
+      <strong>En stock :</strong> — barres disponibles
+    </div>
+
+    <div class="modale-footer">
+      <button class="btn btn-gris" onclick="closeM('m-detail-biblio')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODALE — NOUVELLE SECTION (Gestion + Admin)
+══════════════════════════════════════════ -->
+<div id="m-nouvelle-section" class="modale-bg" onclick="bgClose(event,'m-nouvelle-section')">
+  <div class="modale modale-xl" onclick="event.stopPropagation()">
+
+    <div class="modale-titre" id="ns-titre">Créer une nouvelle section</div>
+    <div class="modale-sous-titre">
+      Renseignez la famille, la désignation et les dimensions de la section.
+    </div>
+
+    <!-- Famille + Désignation -->
+    <div class="form-cols2">
+      <div class="fr">
+        <label>Famille de section</label>
+        <select id="ns-famille" onchange="nsUpdateFamille()">
+          <option value="">— Choisir ou créer —</option>
+          <option>IPE</option>
+          <option>HEA</option>
+          <option>HEB</option>
+          <option>UPN</option>
+          <option>Cornière</option>
+          <option>Plat</option>
+          <option value="nouveau">+ Nouvelle famille...</option>
+        </select>
+      </div>
+
+      <!-- Champ nouvelle famille (masqué par défaut) -->
+      <div class="fr" id="ns-nouvelle-famille-zone" style="display:none">
+        <label>Nom de la nouvelle famille</label>
+        <input type="text" id="ns-nouvelle-famille"
+               placeholder="ex : IPN, CAE, Poutrelle treillis..."
+               oninput="nsUpdateRecap()">
+      </div>
+
+      <div class="fr">
+        <label>Désignation / Référence</label>
+        <input type="text" id="ns-desig"
+               placeholder="ex : 200, 80×80×4, 120/10..."
+               oninput="nsUpdateRecap()">
+      </div>
+    </div>
+
+    <!-- Champs dimensions dynamiques -->
+    <div class="dims-inputs">
+      <div class="dims-inputs-title">Dimensions (mm)</div>
+      <div class="form-cols3" id="ns-dims-zone">
+        <div style="color:#aaa; font-size:12px; grid-column:1/-1">
+          Sélectionnez d'abord une famille de section.
+        </div>
+      </div>
+    </div>
+
+    <!-- Aperçu schéma + récapitulatif -->
+    <div class="schema-zone">
+      <div>
+        <div class="schema-titre">Aperçu schéma</div>
+        <div id="ns-svg-zone">
+          <!-- SVG généré par JS -->
+        </div>
+        <div style="font-size:10px; color:#aaa; text-align:center; margin-top:4px">
+          Mis à jour selon la famille
+        </div>
+      </div>
+      <div style="flex:1; min-width:160px;">
+        <h4 style="font-family:Impact;font-size:13px;letter-spacing:1px;
+                   text-transform:uppercase;margin-bottom:10px">Récapitulatif</h4>
+        <div class="ns-recap"></div>
+      </div>
+    </div>
+
+    <!-- Note statut (injection par JS selon profil) -->
+    <div class="note-statut"></div>
+
+    <div class="modale-footer">
+      <button class="btn btn-gris" onclick="closeM('m-nouvelle-section')">Annuler</button>
+      <button class="btn btn-rouge" onclick="biblioSoumettre()">
+        Soumettre pour validation
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════
+     SCRIPTS
+══════════════════════ -->
+<!-- ══ MODALE FAMILLE ══ -->
+<div id="m-famille" class="modale-bg" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modale modale-xl" onclick="event.stopPropagation()" style="width:900px; max-height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+
+    <!-- En-tête fixe -->
+    <div style="padding:16px 24px 12px; border-bottom:1px solid var(--gris-cl); flex-shrink:0;">
+      <div class="modale-titre" id="mf-titre" style="margin-bottom:4px; color:var(--rouge);"></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;" id="mf-norme"></div>
+    </div>
+
+    <!-- Corps scrollable : layout vertical -->
+    <div style="flex:1; overflow-y:auto; padding:16px 24px; display:flex; flex-direction:column; gap:16px;">
+
+      <!-- Bloc haut : image grande + dimensions côte à côte -->
+      <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+
+        <!-- Image grande -->
+        <div style="flex:0 0 280px; background:#f7f7f7; border:1px solid var(--gris-cl);
+                    border-radius:4px; padding:12px; text-align:center;">
+          <div id="mf-img-zone" style="height:220px; display:flex; align-items:center; justify-content:center;">
+            <span style="color:#ccc; font-size:12px;">—</span>
+          </div>
+        </div>
+
+        <!-- Dimensions -->
+        <div style="flex:1; min-width:180px;">
+          <div style="font-family:Impact; font-size:14px; letter-spacing:1px; color:var(--rouge);
+                      text-transform:uppercase; margin-bottom:10px;" id="mf-desig-label">
+            ← Sélectionnez une ligne
+          </div>
+          <div id="mf-dims"></div>
+        </div>
+
+      </div>
+
+      <!-- Tableau des désignations -->
+      <div>
+        <div style="font-family:Impact; font-size:12px; letter-spacing:1px; text-transform:uppercase;
+                    color:#999; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--gris-cl);">
+          Désignations
+        </div>
+        <div id="mf-accordeon"></div>
+      </div>
+
+    </div>
+
+    <!-- Pied fixe -->
+    <div style="padding:10px 24px; border-top:1px solid var(--gris-cl); display:flex; justify-content:flex-end; flex-shrink:0;">
+      <button onclick="document.getElementById('m-famille').classList.remove('open')" class="btn btn-gris">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/supabase.js"></script>
+<script src="../auth/auth.js"></script>
+<script src="../js/bibliotheque.js"></script>
+<script>
+/* ══════════════════════════════════════════════
+   INITIALISATION DE LA PAGE
+══════════════════════════════════════════════ */
+
+/**
+ * Récupère le profil depuis la session Auth (Conv. 2)
+ * ou utilise 'consultation' par défaut
+ */
+function getProfilCourant() {
+  const session = window.Auth ? window.Auth.getSession() : null;
+  return session ? session.profil : 'consultation';
+}
+
+/**
+ * Met à jour le header selon le profil
+ */
+function biblioSetHeaderProfil(profil) {
+  // Utilise Auth pour injecter nom + badge
+  if (window.Auth) {
+    window.Auth.afficherInfosSession('#header-user', '#header-badge');
+    window.Auth.appliquerDroitsDOM();
+  }
+}
+
+/**
+ * Affiche l'alerte admin si des sections sont en attente
+ */
+function biblioAfficheAlerteAttente() {
+  const nb = Biblio.data.custom.filter(s => s.statut === 'attente').length;
+  const el = document.getElementById('biblio-alerte-attente');
+  if (!el) return;
+
+  if (nb > 0 && Biblio.profil === 'administration') {
+    el.textContent = `⚠ ${nb} section(s) en attente de validation`;
+    el.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+/* ══ Démarrage ══ */
+(async function demarrer() {
+  // Garde de route — redirige vers login si pas de session
+  if (window.Auth) window.Auth.requireAuth();
+
+  const profil = getProfilCourant();
+  biblioSetHeaderProfil(profil);
+
+  // Chargement des sections custom depuis localStorage (si démo)
+  biblioChargerCustom();
+
+  // Initialisation du module
+  await biblioInit(profil);
+
+  // Alerte sections en attente (admin)
+  biblioAfficheAlerteAttente();
+})();
+
+/* ══════════════════════════════════════════════
+   NAVIGATION & MODALES
+══════════════════════════════════════════════ */
+
+function openM(id)  { document.getElementById(id).classList.add('open'); }
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+function bgClose(e, id) {
+  if (e.target === document.getElementById(id)) closeM(id);
+}
+
+function retourAccueil() {
+  window.location.href = '../index.html';
+}
+
+/**
+ * Basculement onglet Profilés / Tôles
+ */
+function switchOnglet(onglet, btn) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Titre dynamique
+  document.title = onglet === 'toles'
+    ? 'Bibliothèque Tôles — LBF'
+    : 'Bibliothèque Profilés — LBF';
+
+  if (onglet === 'toles') {
+    document.getElementById('biblio-grille').innerHTML = `
+      <div class="biblio-vide">
+        <span style="font-size:32px">🔧</span>
+        <p>Module Tôles — disponible prochainement (Conv. 5)</p>
+      </div>`;
+    document.getElementById('biblio-compteur').textContent = '';
+    document.getElementById('biblio-filtre-famille').style.display = 'none';
+  } else {
+    document.getElementById('biblio-filtre-famille').style.display = '';
+    biblioRendreGrille();
+  }
+}
+</script>
+
+</body>
+</html>

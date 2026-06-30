@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "date_maj": "2025-03-05",
+  "description": "Demandes d'attribution soumises par profil Consultation — en attente de validation Admin",
+  "compteur": 1,
+  "demandes": [
+    {
+      "id": "DEM-0001",
+      "id_element": "BAR-0007",
+      "categorie": "profil",
+      "section_type": "UPN",
+      "designation": "120",
+      "longueur_m": 3.20,
+      "demandeur_nom": "Jean Martin",
+      "chantier_demande": "Brest A — Phase 2",
+      "commentaire": "Besoin semaine prochaine pour appui de poutre",
+      "statut": "en_attente",
+      "date_demande": "2025-03-04",
+      "traite_par": null,
+      "date_traitement": null,
+      "reponse": null
+    }
+  ]
+}
