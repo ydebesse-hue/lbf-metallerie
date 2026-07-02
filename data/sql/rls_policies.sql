@@ -158,17 +158,45 @@ CREATE POLICY "historique_insert" ON lbf_barres_historique
 
 -- ═══════════════════════════════════════════════════════════════
 --  RÉFÉRENTIELS ADMINISTRABLES
---  chantiers, fournisseurs, demandeurs, racks, config
+--  fournisseurs, demandeurs, racks, config
 --  Lecture pour tous (pickers accessibles au visiteur), écriture
 --  réservée à l'administration (seul profil accédant à l'onglet
 --  Administration où ces référentiels sont gérés).
+--
+--  chantiers est un cas à part : sa création est aussi accessible
+--  depuis le modal « Demande d'attribution » (accessible à tous les
+--  profils, y compris le visiteur anonyme, via le bouton « + Nouveau »
+--  du sélecteur de chantier). L'INSERT y est donc ouvert à anon +
+--  authenticated ; seules UPDATE/DELETE restent réservées à
+--  l'administration (gérées depuis l'onglet Administration).
 -- ═══════════════════════════════════════════════════════════════
+
+DROP POLICY IF EXISTS "chantiers_select_anon" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_insert_anon" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_update_anon" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_delete_anon" ON chantiers;
+DROP POLICY IF EXISTS "acces_anon_chantiers" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_select" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_insert" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_update" ON chantiers;
+DROP POLICY IF EXISTS "chantiers_delete" ON chantiers;
+ALTER TABLE chantiers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "chantiers_select" ON chantiers
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "chantiers_insert" ON chantiers
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "chantiers_update" ON chantiers
+  FOR UPDATE TO authenticated USING (jwt_profil() = 'administration');
+CREATE POLICY "chantiers_delete" ON chantiers
+  FOR DELETE TO authenticated USING (jwt_profil() = 'administration');
+
 
 DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['chantiers','fournisseurs','demandeurs','racks','config']
+  FOREACH t IN ARRAY ARRAY['fournisseurs','demandeurs','racks','config']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
 
