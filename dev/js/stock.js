@@ -291,6 +291,7 @@ const Stock = (() => {
    * Point d'entrée — appelé au DOMContentLoaded
    */
   async function init() {
+    await Auth.ready();
     Auth.requireAuth();
     Auth.afficherInfosSession('#header-user', '#header-badge');
     Auth.appliquerDroitsDOM();

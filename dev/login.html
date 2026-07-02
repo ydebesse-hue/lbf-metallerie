@@ -273,11 +273,11 @@
 
     <!-- Formulaire -->
     <div class="champ">
-      <label for="inp-identifiant">Identifiant</label>
+      <label for="inp-identifiant">Email</label>
       <input
-        type="text"
+        type="email"
         id="inp-identifiant"
-        placeholder="ex : p.dupont"
+        placeholder="ex : prenom.nom@lebrasfreres.fr"
         autocomplete="username"
         autocapitalize="none"
         spellcheck="false"
@@ -312,7 +312,7 @@
     <div class="msg-erreur" id="msg-erreur" role="alert" aria-live="polite"></div>
 
     <!-- Lien consultation anonyme -->
-    <a class="lien-consultation" href="views/stock.html" id="lien-consultation" onclick="entrerEnConsultation(event)">
+    <a class="lien-consultation" href="views/stock.html" id="lien-consultation" onclick="clicConsultation(event)">
       Consulter sans connexion →
       <small>Lecture seule</small>
     </a>
@@ -321,11 +321,13 @@
   </div>
 
   <!-- Supabase + Auth engine -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="auth/auth.js"></script>
   <script>
     // ─── Redirection si déjà connecté ───────────────────
-    (function() {
+    (async function() {
+      await window.Auth.ready();
       const session = window.Auth.getSession();
       if (session) {
         const dest = {
@@ -364,7 +366,7 @@
 
       // Validation basique
       if (!identif || !mdp) {
-        afficherErreur('Veuillez renseigner l\'identifiant et le mot de passe.');
+        afficherErreur('Veuillez renseigner l\'email et le mot de passe.');
         return;
       }
 
@@ -398,26 +400,9 @@
     }
 
     // ─── Accès consultation anonyme ─────────────────────
-    function entrerEnConsultation(e) {
+    function clicConsultation(e) {
       e.preventDefault();
-      // On crée une session de consultation anonyme minimale
-      const sessionAnon = {
-        id:          'anon',
-        identifiant: 'visiteur',
-        nomComplet:  'Visiteur',
-        profil:      'consultation',
-        droits: {
-          can_view:         true,
-          can_request:      true,
-          can_edit:         false,
-          can_add:          false,
-          can_validate:     false,
-          can_manage_users: false,
-        },
-        loginAt: Date.now(),
-        anonyme: true,
-      };
-      sessionStorage.setItem('lbf_session', JSON.stringify(sessionAnon));
+      window.Auth.entrerEnConsultation();
       window.location.href = 'views/stock.html';
     }
 
