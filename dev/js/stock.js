@@ -130,12 +130,6 @@ const Stock = (() => {
   const CLE_VUE_TOLES  = 'lbf-stock-vue-toles';
   const CLE_COLS_TOLES = 'lbf-stock-cols-toles';
 
-  // ── Configuration email (EmailJS) ───────────────────────────────
-  // Renseigner ces valeurs après création d'un compte sur emailjs.com
-  const EMAILJS_PUBLIC_KEY       = '';  // clé publique EmailJS
-  const EMAILJS_SERVICE_ID       = '';  // ID du service (ex. 'service_abc123')
-  const EMAILJS_TPL_ACCEPTATION  = '';  // ID template acceptation
-  const EMAILJS_TPL_REFUS        = '';  // ID template refus
 
   /** Plan provisoire embarqué en data URL — indépendant du serveur de fichiers */
   const PLAN_PROVISOIRE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Tahoma,Geneva,sans-serif">
@@ -8049,19 +8043,17 @@ ${hasT ? `
   }
 
   async function _envoyerMailConfirmation(dem, statut, motif = '') {
-    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID) return;
     const email = dem.demandeur_email;
     if (!email) return;
-    const tplId = statut === 'accepte' ? EMAILJS_TPL_ACCEPTATION : EMAILJS_TPL_REFUS;
-    if (!tplId) return;
     try {
-      await window.emailjs.send(EMAILJS_SERVICE_ID, tplId, {
-        to_email:   email,
-        to_name:    dem.demandeur,
-        demande_id: dem.id,
-        chantier:   _labelChantier(dem.chantier_demande) || dem.chantier_demande,
-        motif:      motif || '',
-      }, EMAILJS_PUBLIC_KEY);
+      await window.SB.appelerFonction('notifier-demande', {
+        email,
+        nom:       dem.demandeur,
+        statut,
+        demandeId: dem.id,
+        chantier:  _labelChantier(dem.chantier_demande) || dem.chantier_demande,
+        motif:     motif || '',
+      });
     } catch(e) {
       console.warn('[Stock] Envoi email échoué :', e);
     }
