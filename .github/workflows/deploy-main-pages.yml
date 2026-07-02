@@ -1,0 +1,24 @@
+name: Deploy main to Pages
+
+# Publie la branche main (version stable) à la racine du site.
+# Préserve le contenu de /dev/ (prévisualisation) déjà publié.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publier dans gh-pages (racine)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          keep_files: true
+          commit_message: "Deploy main : ${{ github.event.head_commit.message }}"
