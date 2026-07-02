@@ -7936,6 +7936,26 @@ ${hasT ? `
 
   function _monterPickerDemandeur(wrap, demandeurId = '') {
     if (!wrap) return;
+
+    // Compte réel connecté (pas le visiteur anonyme) : on utilise directement
+    // son identité, pas besoin de choisir/saisir un demandeur.
+    const session = Auth.getSession();
+    if (session && !session.anonyme) {
+      const [prenom, ...resteNom] = (session.nomComplet || '').split(' ');
+      const nom = resteNom.join(' ') || session.nomComplet || '';
+      wrap.dataset.compte = '1';
+      wrap.dataset.compteEmail  = session.identifiant || '';
+      wrap.dataset.comptePrenom = prenom || '';
+      wrap.dataset.compteNom    = nom || '';
+      wrap.innerHTML = `
+        <div style="padding:8px 10px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd;font-size:13px">
+          👤 <strong>${_e(session.nomComplet || session.identifiant)}</strong>
+          ${session.identifiant ? `<span style="color:#666"> — ${_e(session.identifiant)}</span>` : ''}
+        </div>`;
+      return;
+    }
+
+    delete wrap.dataset.compte;
     const opts = `<option value="">— Choisir un demandeur —</option>` +
       _demandeurs.map(d => {
         const label = [d.prenom, d.nom].filter(Boolean).join(' ') + (d.email ? ` (${d.email})` : '');
@@ -7977,6 +7997,16 @@ ${hasT ? `
   }
 
   function _lireDemandeurPicker(m) {
+    const wrap = m?.querySelector('#dem-demandeur-picker');
+    if (wrap?.dataset.compte === '1') {
+      return {
+        id: null,
+        nom:    wrap.dataset.compteNom    || '',
+        prenom: wrap.dataset.comptePrenom || '',
+        email:  wrap.dataset.compteEmail  || '',
+        isNew:  false,
+      };
+    }
     const sel = m?.querySelector('#dem-demandeur-sel');
     if (!sel) return null;
     const v = sel.value;
