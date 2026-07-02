@@ -791,6 +791,16 @@
     .cpt-table tbody tr:last-child { border-bottom: none; }
     .cpt-table tbody tr:hover { background: #fafafa; }
     .cpt-table td { padding: 9px 12px; vertical-align: middle; }
+    .cpt-inline-input {
+      width: 100%; box-sizing: border-box;
+      border: 1px solid transparent; border-radius: 3px;
+      padding: 5px 7px; font-size: 13px; font-family: inherit;
+      background: transparent; color: inherit;
+    }
+    .cpt-inline-input:hover:not(:disabled)  { border-color: #ddd; background: #fff; }
+    .cpt-inline-input:focus:not(:disabled)  { border-color: var(--vert); background: #fff; outline: none; }
+    .cpt-inline-input:disabled { color: #999; cursor: not-allowed; }
+    select.cpt-inline-input:not(:disabled) { cursor: pointer; }
     .profil-label {
       display: inline-block; padding: 2px 8px; border-radius: 2px;
       font-family: Impact, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
@@ -3237,13 +3247,6 @@
           <option value="consultation">Consultation — lecture seule</option>
           <option value="gestion">Gestion — ajouts soumis à validation</option>
           <option value="administration">Administration — accès complet</option>
-        </select>
-      </div>
-      <div class="champ" id="mc-actif-zone">
-        <label for="mc-actif">Statut</label>
-        <select id="mc-actif">
-          <option value="true">Actif</option>
-          <option value="false">Désactivé</option>
         </select>
       </div>
       <div class="msg-erreur-modale" id="mc-erreur"></div>
