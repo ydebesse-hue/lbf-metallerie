@@ -236,6 +236,7 @@ const Stock = (() => {
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis Supabase (Conv. 6)
+  let _demandesToutes = [];     // dernier snapshot complet (toutes statuts confondus), pour Mes notifications
   let _demandCompteur = 0;      // compteur max des IDs DEM-XXXX connus (Supabase + localStorage)
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
@@ -336,10 +337,12 @@ const Stock = (() => {
         const demandes = await window.SB.lire('demandes');
         const nums = demandes.map(d => parseInt((d.id||'').replace(/[^0-9]/g,''), 10)).filter(n => !isNaN(n));
         _demandCompteur = nums.length ? Math.max(...nums) : 0;
+        _demandesToutes = demandes;
         _demandes = demandes.filter(d => d.statut === 'en_attente');
       } catch(e) {
         const store = _chargerDemandes();
         _demandCompteur = store.compteur || 0;
+        _demandesToutes = store.demandes;
         _demandes = store.demandes.filter(d => d.statut === 'en_attente');
       }
 
@@ -3263,15 +3266,90 @@ ${hasT ? `
 
   function _majBannieresDemandes() {
     const z = document.getElementById('stock-alerte-demandes');
-    if (!z || !Auth.hasRight('can_validate')) { if (z) z.style.display = 'none'; return; }
-    const nb = _demandes.length;
-    if (nb === 0) {
+    if (z) {
+      if (!Auth.hasRight('can_validate') || _demandes.length === 0) {
+        z.style.display = 'none';
+      } else {
+        z.style.display = 'flex';
+        const span = z.querySelector('.alerte-nb-demandes');
+        if (span) span.textContent = _demandes.length;
+      }
+    }
+    _majBanniereMesDemandes();
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     MES NOTIFICATIONS — demandes personnelles traitées
+     (acceptées/refusées), sans passer par l'email pour ne pas
+     surcharger la boîte mail. "Vu" est mémorisé localement.
+     ────────────────────────────────────────────────────────────── */
+
+  const CLE_NOTIFS_VUES = 'lbf_notifs_demandes_vues';
+
+  function _idsNotifsVus() {
+    try { return JSON.parse(localStorage.getItem(CLE_NOTIFS_VUES) || '[]'); }
+    catch { return []; }
+  }
+
+  function _marquerNotifsVues(ids) {
+    const vus = new Set(_idsNotifsVus());
+    ids.forEach(id => vus.add(id));
+    try { localStorage.setItem(CLE_NOTIFS_VUES, JSON.stringify([...vus])); } catch {}
+  }
+
+  function _mesDemandesNonVues() {
+    const session = Auth.getSession();
+    if (!session || session.anonyme) return [];
+    const vus = _idsNotifsVus();
+    return _demandesToutes.filter(d =>
+      d.demande_par === session.identifiant &&
+      (d.statut === 'valide' || d.statut === 'refuse') &&
+      !vus.includes(d.id)
+    );
+  }
+
+  function _majBanniereMesDemandes() {
+    const z = document.getElementById('stock-alerte-mes-demandes');
+    if (!z) return;
+    const mesNotifs = _mesDemandesNonVues();
+    if (mesNotifs.length === 0) {
       z.style.display = 'none';
     } else {
       z.style.display = 'flex';
-      const span = z.querySelector('.alerte-nb-demandes');
-      if (span) span.textContent = nb;
+      const span = z.querySelector('.alerte-nb-mes-demandes');
+      if (span) span.textContent = mesNotifs.length;
     }
+  }
+
+  function _ouvrirMesDemandes() {
+    const zone = document.getElementById('mdem-liste');
+    if (!zone) return;
+    const notifs = _mesDemandesNonVues();
+    if (!notifs.length) {
+      zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande traitée à afficher.</div>';
+    } else {
+      zone.innerHTML = notifs.map(d => {
+        const ok = d.statut === 'valide';
+        const badge = ok
+          ? '<span class="statut-actif">✔ Acceptée</span>'
+          : '<span style="color:var(--rouge);font-weight:bold">✘ Refusée</span>';
+        return `<div style="padding:10px 4px;border-bottom:1px solid #eee">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <strong>${_e(d.id)}</strong> ${badge}
+          </div>
+          <div style="font-size:13px;color:#555">Chantier : ${_e(_labelChantier(d.chantier_demande) || d.chantier_demande || '—')}</div>
+          ${!ok && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
+          <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || '')}</div>
+        </div>`;
+      }).join('');
+    }
+    _ouvrirModale('m-mes-demandes');
+  }
+
+  function fermerMesDemandes() {
+    _marquerNotifsVues(_mesDemandesNonVues().map(d => d.id));
+    _fermerModale('m-mes-demandes');
+    _majBanniereMesDemandes();
   }
 
   function _majBanniereRecents() {
@@ -3486,6 +3564,9 @@ ${hasT ? `
       _majBadgeAttente();
       _filtrer();
     });
+
+    // Bannière personnelle : mes demandes traitées
+    document.getElementById('stock-alerte-mes-demandes')?.addEventListener('click', _ouvrirMesDemandes);
 
     // Liens de navigation depuis la synthèse (event delegation — toolbar + contenu)
     const zsyn = document.getElementById('zone-synthese');
@@ -7110,9 +7191,11 @@ ${hasT ? `
     // Rafraîchir la liste des demandes en mémoire
     try {
       const demandes = await window.SB.lire('demandes');
+      _demandesToutes = demandes;
       _demandes = demandes.filter(d => d.statut === 'en_attente');
     } catch(e) {
-      _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
+      _demandesToutes = _chargerDemandes().demandes;
+      _demandes = _demandesToutes.filter(d => d.statut === 'en_attente');
     }
     _majBannieresDemandes();
 
@@ -7174,9 +7257,11 @@ ${hasT ? `
       if (dem) await _envoyerMailConfirmation(dem, 'refuse', motif);
       try {
         const demandes = await window.SB.lire('demandes');
+        _demandesToutes = demandes;
         _demandes = demandes.filter(d => d.statut === 'en_attente');
       } catch(e) {
-        _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
+        _demandesToutes = _chargerDemandes().demandes;
+        _demandes = _demandesToutes.filter(d => d.statut === 'en_attente');
       }
       _majBannieresDemandes();
       _fermerModale('m-confirmation');
@@ -10182,6 +10267,7 @@ ${hasT ? `
     ouvrirUtiliserBarre:   _ouvrirUtiliserBarre,
     validerElement,
     refuserElement,
+    fermerMesDemandes,
     getSelection,
     ouvrirHistoriqueBarre,
     ouvrirHistoriqueTole,
