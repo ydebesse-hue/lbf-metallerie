@@ -1339,7 +1339,15 @@ const Stock = (() => {
     if (item.statut === 'en_attente')        return `<span class="badge badge-attente">⏳ En attente</span>`;
     // Vérifier si une demande d'attribution est en cours sur cet élément
     const demandeEnCours = _demandes.find(d => d.id_barre === item.id);
-    if (demandeEnCours) return `<span class="badge badge-attente">⏳ Attribution demandée</span>`;
+    if (demandeEnCours) {
+      const infos = [
+        `Demandeur : ${demandeEnCours.demandeur || '—'}`,
+        `Destination : ${_labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—'}`,
+        `Date : ${demandeEnCours.date_demande || '—'}`,
+        demandeEnCours.commentaire ? `Remarque : ${demandeEnCours.commentaire}` : null,
+      ].filter(Boolean).join('\n');
+      return `<span class="badge badge-attente" title="${_e(infos)}">⏳ Attribution demandée</span>`;
+    }
     if (item.disponibilite === 'disponible') return `<span class="badge badge-dispo">Disponible</span>`;
     return                                          `<span class="badge badge-affecte">Affecté</span>`;
   }
@@ -6188,6 +6196,19 @@ ${hasT ? `
       zoneDispo.innerHTML = _badgeDispo(t) + chuteChip;
     }
 
+    // Détail de la demande d'attribution en cours, s'il y en a une
+    const demZoneT = m.querySelector('#dtole-demande-info');
+    const demandeEnCoursT = _demandes.find(d => d.id_barre === t.id);
+    if (demZoneT) {
+      demZoneT.style.display = demandeEnCoursT ? '' : 'none';
+      if (demandeEnCoursT) {
+        _afficherInfo(m, '#dtole-dem-demandeur',   demandeEnCoursT.demandeur || '—');
+        _afficherInfo(m, '#dtole-dem-destination', _labelChantier(demandeEnCoursT.chantier_demande) || demandeEnCoursT.chantier_demande || '—');
+        _afficherInfo(m, '#dtole-dem-date',        demandeEnCoursT.date_demande || '—');
+        _afficherInfo(m, '#dtole-dem-commentaire', demandeEnCoursT.commentaire || '—');
+      }
+    }
+
     // Infos (textContent pour le texte, innerHTML pour le badge type)
     const surf = _surfaceTole(t);
     const typeEl = m.querySelector('#dtole-type');
@@ -6270,6 +6291,19 @@ ${hasT ? `
 
     const zoneDispo = m.querySelector('#dprofil-dispo');
     if (zoneDispo) zoneDispo.innerHTML = _badgeDispo(b);
+
+    // Détail de la demande d'attribution en cours, s'il y en a une
+    const demZone = m.querySelector('#dprofil-demande-info');
+    const demandeEnCours = _demandes.find(d => d.id_barre === b.id);
+    if (demZone) {
+      demZone.style.display = demandeEnCours ? '' : 'none';
+      if (demandeEnCours) {
+        _afficherInfo(m, '#dprofil-dem-demandeur',   demandeEnCours.demandeur || '—');
+        _afficherInfo(m, '#dprofil-dem-destination', _labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—');
+        _afficherInfo(m, '#dprofil-dem-date',        demandeEnCours.date_demande || '—');
+        _afficherInfo(m, '#dprofil-dem-commentaire', demandeEnCours.commentaire || '—');
+      }
+    }
 
     const typeEl = m.querySelector('#dprofil-type');
     if (typeEl) typeEl.textContent = b.section_type || '—';
