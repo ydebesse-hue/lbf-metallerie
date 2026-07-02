@@ -710,8 +710,9 @@ async function sauvegarderCompte() {
         afficherErreurModale('mc-erreur', 'Cet email est déjà utilisé.');
         return;
       }
+      const redirectTo = window.location.origin + window.location.pathname.replace(/views\/.*$/, 'login.html');
       await window.SB.appelerFonction('manage-users', {
-        action: 'create', email, nomComplet, profil,
+        action: 'create', email, nomComplet, profil, redirectTo,
       });
       afficherNotif('Compte créé — email d\'invitation envoyé.', 'succes');
     }
