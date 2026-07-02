@@ -41,18 +41,30 @@ function erreurLisible(e: unknown): string {
   // Deno.inspect() capture absolument tout (propriétés non énumérables,
   // getters, symboles, classes personnalisées...), contrairement à
   // JSON.stringify qui peut renvoyer "{}" sur un objet Error natif.
-  const detail = Deno.inspect(e, { depth: 4, colors: false });
-  console.error('[manage-users] erreur :', detail);
+  // Encapsulé dans son propre try/catch : ne doit jamais faire planter
+  // la fonction (un plantage ici saute la réponse HTTP -> pas d'en-têtes
+  // CORS -> le navigateur affiche une erreur CORS trompeuse).
+  let detail = '';
+  try {
+    detail = Deno.inspect(e, { depth: 4, colors: false });
+    console.error('[manage-users] erreur :', detail);
+  } catch (_inspectErr) {
+    detail = String(e);
+  }
 
   if (!e) return 'Erreur inconnue.';
   if (typeof e === 'string') return e;
 
-  const obj = e as Record<string, unknown>;
-  const msg = obj.message || obj.msg || obj.error_description || obj.error;
-  const code = obj.code || obj.error_code || obj.status;
-  if (msg && typeof msg === 'string') return code ? `${msg} (${code})` : msg;
+  try {
+    const obj = e as Record<string, unknown>;
+    const msg = obj.message || obj.msg || obj.error_description || obj.error;
+    const code = obj.code || obj.error_code || obj.status;
+    if (msg && typeof msg === 'string') return code ? `${msg} (${code})` : msg;
+  } catch (_readErr) {
+    // ignore, on retombe sur detail
+  }
 
-  return detail;
+  return detail || 'Erreur inconnue.';
 }
 
 Deno.serve(async (req) => {
