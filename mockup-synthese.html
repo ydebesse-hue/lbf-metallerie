@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Mockup — Synthèse Stock</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Tahoma, sans-serif; background: #f0f0f0; color: #222; font-size: 13px; }
+
+  /* Barre de navigation simulée */
+  .nav-sim {
+    background: #1a1a2e; color: white; padding: 10px 20px;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .nav-sim strong { font-size: 15px; color: #e0e0e0; }
+  .nav-sim .onglets { display: flex; gap: 4px; margin-left: 20px; }
+  .nav-sim .onglet {
+    padding: 6px 16px; border-radius: 4px 4px 0 0; cursor: pointer;
+    color: #aaa; font-size: 12px; background: rgba(255,255,255,0.05);
+  }
+  .nav-sim .onglet.actif { background: #d2232a; color: white; font-weight: bold; }
+
+  /* Contenu principal */
+  .page { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+  /* Cartes KPI */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-bottom: 22px;
+  }
+  .kpi-card {
+    background: white; border-radius: 6px; padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    border-top: 3px solid #ccc;
+  }
+  .kpi-card.vert  { border-top-color: #27ae60; }
+  .kpi-card.bleu  { border-top-color: #2980b9; }
+  .kpi-card.orange{ border-top-color: #e67e22; }
+  .kpi-card.rouge { border-top-color: #d2232a; }
+  .kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .kpi-val   { font-size: 26px; font-weight: bold; color: #222; line-height: 1; }
+  .kpi-sub   { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+  /* Section */
+  .section-titre {
+    font-size: 13px; font-weight: bold; color: #444;
+    border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-titre .badge {
+    font-size: 11px; font-weight: normal; color: #888;
+    background: #f0f0f0; border-radius: 10px; padding: 1px 8px;
+  }
+
+  /* Grille 2 colonnes */
+  .deux-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  /* Tableau */
+  .syn-table { width: 100%; border-collapse: collapse; background: white;
+    border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .syn-table th {
+    background: #f5f5f5; padding: 8px 12px; text-align: left;
+    font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: .4px;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .syn-table th.num { text-align: right; }
+  .syn-table td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+  .syn-table td.num { text-align: right; color: #444; font-variant-numeric: tabular-nums; }
+  .syn-table tr:last-child td { border-bottom: none; }
+  .syn-table tr:hover td { background: #fafafa; cursor: pointer; }
+  .syn-table .type-badge {
+    display: inline-block; background: #1a1a2e; color: white;
+    padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;
+  }
+  .syn-table .total-row td {
+    background: #f9f9f9; font-weight: bold; color: #222;
+    border-top: 2px solid #e0e0e0;
+  }
+
+  /* Barre de répartition */
+  .bar-wrap { background: #f0f0f0; border-radius: 3px; height: 6px; margin-top: 3px; }
+  .bar-fill  { border-radius: 3px; height: 6px; background: #27ae60; }
+
+  /* Bloc tôles */
+  .tole-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .tole-card {
+    background: white; border-radius: 5px; padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    border-left: 3px solid #2980b9;
+  }
+  .tole-card .val { font-size: 20px; font-weight: bold; color: #222; }
+  .tole-card .lbl { font-size: 11px; color: #888; margin-bottom: 3px; }
+
+  /* Bloc attente */
+  .attente-row {
+    background: white; border-radius: 5px; padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07); margin-bottom: 8px;
+  }
+  .attente-row .num-badge {
+    background: #e67e22; color: white; border-radius: 12px;
+    padding: 2px 10px; font-weight: bold; font-size: 13px;
+  }
+  .attente-row .lien {
+    font-size: 11px; color: #2980b9; cursor: pointer; text-decoration: underline;
+  }
+
+  .section-wrap { background: white; border-radius: 6px; padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+</style>
+</head>
+<body>
+
+<!-- Nav simulée -->
+<div class="nav-sim">
+  <strong>LBF — Stock Métallerie</strong>
+  <div class="onglets">
+    <div class="onglet">Profilés</div>
+    <div class="onglet">Tôles</div>
+    <div class="onglet">Archivées</div>
+    <div class="onglet actif">Synthèse</div>
+  </div>
+</div>
+
+<!-- Page synthèse -->
+<div class="page">
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card vert">
+      <div class="kpi-label">Profilés disponibles</div>
+      <div class="kpi-val">247</div>
+      <div class="kpi-sub">barres validées · dispo</div>
+    </div>
+    <div class="kpi-card bleu">
+      <div class="kpi-label">Métrage linéaire dispo</div>
+      <div class="kpi-val">1 482 m</div>
+      <div class="kpi-sub">profilés disponibles</div>
+    </div>
+    <div class="kpi-card bleu">
+      <div class="kpi-label">Poids disponible</div>
+      <div class="kpi-val">38,4 t</div>
+      <div class="kpi-sub">profilés + tôles</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">En attente validation</div>
+      <div class="kpi-val">12</div>
+      <div class="kpi-sub">éléments à valider</div>
+    </div>
+  </div>
+
+  <!-- Tableau profilés + colonne droite -->
+  <div class="deux-cols" style="margin-bottom:18px">
+
+    <!-- Tableau profilés par type -->
+    <div>
+      <div class="section-titre">
+        Profilés disponibles par type
+        <span class="badge">clic → filtrer</span>
+      </div>
+      <table class="syn-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th class="num">Barres</th>
+            <th class="num">ML total</th>
+            <th class="num">Poids (kg)</th>
+            <th style="width:80px">Répartition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="type-badge">IPE</span></td>
+            <td class="num">82</td>
+            <td class="num">496,40 m</td>
+            <td class="num">14 320</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:72%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">HEA</span></td>
+            <td class="num">54</td>
+            <td class="num">318,60 m</td>
+            <td class="num">11 240</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:50%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">HEB</span></td>
+            <td class="num">31</td>
+            <td class="num">186,00 m</td>
+            <td class="num">8 560</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:38%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">UPN</span></td>
+            <td class="num">28</td>
+            <td class="num">172,50 m</td>
+            <td class="num">3 840</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:30%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">Plat</span></td>
+            <td class="num">19</td>
+            <td class="num">114,00 m</td>
+            <td class="num">1 970</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:20%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">L égale</span></td>
+            <td class="num">15</td>
+            <td class="num">90,00 m</td>
+            <td class="num">1 320</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:16%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">SHS</span></td>
+            <td class="num">11</td>
+            <td class="num">66,00 m</td>
+            <td class="num">890</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:11%"></div></div></td>
+          </tr>
+          <tr>
+            <td><span class="type-badge">Autres</span></td>
+            <td class="num">7</td>
+            <td class="num">38,60 m</td>
+            <td class="num">460</td>
+            <td><div class="bar-wrap"><div class="bar-fill" style="width:7%"></div></div></td>
+          </tr>
+          <tr class="total-row">
+            <td>Total</td>
+            <td class="num">247</td>
+            <td class="num">1 482,10 m</td>
+            <td class="num">42 600</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Colonne droite : tôles + attente -->
+    <div style="display:flex; flex-direction:column; gap:18px">
+
+      <!-- Tôles -->
+      <div>
+        <div class="section-titre">Tôles disponibles</div>
+        <div class="section-wrap">
+          <div class="tole-grid">
+            <div class="tole-card">
+              <div class="lbl">Références</div>
+              <div class="val">34</div>
+            </div>
+            <div class="tole-card">
+              <div class="lbl">Poids total</div>
+              <div class="val">6,2 t</div>
+            </div>
+            <div class="tole-card">
+              <div class="lbl">Épaisseur min / max</div>
+              <div class="val">3 – 30 mm</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Répartition dispo / affecté -->
+      <div>
+        <div class="section-titre">Répartition des profilés</div>
+        <div class="section-wrap">
+          <table class="syn-table" style="box-shadow:none">
+            <thead>
+              <tr>
+                <th>Statut</th>
+                <th class="num">Barres</th>
+                <th class="num">ML</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>✅ Disponible</td>
+                <td class="num">247</td>
+                <td class="num">1 482 m</td>
+              </tr>
+              <tr>
+                <td>📌 Affecté chantier</td>
+                <td class="num">89</td>
+                <td class="num">534 m</td>
+              </tr>
+              <tr>
+                <td>🕐 En attente valid.</td>
+                <td class="num">12</td>
+                <td class="num">72 m</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Éléments en attente -->
+      <div>
+        <div class="section-titre">Éléments à valider</div>
+        <div>
+          <div class="attente-row">
+            <span>8 profilés en attente</span>
+            <span class="num-badge">8</span>
+            <span class="lien">Voir →</span>
+          </div>
+          <div class="attente-row">
+            <span>4 tôles en attente</span>
+            <span class="num-badge">4</span>
+            <span class="lien">Voir →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
