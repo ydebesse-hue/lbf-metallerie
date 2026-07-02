@@ -7925,12 +7925,15 @@ ${hasT ? `
       const affaire = inpAff.value.trim() || null;
       const ville   = inpVille.value.trim() || null;
       if (!nom) return;
-      const res = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
-      if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
-      const rows = await window.SB.lire('chantiers', { order: 'nom' });
-      _chantiers = rows.filter(c => c.actif);
-      _majDatalistChantiers();
-      _monterPickerChantier(wrap, selectId, nom);
+      try {
+        await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+        _majDatalistChantiers();
+        _monterPickerChantier(wrap, selectId, nom);
+      } catch (err) {
+        alert('Erreur création chantier : ' + (err.message || err));
+      }
     });
   }
 
