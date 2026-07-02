@@ -41,10 +41,24 @@ function erreurLisible(e: unknown): string {
   console.error('[manage-users] erreur :', e);
   if (!e) return 'Erreur inconnue.';
   if (typeof e === 'string') return e;
-  const obj = e as { message?: string; error_description?: string; name?: string; status?: number; code?: string };
-  const msg = obj.message || obj.error_description;
-  if (msg) return `${msg}${obj.code ? ` (${obj.code})` : ''}`;
-  try { return JSON.stringify(e); } catch { return String(e); }
+
+  const obj = e as Record<string, unknown>;
+  const msg = obj.message || obj.msg || obj.error_description || obj.error;
+  const code = obj.code || obj.error_code || obj.status;
+  if (msg && typeof msg === 'string') return code ? `${msg} (${code})` : msg;
+
+  // Dernier recours : reconstruire un objet à partir de TOUTES les
+  // propriétés propres, y compris non énumérables (message/stack sur
+  // une instance Error native ne sont pas énumérables, donc invisibles
+  // pour JSON.stringify direct).
+  try {
+    const complet: Record<string, unknown> = {};
+    for (const cle of Object.getOwnPropertyNames(obj)) complet[cle] = (obj as any)[cle];
+    const s = JSON.stringify(complet);
+    if (s && s !== '{}') return s;
+  } catch { /* ignore */ }
+
+  return `Erreur non identifiable (${Object.prototype.toString.call(e)}).`;
 }
 
 Deno.serve(async (req) => {
