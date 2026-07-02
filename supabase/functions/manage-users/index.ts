@@ -78,12 +78,13 @@ Deno.serve(async (req) => {
       }
 
       case 'create': {
-        const { email, nomComplet, profil } = params;
+        const { email, nomComplet, profil, redirectTo } = params;
         if (!email || !nomComplet || !profil) {
           return reponse({ error: 'Email, nom complet et profil sont obligatoires.' }, 400);
         }
         const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
           data: { nom_complet: nomComplet, profil, actif: true },
+          redirectTo,
         });
         if (error) return reponse({ error: error.message }, 400);
         return reponse({ id: data.user.id });
