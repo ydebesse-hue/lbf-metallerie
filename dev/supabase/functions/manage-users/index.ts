@@ -38,7 +38,12 @@ function reponse(body: unknown, status = 200) {
 // Extrait un message lisible d'une erreur Supabase/JS, quelle que soit sa forme,
 // et le journalise côté serveur pour pouvoir le retrouver dans les logs.
 function erreurLisible(e: unknown): string {
-  console.error('[manage-users] erreur :', e);
+  // Deno.inspect() capture absolument tout (propriétés non énumérables,
+  // getters, symboles, classes personnalisées...), contrairement à
+  // JSON.stringify qui peut renvoyer "{}" sur un objet Error natif.
+  const detail = Deno.inspect(e, { depth: 4, colors: false });
+  console.error('[manage-users] erreur :', detail);
+
   if (!e) return 'Erreur inconnue.';
   if (typeof e === 'string') return e;
 
@@ -47,18 +52,7 @@ function erreurLisible(e: unknown): string {
   const code = obj.code || obj.error_code || obj.status;
   if (msg && typeof msg === 'string') return code ? `${msg} (${code})` : msg;
 
-  // Dernier recours : reconstruire un objet à partir de TOUTES les
-  // propriétés propres, y compris non énumérables (message/stack sur
-  // une instance Error native ne sont pas énumérables, donc invisibles
-  // pour JSON.stringify direct).
-  try {
-    const complet: Record<string, unknown> = {};
-    for (const cle of Object.getOwnPropertyNames(obj)) complet[cle] = (obj as any)[cle];
-    const s = JSON.stringify(complet);
-    if (s && s !== '{}') return s;
-  } catch { /* ignore */ }
-
-  return `Erreur non identifiable (${Object.prototype.toString.call(e)}).`;
+  return detail;
 }
 
 Deno.serve(async (req) => {
