@@ -72,7 +72,7 @@ function _rendreTableau() {
       <td><input type="text" class="cpt-inline-input" data-field="prenom" value="${_esc(prenom || '')}" placeholder="Prénom"></td>
       <td><input type="text" class="cpt-inline-input" data-field="nom" value="${_esc(nom || '')}" placeholder="Nom"></td>
       <td>
-        <select class="cpt-inline-input" data-field="profil">
+        <select class="cpt-inline-input cpt-profil profil-${u.profil}" data-field="profil">
           <option value="consultation"${u.profil === 'consultation' ? ' selected' : ''}>Consultation</option>
           <option value="gestion"${u.profil === 'gestion' ? ' selected' : ''}>Gestion</option>
           <option value="administration"${u.profil === 'administration' ? ' selected' : ''}>Administration</option>
@@ -151,6 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
   tbody.addEventListener('change', e => {
     const sel = e.target.closest('select.cpt-inline-input');
     if (!sel) return;
+    if (sel.classList.contains('cpt-profil')) {
+      sel.classList.remove('profil-consultation', 'profil-gestion', 'profil-administration');
+      sel.classList.add(`profil-${sel.value}`);
+    }
     const tr = sel.closest('tr');
     if (tr) _sauvegarderChampInline(tr, sel.dataset.field, sel.value);
   });

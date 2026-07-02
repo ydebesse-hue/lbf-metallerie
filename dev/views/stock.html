@@ -808,6 +808,17 @@
     .profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
     .profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
     .profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+
+    select.cpt-inline-input.cpt-profil {
+      font-family: Impact, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+      font-weight: normal; border-radius: 2px; padding: 3px 6px; text-align: center;
+    }
+    select.cpt-inline-input.cpt-profil.profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
+    select.cpt-inline-input.cpt-profil.profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
+    select.cpt-inline-input.cpt-profil.profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+
+    .cpt-table td:last-child { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+    .cpt-table td:last-child .btn-ligne { margin-right: 0; width: 100%; text-align: center; }
     .statut-actif   { color: var(--vert); font-weight: bold; }
     .statut-inactif { color: #aaa; }
     .bl-modifier  { background: var(--vert);  color: white; }
