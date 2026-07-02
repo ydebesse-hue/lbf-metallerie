@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Tahoma, Geneva, sans-serif">
+
+  <!-- Fond atelier -->
+  <rect width="820" height="520" fill="#f0f0f0"/>
+  <rect x="14" y="14" width="792" height="492" fill="white" stroke="#b0b0b0" stroke-width="2.5" stroke-dasharray="10,5" rx="6"/>
+
+  <!-- Titre -->
+  <text x="410" y="44" text-anchor="middle" font-size="12" fill="#999" font-weight="bold" letter-spacing="3">PLAN PROVISOIRE — ATELIER LBF</text>
+
+  <!-- ══ INDICATEUR ALLÉES ════════════════════════════════════════ -->
+  <!-- Symbole "A →" à gauche des racks -->
+  <g transform="translate(30, 150)">
+    <text x="0" y="0"  font-size="22" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="0" y="20" font-size="11" fill="#2d5f32">allée</text>
+    <!-- Flèche →  -->
+    <line x1="26" y1="-8" x2="58" y2="-8" stroke="#2d5f32" stroke-width="2.5"/>
+    <polygon points="58,-12 68,-8 58,-4" fill="#2d5f32"/>
+  </g>
+
+  <!-- ══ RACK 1 ════════════════════════════════════════════════════ -->
+  <g transform="translate(100, 80)">
+    <!-- Corps du rack -->
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <!-- Étagères (lignes horizontales) -->
+    <line x1="10" y1="50"  x2="160" y2="50"  stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <!-- Allée A : marqueur gauche -->
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="82" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <!-- Nom rack -->
+    <text x="96" y="82" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 1</text>
+    <!-- Numéros étages -->
+    <text x="158" y="30"  text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80"  text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+
+  <!-- ══ RACK 2 ════════════════════════════════════════════════════ -->
+  <g transform="translate(320, 80)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50"  x2="160" y2="50"  stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="82" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="82" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 2</text>
+    <text x="158" y="30"  text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80"  text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+
+  <!-- ══ RACK 3 ════════════════════════════════════════════════════ -->
+  <g transform="translate(540, 80)">
+    <rect width="170" height="150" rx="5" fill="#e8f5ea" stroke="#2d5f32" stroke-width="2.5"/>
+    <line x1="10" y1="50"  x2="160" y2="50"  stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <line x1="10" y1="100" x2="160" y2="100" stroke="#2d5f32" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+    <rect x="0" y="0" width="22" height="150" rx="3" fill="#2d5f32" fill-opacity=".12"/>
+    <text x="11" y="82" text-anchor="middle" font-size="11" font-weight="bold" fill="#2d5f32">A</text>
+    <text x="96" y="82" text-anchor="middle" font-size="18" font-weight="bold" fill="#2d5f32">RACK 3</text>
+    <text x="158" y="30"  text-anchor="end" font-size="10" fill="#888">ét. 1</text>
+    <text x="158" y="80"  text-anchor="end" font-size="10" fill="#888">ét. 2</text>
+    <text x="158" y="130" text-anchor="end" font-size="10" fill="#888">ét. 3</text>
+  </g>
+
+  <!-- ══ SÉPARATEUR ════════════════════════════════════════════════ -->
+  <line x1="40" y1="265" x2="780" y2="265" stroke="#ccc" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="410" y="280" text-anchor="middle" font-size="10" fill="#bbb" letter-spacing="2">ZONE EXTÉRIEURE</text>
+
+  <!-- ══ EXT 1 ═════════════════════════════════════════════════════ -->
+  <g transform="translate(100, 295)">
+    <rect width="245" height="90" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="2.5"/>
+    <!-- Hachurage léger -->
+    <line x1="0"   y1="0"  x2="30"  y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="40"  y1="0"  x2="70"  y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="80"  y1="0"  x2="110" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="120" y1="0"  x2="150" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="160" y1="0"  x2="190" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="200" y1="0"  x2="230" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <text x="122" y="52" text-anchor="middle" font-size="20" font-weight="bold" fill="#e65100">EXT 1</text>
+  </g>
+
+  <!-- ══ EXT 2 ═════════════════════════════════════════════════════ -->
+  <g transform="translate(400, 295)">
+    <rect width="245" height="90" rx="5" fill="#fff3e0" stroke="#e65100" stroke-width="2.5"/>
+    <line x1="0"   y1="0"  x2="30"  y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="40"  y1="0"  x2="70"  y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="80"  y1="0"  x2="110" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="120" y1="0"  x2="150" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="160" y1="0"  x2="190" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <line x1="200" y1="0"  x2="230" y2="90" stroke="#e65100" stroke-width=".8" opacity=".2"/>
+    <text x="122" y="52" text-anchor="middle" font-size="20" font-weight="bold" fill="#e65100">EXT 2</text>
+  </g>
+
+  <!-- ══ LÉGENDE ═══════════════════════════════════════════════════ -->
+  <g transform="translate(40, 430)">
+    <rect width="14" height="14" rx="2" fill="#e8f5ea" stroke="#2d5f32" stroke-width="1.5"/>
+    <text x="20" y="11" font-size="11" fill="#555">Rack (stockage intérieur)</text>
+    <rect x="200" width="14" height="14" rx="2" fill="#fff3e0" stroke="#e65100" stroke-width="1.5"/>
+    <text x="220" y="11" font-size="11" fill="#555">Zone extérieure</text>
+  </g>
+
+  <!-- ══ NOTE ═══════════════════════════════════════════════════════ -->
+  <text x="410" y="500" text-anchor="middle" font-size="10" fill="#bbb" font-style="italic">
+    Plan provisoire — remplacer par le plan réel dans Administration → Stockage
+  </text>
+
+</svg>
