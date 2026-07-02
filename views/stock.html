@@ -1939,6 +1939,12 @@
     <span class="alerte-attente-lien">→ Traiter</span>
   </div>
 
+  <!-- Bannière personnelle : mes demandes traitées (acceptées/refusées) -->
+  <div id="stock-alerte-mes-demandes" class="alerte-attente alerte-demandes" role="alert" title="Voir mes demandes traitées" style="display:none">
+    🔔&nbsp; <span class="alerte-nb alerte-nb-mes-demandes">0</span>&nbsp; de mes demande(s) traitée(s)
+    <span class="alerte-attente-lien">→ Voir</span>
+  </div>
+
   <!-- ══ SECTION STOCK ════════════════════════════════════════════ -->
   <div id="section-stock">
 
@@ -3140,6 +3146,20 @@
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris btn-annuler-refus">Annuler</button>
         <button class="btn-modale btn-modale-rouge btn-confirmer-refus">✘ Confirmer le refus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — MES DEMANDES TRAITÉES (acceptées / refusées)
+       Déclenchée par la bannière #stock-alerte-mes-demandes
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-mes-demandes" class="modale-bg" role="dialog" aria-modal="true" aria-label="Mes demandes traitées">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Mes demandes traitées</div>
+      <div id="mdem-liste" style="max-height:420px;overflow-y:auto"></div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-rouge" onclick="Stock.fermerMesDemandes()">Fermer et marquer comme lues</button>
       </div>
     </div>
   </div>
