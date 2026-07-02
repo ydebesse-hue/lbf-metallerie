@@ -6242,6 +6242,19 @@ ${hasT ? `
       btnSortie.onclick = () => { _fermerModale('m-detail-tole'); _ouvrirSortieTole(id); };
     }
 
+    // Demande d'attribution en cours sur cette tôle : Valider / Refuser (admin)
+    const adminT = Auth.hasRight('can_validate');
+    const btnValiderT = m.querySelector('#dtole-btn-valider');
+    if (btnValiderT) {
+      btnValiderT.style.display = (!opts.readOnly && adminT && demandeEnCoursT) ? '' : 'none';
+      btnValiderT.onclick = () => { _fermerModale('m-detail-tole'); validerElement(demandeEnCoursT.id); };
+    }
+    const btnRefuserT = m.querySelector('#dtole-btn-refuser');
+    if (btnRefuserT) {
+      btnRefuserT.style.display = (!opts.readOnly && adminT && demandeEnCoursT) ? '' : 'none';
+      btnRefuserT.onclick = () => { _fermerModale('m-detail-tole'); refuserElement(demandeEnCoursT.id); };
+    }
+
     // Champs conditionnels en mode lecture seule (depuis bilan)
     if (opts.readOnly) {
       if (t.statut === 'archivee') {
@@ -6386,11 +6399,21 @@ ${hasT ? `
       btnUtiliser.style.display = canUtiliser ? '' : 'none';
       btnUtiliser.onclick = () => _entrerModeUtiliserFicheProfil(id, m);
     }
+    // Demande d'attribution en cours sur cette barre : Valider / Refuser (admin)
+    const demandeActif = _demandes.find(d => d.id_barre === b.id);
+    const admin = Auth.hasRight('can_validate');
     const btnValider = m.querySelector('#dprofil-btn-valider');
-    if (btnValider) btnValider.style.display = 'none';
+    if (btnValider) {
+      btnValider.style.display = (!opts.readOnly && admin && demandeActif) ? '' : 'none';
+      btnValider.onclick = () => { _fermerModale('m-detail-profil'); validerElement(demandeActif.id); };
+    }
+    const btnRefuser = m.querySelector('#dprofil-btn-refuser');
+    if (btnRefuser) {
+      btnRefuser.style.display = (!opts.readOnly && admin && demandeActif) ? '' : 'none';
+      btnRefuser.onclick = () => { _fermerModale('m-detail-profil'); refuserElement(demandeActif.id); };
+    }
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
-      const demandeActif = _demandes.find(d => d.id_barre === b.id);
       const canDemander = !opts.readOnly && !canModif && b.statut !== 'en_attente' && !demandeActif;
       btnDemander.style.display = canDemander ? '' : 'none';
       btnDemander.disabled = b.disponibilite !== 'disponible';
