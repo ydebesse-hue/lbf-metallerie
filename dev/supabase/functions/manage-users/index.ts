@@ -35,6 +35,18 @@ function reponse(body: unknown, status = 200) {
   });
 }
 
+// Extrait un message lisible d'une erreur Supabase/JS, quelle que soit sa forme,
+// et le journalise côté serveur pour pouvoir le retrouver dans les logs.
+function erreurLisible(e: unknown): string {
+  console.error('[manage-users] erreur :', e);
+  if (!e) return 'Erreur inconnue.';
+  if (typeof e === 'string') return e;
+  const obj = e as { message?: string; error_description?: string; name?: string; status?: number; code?: string };
+  const msg = obj.message || obj.error_description;
+  if (msg) return `${msg}${obj.code ? ` (${obj.code})` : ''}`;
+  try { return JSON.stringify(e); } catch { return String(e); }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS_HEADERS });
@@ -65,7 +77,7 @@ Deno.serve(async (req) => {
 
       case 'list': {
         const { data, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-        if (error) return reponse({ error: error.message }, 400);
+        if (error) return reponse({ error: erreurLisible(error) }, 400);
         const users = data.users.map(u => ({
           id:         u.id,
           email:      u.email,
@@ -86,7 +98,7 @@ Deno.serve(async (req) => {
           data: { nom_complet: nomComplet, profil, actif: true },
           redirectTo,
         });
-        if (error) return reponse({ error: error.message }, 400);
+        if (error) return reponse({ error: erreurLisible(error) }, 400);
         return reponse({ id: data.user.id });
       }
 
@@ -104,7 +116,7 @@ Deno.serve(async (req) => {
         if (nomComplet !== undefined) meta.nom_complet = nomComplet;
 
         const { error } = await adminClient.auth.admin.updateUserById(id, { user_metadata: meta });
-        if (error) return reponse({ error: error.message }, 400);
+        if (error) return reponse({ error: erreurLisible(error) }, 400);
         return reponse({ ok: true });
       }
 
@@ -113,7 +125,7 @@ Deno.serve(async (req) => {
         if (!id) return reponse({ error: 'Identifiant du compte manquant.' }, 400);
         if (id === appelant.id) return reponse({ error: 'Impossible de supprimer son propre compte.' }, 400);
         const { error } = await adminClient.auth.admin.deleteUser(id);
-        if (error) return reponse({ error: error.message }, 400);
+        if (error) return reponse({ error: erreurLisible(error) }, 400);
         return reponse({ ok: true });
       }
 
@@ -121,6 +133,6 @@ Deno.serve(async (req) => {
         return reponse({ error: `Action inconnue : ${action}` }, 400);
     }
   } catch (err) {
-    return reponse({ error: err instanceof Error ? err.message : 'Erreur inattendue.' }, 500);
+    return reponse({ error: erreurLisible(err) }, 500);
   }
 });
