@@ -254,7 +254,7 @@
 </head>
 <body>
 
-  <div class="login-card" role="main">
+  <div class="login-card" role="main" id="carte-login">
 
     <!-- Logo -->
     <div class="logo-zone">
@@ -320,14 +320,65 @@
     <div class="login-footer">Le Bras Frères — Atelier Métallerie</div>
   </div>
 
+  <!-- Carte "Définir votre mot de passe" — affichée depuis un lien d'invitation ou de réinitialisation -->
+  <div class="login-card" role="main" id="carte-nouveau-mdp" style="display:none">
+
+    <div class="logo-zone">
+      <img
+        src="assets/Logo_LBF.png"
+        alt="Le Bras Frères"
+        onerror="this.style.display='none'"
+      >
+    </div>
+
+    <div class="module-titre">Choisir votre mot de passe</div>
+
+    <div class="champ">
+      <label for="np-mdp">Nouveau mot de passe</label>
+      <div class="champ-mdp-wrap">
+        <input type="password" id="np-mdp" placeholder="8 caractères minimum" autocomplete="new-password">
+        <button type="button" class="btn-oeil" onclick="toggleMdpChamp('np-mdp','np-oeil1')" id="np-oeil1">👁</button>
+      </div>
+    </div>
+
+    <div class="champ">
+      <label for="np-mdp2">Confirmer le mot de passe</label>
+      <div class="champ-mdp-wrap">
+        <input type="password" id="np-mdp2" placeholder="Confirmation" autocomplete="new-password">
+        <button type="button" class="btn-oeil" onclick="toggleMdpChamp('np-mdp2','np-oeil2')" id="np-oeil2">👁</button>
+      </div>
+    </div>
+
+    <button class="btn-connexion" id="btn-np" onclick="definirMotDePasse()">
+      Valider
+    </button>
+
+    <div class="msg-erreur" id="np-erreur" role="alert" aria-live="polite"></div>
+  </div>
+
   <!-- Supabase + Auth engine -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase.js"></script>
   <script src="auth/auth.js"></script>
   <script>
-    // ─── Redirection si déjà connecté ───────────────────
+    // ─── Lien d'invitation ou de réinitialisation ? ──────
+    // Supabase place ces informations dans le fragment d'URL (#...) ;
+    // on les lit avant que quoi que ce soit d'autre ne s'exécute.
+    const _hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const _queryParams = new URLSearchParams(window.location.search);
+    const _typeLien = _hashParams.get('type') || _queryParams.get('type'); // 'invite' | 'recovery' | null
+
+    // ─── Démarrage ────────────────────────────────────────
     (async function() {
       await window.Auth.ready();
+
+      if (_typeLien === 'invite' || _typeLien === 'recovery') {
+        document.getElementById('carte-login').style.display = 'none';
+        document.getElementById('carte-nouveau-mdp').style.display = '';
+        document.getElementById('np-mdp').focus();
+        return;
+      }
+
       const session = window.Auth.getSession();
       if (session) {
         const dest = {
@@ -403,6 +454,51 @@
     function clicConsultation(e) {
       e.preventDefault();
       window.Auth.entrerEnConsultation();
+      window.location.href = 'views/stock.html';
+    }
+
+    // ─── Afficher / masquer un champ mot de passe (carte définition) ──
+    function toggleMdpChamp(inputId, btnId) {
+      const inp = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      const visible = inp.type === 'text';
+      inp.type = visible ? 'password' : 'text';
+      btn.textContent = visible ? '👁' : '🙈';
+    }
+
+    // ─── Définir le mot de passe (invitation / réinitialisation) ──
+    async function definirMotDePasse() {
+      const btn  = document.getElementById('btn-np');
+      const erEl = document.getElementById('np-erreur');
+      const mdp1 = document.getElementById('np-mdp').value;
+      const mdp2 = document.getElementById('np-mdp2').value;
+
+      erEl.classList.remove('visible');
+
+      if (!mdp1 || mdp1.length < 8) {
+        erEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+        erEl.classList.add('visible');
+        return;
+      }
+      if (mdp1 !== mdp2) {
+        erEl.textContent = 'Les mots de passe ne correspondent pas.';
+        erEl.classList.add('visible');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Validation…';
+
+      const { error } = await window.SB.client.auth.updateUser({ password: mdp1 });
+
+      if (error) {
+        btn.disabled = false;
+        btn.textContent = 'Valider';
+        erEl.textContent = error.message || 'Erreur lors de la définition du mot de passe.';
+        erEl.classList.add('visible');
+        return;
+      }
+
       window.location.href = 'views/stock.html';
     }
 
