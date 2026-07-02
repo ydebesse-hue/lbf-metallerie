@@ -7,12 +7,17 @@
    supprimer) passent par l'Edge Function "manage-users", qui
    vérifie que l'appelant est administrateur avant d'utiliser ses
    privilèges élevés (jamais exposés côté client).
+
+   Prénom, nom, profil et statut se modifient directement dans le
+   tableau (sauvegarde immédiate au blur/change) — pas de modale
+   d'édition. Seules la création, la réinitialisation du mot de
+   passe et la suppression passent par une modale.
    ============================================================ */
 
 // ── État local ───────────────────────────────────────────────
-let _users   = [];   // Tableau complet des comptes
-let _editId  = null; // ID du compte en cours de modification/reset
-let _supId   = null; // ID du compte à supprimer
+let _users  = [];   // Tableau complet des comptes
+let _editId = null; // ID du compte concerné par la réinitialisation de mdp
+let _supId  = null; // ID du compte à supprimer
 
 /* ============================================================
    CHARGEMENT DES DONNÉES
@@ -38,7 +43,8 @@ async function chargerUsers() {
    ============================================================ */
 
 /**
- * Rendu du tableau des comptes.
+ * Rendu du tableau des comptes. Prénom/nom/profil/statut sont des
+ * champs éditables directement dans la ligne.
  */
 function _rendreTableau() {
   const tbody = document.getElementById('comptes-tbody');
@@ -56,33 +62,29 @@ function _rendreTableau() {
     const [prenom, ...resteNom] = (u.nomComplet || '').split(' ');
     const nom = resteNom.join(' ') || (resteNom.length ? '' : '');
 
-    const labelProfil = {
-      consultation:   'Consultation',
-      gestion:        'Gestion',
-      administration: 'Administration',
-    };
-
-    const profilHtml = `<span class="profil-label profil-${u.profil}">
-      ${labelProfil[u.profil] || u.profil}
-    </span>`;
-
-    const statutHtml = u.actif
-      ? '<span class="statut-actif">● Actif</span>'
-      : '<span class="statut-inactif">○ Désactivé</span>';
-
     // Bouton supprimer désactivé pour son propre compte
     const btnSup = estMoi
       ? `<button class="btn-ligne bl-supprimer" disabled title="Impossible de supprimer son propre compte">Supprimer</button>`
       : `<button class="btn-ligne bl-supprimer" onclick="ouvrirSuppression('${_esc(u.id)}','${_esc(u.nomComplet)}')">Supprimer</button>`;
 
-    return `<tr>
+    return `<tr data-id="${_esc(u.id)}">
       <td><strong>${_esc(u.email)}</strong>${estMoi ? ' <span style="color:#aaa;font-size:10px">(vous)</span>' : ''}</td>
-      <td>${_esc(prenom || '')}</td>
-      <td>${_esc(nom || '')}</td>
-      <td>${profilHtml}</td>
-      <td>${statutHtml}</td>
+      <td><input type="text" class="cpt-inline-input" data-field="prenom" value="${_esc(prenom || '')}" placeholder="Prénom"></td>
+      <td><input type="text" class="cpt-inline-input" data-field="nom" value="${_esc(nom || '')}" placeholder="Nom"></td>
       <td>
-        <button class="btn-ligne bl-modifier" onclick="ouvrirModification('${_esc(u.id)}')">Modifier</button>
+        <select class="cpt-inline-input" data-field="profil">
+          <option value="consultation"${u.profil === 'consultation' ? ' selected' : ''}>Consultation</option>
+          <option value="gestion"${u.profil === 'gestion' ? ' selected' : ''}>Gestion</option>
+          <option value="administration"${u.profil === 'administration' ? ' selected' : ''}>Administration</option>
+        </select>
+      </td>
+      <td>
+        <select class="cpt-inline-input" data-field="actif"${estMoi ? ' disabled title="Impossible de désactiver son propre compte"' : ''}>
+          <option value="true"${u.actif ? ' selected' : ''}>● Actif</option>
+          <option value="false"${!u.actif ? ' selected' : ''}>○ Désactivé</option>
+        </select>
+      </td>
+      <td>
         <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet)}','${_esc(u.email)}')">🔑 Réinitialiser</button>
         ${btnSup}
       </td>
@@ -90,21 +92,82 @@ function _rendreTableau() {
   }).join('');
 }
 
+/**
+ * Sauvegarde immédiate d'un champ modifié en ligne (prénom, nom, profil, statut).
+ */
+async function _sauvegarderChampInline(tr, field, valeur) {
+  const id = tr.dataset.id;
+  const u = _users.find(u => u.id === id);
+  if (!u) return;
+
+  let nomComplet = u.nomComplet;
+  let profil     = u.profil;
+  let actif      = u.actif;
+
+  if (field === 'prenom' || field === 'nom') {
+    const prenomInp = tr.querySelector('[data-field="prenom"]').value.trim();
+    const nomInp    = tr.querySelector('[data-field="nom"]').value.trim();
+    if (!nomInp) {
+      afficherNotif('Le nom est obligatoire.', 'erreur');
+      _rendreTableau();
+      return;
+    }
+    nomComplet = [prenomInp, nomInp].filter(Boolean).join(' ');
+    if (nomComplet === u.nomComplet) return;
+  } else if (field === 'profil') {
+    profil = valeur;
+    if (profil === u.profil) return;
+  } else if (field === 'actif') {
+    actif = (valeur === 'true');
+    if (actif === u.actif) return;
+  }
+
+  try {
+    await window.SB.appelerFonction('manage-users', {
+      action: 'update', id, profil, actif, nomComplet,
+    });
+    u.nomComplet = nomComplet;
+    u.profil     = profil;
+    u.actif      = actif;
+    afficherNotif('Compte modifié.', 'succes');
+  } catch (err) {
+    afficherNotif(err.message || 'Erreur lors de la modification.', 'erreur');
+    _rendreTableau(); // revert visuel sur échec
+  }
+}
+
+// Délégation d'événements sur le tableau : sauvegarde au blur (texte) / change (select)
+document.addEventListener('DOMContentLoaded', () => {
+  const tbody = document.getElementById('comptes-tbody');
+  if (!tbody) return;
+
+  tbody.addEventListener('blur', e => {
+    const inp = e.target.closest('input.cpt-inline-input');
+    if (!inp) return;
+    const tr = inp.closest('tr');
+    if (tr) _sauvegarderChampInline(tr, inp.dataset.field, inp.value);
+  }, true);
+
+  tbody.addEventListener('change', e => {
+    const sel = e.target.closest('select.cpt-inline-input');
+    if (!sel) return;
+    const tr = sel.closest('tr');
+    if (tr) _sauvegarderChampInline(tr, sel.dataset.field, sel.value);
+  });
+});
+
 /* ============================================================
    MODALE CRÉATION
    ============================================================ */
 
 async function ouvrirCreation() {
   await chargerUsers(); // liste à jour avant la vérification de doublon
-  _editId = null;
   document.getElementById('m-compte-titre').textContent = 'Nouveau compte';
   document.getElementById('mc-email').value    = '';
   document.getElementById('mc-email').disabled = false;
   document.getElementById('mc-prenom').value   = '';
   document.getElementById('mc-nom').value      = '';
   document.getElementById('mc-profil').value   = 'consultation';
-  document.getElementById('mc-actif').value    = 'true';
-  document.getElementById('mc-actif-zone').style.display = 'none'; // nouveau compte : toujours actif
   const info = document.getElementById('m-compte-info');
   info.textContent = 'Un email d\'invitation sera envoyé à cette adresse pour que l\'utilisateur choisisse son mot de passe.';
   info.style.display = 'block';
@@ -114,35 +177,7 @@ async function ouvrirCreation() {
 }
 
 /* ============================================================
-   MODALE MODIFICATION
-   ============================================================ */
-
-function ouvrirModification(id) {
-  const u = _users.find(u => u.id === id);
-  if (!u) return;
-
-  const [prenom, ...resteNom] = (u.nomComplet || '').split(' ');
-
-  _editId = id;
-  document.getElementById('m-compte-titre').textContent = 'Modifier le compte';
-  document.getElementById('mc-email').value    = u.email;
-  document.getElementById('mc-email').disabled = true; // email non modifiable (identifiant de connexion)
-  document.getElementById('mc-prenom').value   = prenom || '';
-  document.getElementById('mc-nom').value      = resteNom.join(' ') || '';
-  document.getElementById('mc-profil').value   = u.profil;
-  document.getElementById('mc-actif').value    = String(u.actif);
-  document.getElementById('mc-actif-zone').style.display = '';
-
-  const info = document.getElementById('m-compte-info');
-  info.textContent = 'Pour réinitialiser le mot de passe, utilisez le bouton 🔑 Réinitialiser dans la liste.';
-  info.style.display = 'block';
-
-  _cacherErreur('mc-erreur');
-  ouvrirM('m-compte');
-}
-
-/* ============================================================
-   SAUVEGARDE COMPTE (création + modification)
+   SAUVEGARDE COMPTE (création uniquement — modification en ligne)
    ============================================================ */
 
 async function sauvegarderCompte() {
@@ -150,7 +185,6 @@ async function sauvegarderCompte() {
   const prenom = document.getElementById('mc-prenom').value.trim();
   const nom    = document.getElementById('mc-nom').value.trim();
   const profil = document.getElementById('mc-profil').value;
-  const actif  = document.getElementById('mc-actif').value === 'true';
   const nomComplet = [prenom, nom].filter(Boolean).join(' ');
 
   if (!email || !nom) {
@@ -162,24 +196,18 @@ async function sauvegarderCompte() {
     return;
   }
 
+  const doublon = _users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+  if (doublon) {
+    afficherErreurModale('mc-erreur', 'Cet email est déjà utilisé.');
+    return;
+  }
+
   try {
-    if (_editId) {
-      await window.SB.appelerFonction('manage-users', {
-        action: 'update', id: _editId, profil, actif, nomComplet,
-      });
-      afficherNotif('Compte modifié.', 'succes');
-    } else {
-      const doublon = _users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      if (doublon) {
-        afficherErreurModale('mc-erreur', 'Cet email est déjà utilisé.');
-        return;
-      }
-      const redirectTo = window.location.origin + window.location.pathname.replace(/views\/.*$/, 'login.html');
-      await window.SB.appelerFonction('manage-users', {
-        action: 'create', email, nomComplet, profil, redirectTo,
-      });
-      afficherNotif('Compte créé — email d\'invitation envoyé.', 'succes');
-    }
+    const redirectTo = window.location.origin + window.location.pathname.replace(/views\/.*$/, 'login.html');
+    await window.SB.appelerFonction('manage-users', {
+      action: 'create', email, nomComplet, profil, redirectTo,
+    });
+    afficherNotif('Compte créé — email d\'invitation envoyé.', 'succes');
     await chargerUsers();
     fermerM('m-compte');
   } catch (err) {
