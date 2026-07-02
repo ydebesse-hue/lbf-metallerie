@@ -364,18 +364,35 @@
     // ─── Lien d'invitation ou de réinitialisation ? ──────
     // Supabase place ces informations dans le fragment d'URL (#...) ;
     // on les lit avant que quoi que ce soit d'autre ne s'exécute.
+    // On se base sur la présence d'un access_token plutôt que sur la
+    // valeur exacte de "type" (qui varie selon la version/le flux :
+    // invite, recovery, signup...) — plus robuste.
     const _hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const _queryParams = new URLSearchParams(window.location.search);
-    const _typeLien = _hashParams.get('type') || _queryParams.get('type'); // 'invite' | 'recovery' | null
+    const _lienAuth = Boolean(
+      _hashParams.get('access_token') || _hashParams.get('type') ||
+      _queryParams.get('code') || _queryParams.get('type')
+    );
+
+    function _afficherCarteNouveauMdp() {
+      document.getElementById('carte-login').style.display = 'none';
+      document.getElementById('carte-nouveau-mdp').style.display = '';
+      document.getElementById('np-mdp').focus();
+    }
+
+    // Filet de sécurité : si le SDK détecte un lien de récupération
+    // après coup (évènement officiel documenté par Supabase), on
+    // affiche aussi le formulaire.
+    window.SB?.client?.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') _afficherCarteNouveauMdp();
+    });
 
     // ─── Démarrage ────────────────────────────────────────
     (async function() {
       await window.Auth.ready();
 
-      if (_typeLien === 'invite' || _typeLien === 'recovery') {
-        document.getElementById('carte-login').style.display = 'none';
-        document.getElementById('carte-nouveau-mdp').style.display = '';
-        document.getElementById('np-mdp').focus();
+      if (_lienAuth) {
+        _afficherCarteNouveauMdp();
         return;
       }
 
