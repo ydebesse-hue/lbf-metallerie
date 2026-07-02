@@ -781,20 +781,20 @@
     .dem-pseudo { font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; color: #444; }
 
     /* ── Table comptes inline ────────────────────────────────────── */
-    .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow: hidden; }
-    .cpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow-x: auto; }
+    .cpt-table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 13px; }
     .cpt-table thead th {
       background: var(--noir); color: white; font-family: Impact, sans-serif; font-size: 11px;
-      letter-spacing: 1px; text-transform: uppercase; padding: 9px 12px; text-align: left;
+      letter-spacing: 1px; text-transform: uppercase; padding: 9px 8px; text-align: left; white-space: nowrap;
     }
     .cpt-table tbody tr { border-bottom: 1px solid #eee; }
     .cpt-table tbody tr:last-child { border-bottom: none; }
     .cpt-table tbody tr:hover { background: #fafafa; }
-    .cpt-table td { padding: 9px 12px; vertical-align: middle; }
+    .cpt-table td { padding: 6px 8px; vertical-align: middle; }
     .cpt-inline-input {
       width: 100%; box-sizing: border-box;
       border: 1px solid transparent; border-radius: 3px;
-      padding: 5px 7px; font-size: 13px; font-family: inherit;
+      padding: 4px 5px; font-size: 13px; font-family: inherit;
       background: transparent; color: inherit;
     }
     .cpt-inline-input:hover:not(:disabled)  { border-color: #ddd; background: #fff; }
@@ -810,8 +810,8 @@
     .profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
 
     select.cpt-inline-input.cpt-profil {
-      font-family: Impact, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
-      font-weight: normal; border-radius: 2px; padding: 3px 6px; text-align: center;
+      font-family: Impact, sans-serif; font-size: 9px; letter-spacing: .5px; text-transform: uppercase;
+      font-weight: normal; border-radius: 2px; padding: 3px 4px; text-align: center;
     }
     select.cpt-inline-input.cpt-profil.profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
     select.cpt-inline-input.cpt-profil.profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
@@ -834,7 +834,7 @@
     .cpt-table th:nth-child(5), .cpt-table td:nth-child(5) {
       width: 1%; white-space: nowrap;
     }
-    .cpt-table input.cpt-inline-input   { width: auto; min-width: 90px; }
+    .cpt-table input.cpt-inline-input   { width: auto; min-width: 70px; }
     .cpt-table select.cpt-inline-input  { width: auto; }
     .cpt-table thead th[data-tri] { cursor: pointer; user-select: none; }
     .cpt-table thead th[data-tri]:hover { color: var(--or); }
