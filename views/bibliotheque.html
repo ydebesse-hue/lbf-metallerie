@@ -617,6 +617,28 @@ header {
   padding: 8px;
   display: block;
 }
+.cs-visuel-double {
+  display: flex;
+  width: 100%;
+  height: 130px;
+}
+.cs-visuel-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--gris-cl);
+}
+.cs-visuel-item:last-child { border-right: none; }
+.cs-visuel-item .cs-photo { height: 100px; padding: 6px; }
+.cs-photo-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #999;
+  font-family: Impact, sans-serif;
+}
 .cs-svg-fallback {
   width: 100%;
   height: 100%;
@@ -861,8 +883,18 @@ header {
    RESPONSIVE MOBILE
 ══════════════════════════════════════════════ */
 @media (max-width: 640px) {
-  header { padding: 0 12px; height: 48px; }
-  .app-title { font-size: 15px; }
+  header { padding: 0 12px; height: 54px; align-items: stretch; }
+  .logo-zone { flex: 0 0 auto; align-items: flex-start; padding-top: 4px; }
+  .logo-zone img { height: 26px; }
+  .app-title { font-size: 12px; flex: 1; min-width: 0; align-self: flex-end; padding-bottom: 4px; }
+  .header-right {
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+  #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
   .user-info { display: none; }
   .main-nav  { padding: 0 12px; }
   .nav-item  { padding: 9px 12px; font-size: 12px; }
@@ -900,7 +932,7 @@ header {
 <nav class="main-nav">
   <a href="stock.html" class="nav-item"><span class="nav-icon">📦</span> Stock</a>
   <button class="nav-item active"><span class="nav-icon">📚</span> Bibliothèque</button>
-  <a href="comptes.html" class="nav-item nav-item-droite" data-require="can_manage_users"><span class="nav-icon">⚙</span> Comptes</a>
+  <a href="stock.html" class="nav-item nav-item-droite" data-require="can_manage_users" id="nav-admin-link"><span class="nav-icon">⚙</span> Administration</a>
 </nav>
 
 <!-- ══════════════════════
@@ -928,6 +960,8 @@ header {
     <option value="HE">HEA · HEB · HEM</option>
     <option value="U">UPN · UPE</option>
     <option value="Cornière">Cornière</option>
+    <option value="Profilés creux">Profilés creux (SHS · RHS · CHS)</option>
+    <option value="Barres pleines">Barres pleines (Plat · Rond · Carré)</option>
   </select>
 
   <div class="toolbar-sep">
@@ -1000,6 +1034,8 @@ header {
           <option>UPN</option>
           <option>Cornière</option>
           <option>Plat</option>
+          <option>Barres rondes</option>
+          <option>Barres carrées</option>
           <option value="nouveau">+ Nouvelle famille...</option>
         </select>
       </div>
@@ -1071,6 +1107,7 @@ header {
     <div style="padding:16px 24px 12px; border-bottom:1px solid var(--gris-cl); flex-shrink:0;">
       <div class="modale-titre" id="mf-titre" style="margin-bottom:4px; color:var(--rouge);"></div>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;" id="mf-norme"></div>
+      <div id="mf-fab-filtre" style="display:none; margin-top:8px;"></div>
     </div>
 
     <!-- Corps scrollable : layout vertical -->
@@ -1116,9 +1153,10 @@ header {
   </div>
 </div>
 
-<script src="../js/supabase.js"></script>
-<script src="../auth/auth.js"></script>
-<script src="../js/bibliotheque.js"></script>
+<script src="../js/supabase.js?v=20260413"></script>
+<script src="../auth/auth.js?v=20260413"></script>
+<script src="../js/profils-utils.js?v=20260413"></script>
+<script src="../js/bibliotheque.js?v=20260413"></script>
 <script>
 /* ══════════════════════════════════════════════
    INITIALISATION DE LA PAGE

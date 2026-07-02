@@ -144,6 +144,10 @@ async function login(identifiant, motDePasse) {
     return { ok: false, erreur: 'Compte désactivé. Contactez l\'administrateur.' };
   }
 
+  if (!user.motDePasse) {
+    return { ok: false, erreur: 'Ce compte ne supporte pas la connexion par mot de passe.' };
+  }
+
   // Comparaison mot de passe
   // users.json peut stocker soit le hash SHA-256, soit le texte clair (dev)
   let mdpValide = false;
@@ -200,7 +204,12 @@ function getSession() {
   const raw = sessionStorage.getItem(AUTH_CONFIG.sessionKey);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const s = JSON.parse(raw);
+    // Valide la structure minimale et le profil connu
+    if (!s || typeof s.id !== 'string' || !DROITS[s.profil]) return null;
+    // Redérive les droits depuis le profil pour empêcher la falsification
+    s.droits = DROITS[s.profil];
+    return s;
   } catch {
     return null;
   }

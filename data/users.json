@@ -1,6 +1,6 @@
 {
   "_commentaire": "Base utilisateurs — Stock Métallerie LBF",
-  "_note_securite": "En production : remplacer les mots de passe texte clair par des hash SHA-256",
+  "_note_securite": "Mots de passe stockés en SHA-256 (hex 64 chars). auth.js détecte automatiquement hash vs texte clair.",
   "_hash_exemple": "SHA-256('motdepasse') = hash hex 64 caractères",
 
   "users": [
@@ -18,7 +18,7 @@
       "identifiant": "p.dupont",
       "nomComplet": "Pierre Dupont",
       "profil": "gestion",
-      "motDePasse": "lbf2025",
+      "motDePasse": "48058223a1fc25be6d3257c1d43b09f8c9cc355cda459d9f22b083506a5f5723",
       "actif": true,
       "_note": "Compte gestion — ajout/modification soumis à validation admin"
     },
@@ -27,7 +27,7 @@
       "identifiant": "m.leroy",
       "nomComplet": "Marc Leroy",
       "profil": "gestion",
-      "motDePasse": "lbf2025",
+      "motDePasse": "48058223a1fc25be6d3257c1d43b09f8c9cc355cda459d9f22b083506a5f5723",
       "actif": true,
       "_note": "Compte gestion — second opérateur atelier"
     },
@@ -36,7 +36,7 @@
       "identifiant": "admin",
       "nomComplet": "Administrateur LBF",
       "profil": "administration",
-      "motDePasse": "Admin@LBF2025",
+      "motDePasse": "de5416943b40f6f7570687bfff275d3cec60a5668a188ec9e16e002b22e68fdc",
       "actif": true,
       "_note": "Compte admin — validation, gestion comptes, accès total. Ne jamais supprimer."
     },
@@ -45,7 +45,7 @@
       "identifiant": "michel",
       "nomComplet": "michel",
       "profil": "gestion",
-      "motDePasse": "mich",
+      "motDePasse": "0d1ef3908454fc02b339e3d2f04a7f56ff962d4c0f05b4c23195619164214149",
       "actif": true,
       "_note": "Compte gestion — second opérateur atelier"
     }

@@ -6,6 +6,20 @@
 
 'use strict';
 
+/**
+ * Échappe les caractères HTML dangereux dans une valeur utilisateur.
+ * À utiliser partout où des données externes sont insérées via innerHTML.
+ */
+function _e(val) {
+  if (val == null) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /* ══════════════════════════════════════════════
    ÉTAT GLOBAL DU MODULE
 ══════════════════════════════════════════════ */
@@ -33,26 +47,68 @@ const Biblio = {
 ══════════════════════════════════════════════ */
 
 /**
- * Charge sections.json et initialise l'affichage
+ * Charge les sections depuis Supabase (fallback : sections.json) et initialise l'affichage.
  * @param {string} profil - profil utilisateur courant
  */
 async function biblioInit(profil) {
   Biblio.profil = profil || 'consultation';
 
+  // Toujours charger sections.json — source de vérité pour les sections standard
+  let sectionsJson = null;
   try {
-    // Tentative de chargement du fichier JSON
     const rep = await fetch('../data/sections.json');
-    if (!rep.ok) throw new Error('Impossible de charger sections.json');
-    Biblio.data = await rep.json();
+    if (rep.ok) sectionsJson = await rep.json();
+  } catch (e) { /* ignoré */ }
+
+  try {
+    // Chargement depuis Supabase
+    const rows = await window.SB.lire('sections', { order: 'sort_order' });
+    Biblio.data = _rowsToStandard(rows);
+    // Compléter avec les familles absentes de Supabase (ex: nouvelles familles)
+    if (sectionsJson) {
+      sectionsJson.standard.forEach(famJson => {
+        if (!Biblio.data.standard.find(f => f.famille === famJson.famille)) {
+          Biblio.data.standard.push(famJson);
+        }
+      });
+    }
   } catch (e) {
-    console.warn('sections.json non accessible — données de démo utilisées');
-    Biblio.data = SECTIONS_DEMO;
+    console.warn('Supabase indisponible — fallback sections.json :', e);
+    Biblio.data = sectionsJson || SECTIONS_DEMO;
   }
+
+  // Charger les sections custom depuis localStorage
+  biblioChargerCustom();
 
   // Initialisation de l'interface selon le profil
   biblioRendreBoutonAjout();
   biblioRendreGrille();
   biblioBindFiltres();
+}
+
+/**
+ * Convertit le tableau plat de lignes Supabase en structure { standard: [...] }
+ * compatible avec le reste du code.
+ * @param {Array} rows
+ * @returns {{ standard: Array }}
+ */
+function _rowsToStandard(rows) {
+  const ORDRE = ['Profilés I', 'Profilés H', 'Profilés U', 'Cornière', 'Profilés creux', 'Plat', 'Barres rondes', 'Barres carrées'];
+  const map = {};
+  rows.forEach(r => {
+    if (!map[r.famille]) {
+      map[r.famille] = { famille: r.famille, type: r.type, norme: r.norme, sections: [] };
+    }
+    const dims = typeof r.dims === 'string' ? JSON.parse(r.dims) : (r.dims || {});
+    const sec = { serie: r.serie, desig: r.desig, pml: r.pml, fabrication: r.fabrication || null, ...dims };
+    if (r.serie === 'CHS') {
+      const ep = sec.e ?? sec.t;
+      if (sec.d !== undefined && ep !== undefined) sec.di = Math.round((sec.d - 2 * ep) * 10) / 10;
+    }
+    map[r.famille].sections.push(sec);
+  });
+  const standard = ORDRE.map(f => map[f]).filter(Boolean);
+  return { standard, custom: [] };
 }
 
 /* ══════════════════════════════════════════════
@@ -117,6 +173,28 @@ function biblioRendreGrille() {
         { serie:'L égale',   photo:'../assets/profils/Le.png' },
         { serie:'L inégale', photo:'../assets/profils/Li.png' }
       ]
+    },
+    {
+      id:     'Profilés creux',
+      titre:  'Profilés creux — SHS · RHS · CHS',
+      norme:  'EN 10210 / EN 10219',
+      famJson:'Profilés creux',
+      series: [
+        { serie:'SHS', photo:'../assets/profils/SHS chaud.png', photo2:'../assets/profils/SHS froid.png' },
+        { serie:'RHS', photo:'../assets/profils/RHS chaud.png', photo2:'../assets/profils/RHS froid.png' },
+        { serie:'CHS', photo:'../assets/profils/CHS chaud.png', photo2:'../assets/profils/CHS froid.png' }
+      ]
+    },
+    {
+      id:          'Barres pleines',
+      titre:       'Barres pleines — Plat · Rond · Carré',
+      norme:       'EN 10058 / EN 10060',
+      famJsonList: ['Plat', 'Barres rondes', 'Barres carrées'],
+      series: [
+        { serie:'Plat',  photo:'../assets/profils/Plat.png'  },
+        { serie:'Rond',  photo:'../assets/profils/Rond.png'  },
+        { serie:'Carré', photo:'../assets/profils/Carre.png' }
+      ]
     }
   ];
 
@@ -128,13 +206,18 @@ function biblioRendreGrille() {
     // Filtre famille toolbar
     if (famFiltree && fam.id !== famFiltree) return;
 
-    // Récupérer les sections de cette famille dans sections.json
-    const famStd = Biblio.data.standard.find(f => f.famille === fam.famJson);
-    if (!famStd) return;
+    // Récupérer les sections — supporte famJsonList (multi) ou famJson (mono)
+    const fjList = fam.famJsonList || (fam.famJson ? [fam.famJson] : []);
+    const toutesLesSecs = [];
+    fjList.forEach(fjn => {
+      const fs = Biblio.data.standard.find(f => f.famille === fjn);
+      if (fs) toutesLesSecs.push(...fs.sections);
+    });
+    if (!toutesLesSecs.length) return;
 
     // Pour chaque série : compter les désignations correspondantes
     const seriesAvecCount = fam.series.map(sr => {
-      const secs = famStd.sections.filter(s => {
+      const secs = toutesLesSecs.filter(s => {
         if (s.serie !== sr.serie) return false;
         if (rech) return s.desig.toLowerCase().includes(rech);
         return true;
@@ -151,8 +234,8 @@ function biblioRendreGrille() {
     const sep = document.createElement('div');
     sep.className = 'biblio-sep-famille';
     sep.innerHTML = `
-      <div class="bsf-titre">${fam.titre}</div>
-      <div class="bsf-norme">${fam.norme}</div>`;
+      <div class="bsf-titre">${_e(fam.titre)}</div>
+      <div class="bsf-norme">${_e(fam.norme)}</div>`;
     conteneur.appendChild(sep);
 
     // ── Grille de cartes série ──
@@ -190,13 +273,27 @@ function biblioCreerCarteSerie(sr, fam) {
   carte.id = carteId;
   carte.onclick = () => biblioOuvrirModaleSerie(sr.serie, fam.id);
 
-  // Zone visuelle : image PNG si dispo, SVG sinon
+  // Zone visuelle : image(s) PNG si dispo, SVG sinon
+  const imgPrincipale = sr.photo2
+    ? `<div class="cs-visuel-double">
+         <div class="cs-visuel-item">
+           <img class="cs-photo" src="${sr.photo}" alt="${sr.serie} chaud"
+                onerror="this.style.display='none'">
+           <span class="cs-photo-label">Chaud</span>
+         </div>
+         <div class="cs-visuel-item">
+           <img class="cs-photo" src="${sr.photo2}" alt="${sr.serie} froid"
+                onerror="this.style.display='none'">
+           <span class="cs-photo-label">Froid</span>
+         </div>
+       </div>`
+    : `<img class="cs-photo" id="${carteId}-img"
+            src="${sr.photo}" alt="${sr.serie}"
+            onerror="carteSeriePhotoErreur('${carteId}','${fam.id}')">`;
+
   const visuelHtml = `
     <div class="cs-visuel">
-      <img class="cs-photo" id="${carteId}-img"
-           src="${sr.photo}"
-           alt="${sr.serie}"
-           onerror="carteSeriePhotoErreur('${carteId}','${fam.id}')">
+      ${imgPrincipale}
       <div class="cs-svg-fallback" id="${carteId}-svg" style="display:none">
         ${biblioSchemasFamille(fam.id).split('</div>')[0] + '</div>'}
       </div>
@@ -204,8 +301,8 @@ function biblioCreerCarteSerie(sr, fam) {
 
   carte.innerHTML = `
     <div class="cs-header">
-      <span class="cs-titre">${sr.serie}</span>
-      <span class="cs-count">${sr.nbDesig} réf.</span>
+      <span class="cs-titre">${_e(sr.serie)}</span>
+      <span class="cs-count">${_e(String(sr.nbDesig))} réf.</span>
     </div>
     ${visuelHtml}
     <div class="cs-footer">
@@ -235,13 +332,10 @@ function biblioOuvrirModaleSerie(serie, famId) {
   const m = document.getElementById('m-famille');
   if (!m) return;
 
-  const MAP_FAM = {
-    'IPE': 'Profilés I', 'HE': 'Profilés H',
-    'U':   'Profilés U', 'Cornière': 'Cornière', 'Plat': 'Plat'
-  };
-  const famJson = MAP_FAM[famId] || famId;
-  const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
+  // Trouver la famille qui contient cette série (supporte les groupes multi-famille)
+  const famStd = Biblio.data.standard.find(f => f.sections.some(s => s.serie === serie));
   if (!famStd) return;
+  const famJson = famStd.famille;
 
   // Filtrer uniquement les sections de cette série
   const sections = famStd.sections.filter(s => s.serie === serie);
@@ -260,8 +354,8 @@ const _desc  = famStd.description || famStd.desc || '';
 m.querySelector('#mf-norme').innerHTML =
   `<span style="background:var(--vert);color:white;font-family:Impact;font-size:11px;
     letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;
-    margin-right:8px;">${_norme}</span>
-   <span style="font-size:12px;color:#888;">${_desc}</span>`;
+    margin-right:8px;">${_e(_norme)}</span>
+   <span style="font-size:12px;color:#888;">${_e(_desc)}</span>`;
   m.querySelector('#mf-dims').innerHTML          = '';
  m.querySelector('#mf-desig-label').textContent  = 'Dimensions normalisées';
 m.querySelector('#mf-desig-label').style.color  = 'var(--noir)';
@@ -275,6 +369,22 @@ m.querySelector('#mf-desig-label').style.color  = 'var(--noir)';
     } else {
       imgZone.innerHTML = `<span style="color:#ccc;font-size:12px;">—</span>`;
     }
+  }
+
+  // Toggle chaud/froid pour Profilés creux
+  const fabFiltre = m.querySelector('#mf-fab-filtre');
+  if (famJson === 'Profilés creux') {
+    MfEtat.fabrication = 'chaud';
+    MfEtat.serieActive = serie;
+    MfEtat.mode        = 'simple';
+    if (fabFiltre) { fabFiltre.innerHTML = _mfHtmlToggleFab('chaud'); fabFiltre.style.display = ''; }
+    // Image chaud par défaut
+    const imgZone = m.querySelector('#mf-img-zone');
+    const imgSrcChaud = MF_PHOTOS[`${serie} chaud`] || MF_PHOTOS[serie] || null;
+    if (imgZone && imgSrcChaud) imgZone.innerHTML = mfImageHtml(imgSrcChaud, `${serie} chaud`);
+  } else {
+    MfEtat.fabrication = null; MfEtat.serieActive = null; MfEtat.mode = 'simple';
+    if (fabFiltre) { fabFiltre.innerHTML = ''; fabFiltre.style.display = 'none'; }
   }
 
   // Construire le tableau simple (sans accordéon, une seule série)
@@ -355,7 +465,9 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   const accordeon = m.querySelector('#mf-accordeon');
   if (!accordeon) return;
 
-  const colonnes = _colonnesFamille(famJson);
+  // Cherche la famille réelle de cette série
+  const famJsonSerie = _famJsonPourSerie(serie) || famJson;
+  const colonnes = _colonnesFamille(famJsonSerie, serie);
 
   // En-tête tableau
   let thHtml = '<thead><tr>';
@@ -364,13 +476,17 @@ function mfRendreTableauSimple(m, sections, famJson, serie) {
   thHtml += '</tr></thead>';
 
   // Corps tableau
+  const secsFiltrees = MfEtat.fabrication
+    ? sections.filter(s => !s.fabrication || s.fabrication === MfEtat.fabrication)
+    : sections;
   let tbHtml = '<tbody>';
-  sections.forEach((s, i) => {
+  secsFiltrees.forEach((s, i) => {
     const idxGlobal = MfEtat.sections.indexOf(s);
     tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
-    tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
+    tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${_e(s.desig)}</td>`;
     colonnes.forEach(c => {
-      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${s[c.key] !== undefined ? s[c.key] : '—'}</td>`;
+      const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
+      tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
     });
     tbHtml += '</tr>';
   });
@@ -508,8 +624,8 @@ function biblioCreerCarteDesig(section) {
   carte.innerHTML = `
     <div class="carte-header">
       <div class="carte-titre">
-        <span class="carte-famille">${section.famille}</span>
-        <span class="carte-desig">${section.desig}</span>
+        <span class="carte-famille">${_e(section.famille)}</span>
+        <span class="carte-desig">${_e(section.desig)}</span>
       </div>
       ${badgeHtml}
     </div>
@@ -624,12 +740,62 @@ function biblioGetSectionsFiltrees() {
    MODALE FAMILLE — TABLEAU + SVG
 ══════════════════════════════════════════════ */
 
+/* ── Toggle Chaud / Froid ────────────────────────────────────────────── */
+
+function _mfHtmlToggleFab(actif) {
+  const btn = (fab, label) => {
+    const on = fab === actif;
+    const bg    = on ? (fab === 'chaud' ? '#c0392b' : '#2473a8') : '#eee';
+    const color = on ? 'white' : '#555';
+    const fw    = on ? 'bold' : 'normal';
+    return `<button class="mf-fab-btn" data-fab="${fab}" onclick="mfFiltrerFabrication('${fab}')"
+      style="background:${bg};color:${color};font-weight:${fw};border:none;padding:5px 14px;
+             border-radius:3px;font-size:12px;cursor:pointer;font-family:inherit;">${label}</button>`;
+  };
+  return `<div style="display:flex;gap:6px;align-items:center;">
+    <span style="font-size:11px;color:#888;margin-right:2px;">Façonnage :</span>
+    ${btn('chaud', 'À chaud (EN 10210)')}
+    ${btn('froid', 'À froid (EN 10219)')}
+  </div>`;
+}
+
+function mfFiltrerFabrication(fab) {
+  MfEtat.fabrication = fab;
+  const m = document.getElementById('m-famille');
+  if (!m) return;
+
+  // Mettre à jour les boutons
+  m.querySelector('#mf-fab-filtre').innerHTML = _mfHtmlToggleFab(fab);
+
+  // Mettre à jour l'image
+  if (MfEtat.serieActive) {
+    const imgSrc = MF_PHOTOS[`${MfEtat.serieActive} ${fab}`] || MF_PHOTOS[MfEtat.serieActive] || null;
+    const imgZone = m.querySelector('#mf-img-zone');
+    if (imgZone && imgSrc) imgZone.innerHTML = mfImageHtml(imgSrc, `${MfEtat.serieActive} ${fab}`);
+  }
+
+  // Reconstruire la liste filtrée
+  if (MfEtat.mode === 'simple') {
+    mfRendreTableauSimple(m, MfEtat.sections, MfEtat.famJson, MfEtat.serieActive);
+  } else {
+    mfRendreAccordeon(m, MfEtat.groupes, MfEtat.famJson);
+  }
+
+  // Réinitialiser le panneau de dimensions
+  m.querySelector('#mf-dims').innerHTML = '';
+  m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
+  m.querySelector('#mf-desig-label').style.color  = 'var(--rouge)';
+}
+
 /* État modale famille */
 const MfEtat = {
-  famId:    '',
-  famJson:  '',
-  sections: [],
-  groupes:  []   // [ { serie, sections[] } ]
+  famId:       '',
+  famJson:     '',
+  sections:    [],
+  groupes:     [],
+  fabrication: null,   // 'chaud' | 'froid' | null
+  serieActive: null,   // serie courante (mode simple uniquement)
+  mode:        'accordeon' // 'simple' | 'accordeon'
 };
 
 /* ── Mapping famId + série → chemin image PNG ────────────────────────── */
@@ -646,7 +812,18 @@ const MF_PHOTOS = {
   'UPN':       '../assets/profils/UPN.png',
   'UPE':       '../assets/profils/UPE.png',
   'L égale':   '../assets/profils/Le.png',
-  'L inégale': '../assets/profils/Li.png'
+  'L inégale': '../assets/profils/Li.png',
+  'SHS':          '../assets/profils/SHS chaud.png',
+  'SHS chaud':    '../assets/profils/SHS chaud.png',
+  'SHS froid':    '../assets/profils/SHS froid.png',
+  'RHS':          '../assets/profils/RHS chaud.png',
+  'RHS chaud':    '../assets/profils/RHS chaud.png',
+  'RHS froid':    '../assets/profils/RHS froid.png',
+  'CHS':          '../assets/profils/CHS chaud.png',
+  'CHS chaud':    '../assets/profils/CHS chaud.png',
+  'CHS froid':    '../assets/profils/CHS froid.png',
+  'Rond':         '../assets/profils/Rond.png',
+  'Carré':        '../assets/profils/Carre.png'
 };
 
 /**
@@ -658,24 +835,39 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   if (!m) return;
 
   const MAP_FAM = {
-    'IPE':      'Profilés I',
-    'HE':       'Profilés H',
-    'U':        'Profilés U',
-    'Cornière': 'Cornière',
-    'Plat':     'Plat'
+    'IPE':            'Profilés I',
+    'HE':             'Profilés H',
+    'U':              'Profilés U',
+    'Cornière':       'Cornière',
+    'Profilés creux': 'Profilés creux'
+  };
+  // Groupes multi-famille
+  const MULTI_FAM = {
+    'Barres pleines': ['Plat', 'Barres rondes', 'Barres carrées']
   };
   const MAP_TITRE = {
-    'IPE':      'Famille IPE · IPN',
-    'HE':       'Famille HEA · HEB · HEM',
-    'U':        'Famille UPN · UPE',
-    'Cornière': 'Famille Cornière',
-    'Plat':     'Famille Plat'
+    'IPE':            'Famille IPE · IPN',
+    'HE':             'Famille HEA · HEB · HEM',
+    'U':              'Famille UPN · UPE',
+    'Cornière':       'Famille Cornière',
+    'Profilés creux': 'Famille Profilés creux — SHS · RHS · CHS',
+    'Barres pleines': 'Barres pleines — Plat · Rond · Carré'
   };
 
-  const famJson = MAP_FAM[famId] || famId;
-  const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
-  const toutes  = famStd ? famStd.sections : Biblio.data.custom.filter(s => s.famille === famId);
-  const norme   = famStd ? famStd.norme : '';
+  // Collecter les sections (multi-famille ou mono)
+  let toutes = [], norme = '';
+  if (MULTI_FAM[famId]) {
+    MULTI_FAM[famId].forEach(fjn => {
+      const f = Biblio.data.standard.find(fs => fs.famille === fjn);
+      if (f) { toutes.push(...f.sections); if (!norme) norme = f.norme; }
+    });
+  } else {
+    const famJson = MAP_FAM[famId] || famId;
+    const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
+    toutes = famStd ? famStd.sections : Biblio.data.custom.filter(s => s.famille === famId);
+    norme  = famStd ? famStd.norme : '';
+  }
+  const famJson = MULTI_FAM[famId] ? MULTI_FAM[famId][0] : (MAP_FAM[famId] || famId);
 
   // Regrouper par série
   const groupesMap = {};
@@ -693,23 +885,33 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   MfEtat.groupes  = groupes;
 
   m.querySelector('#mf-titre').textContent       = MAP_TITRE[famId] || famId;
-  const _norme = famStd ? (famStd.norme || '') : '';
-const _desc  = famStd ? (famStd.description || famStd.desc || '') : '';
 const _descMap = {
-  'Profilés I': 'Profilé en I à ailes parallèles',
-  'Profilés H': 'Profilé en H à larges ailes',
-  'Profilés U': 'Profilé en U',
-  'Cornière':   'Cornière à ailes égales ou inégales',
-  'Plat':       'Plat laminé à chaud',
+  'Profilés I':    'Profilé en I à ailes parallèles',
+  'Profilés H':    'Profilé en H à larges ailes',
+  'Profilés U':    'Profilé en U',
+  'Cornière':      'Cornière à ailes égales ou inégales',
+  'Barres pleines':'Barres pleines laminées à chaud — Plat, Rond, Carré',
 };
-const _descFin = _desc || _descMap[MfEtat.famJson] || '';
+const _descFin = _descMap[famId] || '';
 m.querySelector('#mf-norme').innerHTML =
   `<span style="background:var(--vert);color:white;font-family:Impact;font-size:11px;
-    letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;">${_norme}</span>
-   <span style="font-size:12px;color:#888;">${_descFin}</span>`;
+    letter-spacing:1px;padding:2px 8px;border-radius:2px;text-transform:uppercase;">${_e(norme)}</span>
+   <span style="font-size:12px;color:#888;">${_e(_descFin)}</span>`;
   m.querySelector('#mf-dims').innerHTML          = '';
   m.querySelector('#mf-desig-label').textContent = '← Sélectionnez une ligne';
   m.querySelector('#mf-img-zone').innerHTML      = '<span style="color:#ccc;font-size:12px;">—</span>';
+
+  // Toggle chaud/froid pour Profilés creux
+  const fabFiltreFam = m.querySelector('#mf-fab-filtre');
+  if (famJson === 'Profilés creux') {
+    MfEtat.fabrication = 'chaud';
+    MfEtat.serieActive = null;
+    MfEtat.mode        = 'accordeon';
+    if (fabFiltreFam) { fabFiltreFam.innerHTML = _mfHtmlToggleFab('chaud'); fabFiltreFam.style.display = ''; }
+  } else {
+    MfEtat.fabrication = null; MfEtat.serieActive = null; MfEtat.mode = 'accordeon';
+    if (fabFiltreFam) { fabFiltreFam.innerHTML = ''; fabFiltreFam.style.display = 'none'; }
+  }
 
   // Construire l'accordéon
   mfRendreAccordeon(m, groupes, famJson);
@@ -728,9 +930,10 @@ function mfRendreAccordeon(m, groupes, famJson) {
   if (!conteneur) return;
   conteneur.innerHTML = '';
 
-  const colonnes = _colonnesFamille(famJson);
-
   groupes.forEach((grp, gi) => {
+    // Cherche la famille réelle de cette série (utile pour les groupes multi-famille)
+    const famJsonGrp = _famJsonPourSerie(grp.serie) || famJson;
+    const colonnes = _colonnesFamille(famJsonGrp, grp.serie);
     const groupeId = `mfg-${gi}`;
 
     // En-tête groupe
@@ -738,7 +941,7 @@ function mfRendreAccordeon(m, groupes, famJson) {
     header.className = 'mf-groupe-header';
     header.innerHTML = `
       <span class="mf-groupe-titre">
-        ${grp.serie}
+        ${_e(grp.serie)}
         <span class="mf-groupe-count">${grp.secs.length} désignation(s)</span>
       </span>
       <span class="mf-groupe-fleche ouvert" id="${groupeId}-fleche">▶</span>`;
@@ -757,13 +960,17 @@ function mfRendreAccordeon(m, groupes, famJson) {
     thHtml += '</tr></thead>';
 
     let tbHtml = '<tbody>';
-    grp.secs.forEach((s, si) => {
+    const secsFiltered = MfEtat.fabrication
+      ? grp.secs.filter(s => !s.fabrication || s.fabrication === MfEtat.fabrication)
+      : grp.secs;
+    secsFiltered.forEach((s, si) => {
       // Indice global dans toutes les sections
       const idxGlobal = MfEtat.sections.indexOf(s);
       tbHtml += `<tr class="mf-ligne" onclick="biblioSelectionnerDesig(${idxGlobal})">`;
-      tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${s.desig}</td>`;
+      tbHtml += `<td style="padding:6px 10px;font-weight:bold;">${_e(s.desig)}</td>`;
       colonnes.forEach(c => {
-        tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${s[c.key] !== undefined ? s[c.key] : '—'}</td>`;
+        const val = c.fmt ? c.fmt(s[c.key]) : (s[c.key] !== undefined ? s[c.key] : '—');
+        tbHtml += `<td style="padding:6px;text-align:right;color:#555;">${val}</td>`;
       });
       tbHtml += '</tr>';
     });
@@ -857,26 +1064,28 @@ function biblioSelectionnerDesig(idxGlobal) {
   const _titreDesig = s.desig.startsWith(_serie) ? s.desig : `${_serie} ${s.desig}`;
   m.querySelector('#mf-titre').textContent = _titreDesig;
   m.querySelector('#mf-titre').style.color = 'var(--rouge)';
-  m.querySelector('#mf-titre').style.color = 'var(--rouge)';
   // Titre fixe dimensions
   m.querySelector('#mf-desig-label').textContent = 'Dimensions normalisées';
   m.querySelector('#mf-desig-label').style.color = 'var(--noir)';
 
-  // Afficher l'image PNG selon la série (ne pas recharger si déjà affichée)
+  // Afficher l'image PNG selon la série + fabrication
   const serie   = s.serie || MfEtat.famId;
-  const imgSrc  = MF_PHOTOS[serie] || null;
+  const imgKey  = s.fabrication ? `${serie} ${s.fabrication}` : serie;
+  const imgSrc  = MF_PHOTOS[imgKey] || MF_PHOTOS[serie] || null;
   const imgZone = m.querySelector('#mf-img-zone');
   const imgCur  = imgZone ? imgZone.querySelector('img') : null;
-  if (imgZone && (!imgCur || imgCur.dataset.serie !== serie)) {
+  if (imgZone && (!imgCur || imgCur.dataset.serie !== imgKey)) {
     if (imgSrc) {
-      imgZone.innerHTML = mfImageHtml(imgSrc, serie);
+      imgZone.innerHTML = mfImageHtml(imgSrc, imgKey);
     } else {
-      imgZone.innerHTML = `<div style="padding:10px;">${biblioSvgCote({ famille: MfEtat.famJson, ...s }, 180, 160)}</div>`;
+      const famPourSvg = _famJsonPourSerie(s.serie) || MfEtat.famJson;
+      imgZone.innerHTML = `<div style="padding:10px;">${profilSvgCote({ famille: famPourSvg, ...s }, 180, 160)}</div>`;
     }
   }
 
   // Dimensions
-  const dims = _dimsSection(s, MfEtat.famJson);
+  const famPourDims = _famJsonPourSerie(s.serie) || MfEtat.famJson;
+  const dims = _dimsSection(s, famPourDims);
   m.querySelector('#mf-dims').innerHTML = dims.map(d =>
     `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;">
       <span style="color:#666;">${d[0]}</span>
@@ -886,9 +1095,47 @@ function biblioSelectionnerDesig(idxGlobal) {
 }
 
 /**
- * Retourne les colonnes à afficher selon la famille
+ * Retourne la famille JSON pour une série donnée (utile pour les groupes multi-famille)
  */
-function _colonnesFamille(famille) {
+function _famJsonPourSerie(serie) {
+  const f = Biblio.data.standard.find(fam => fam.sections.some(s => s.serie === serie));
+  return f ? f.famille : null;
+}
+
+/**
+ * Retourne les colonnes à afficher selon la famille (et la série pour Profilés creux)
+ */
+function _colonnesFamille(famille, serie) {
+  if (famille === 'Profilés creux') {
+    const fab = { key:'fabrication', label:'Façonnage',
+      fmt: v => v === 'chaud' ? '<span style="color:#c0392b;font-size:11px;">⬛ Chaud</span>'
+               : v === 'froid' ? '<span style="color:#2980b9;font-size:11px;">⬜ Froid</span>' : '—' };
+    if (serie === 'CHS') return [
+      fab,
+      { key:'d',   label:'de mm' },
+      { key:'di',  label:'di mm' },
+      { key:'e',   label:'t mm'  },
+      { key:'pml', label:'kg/m'  },
+    ];
+    if (serie === 'RHS') return [
+      fab,
+      { key:'a',   label:'h mm'  },
+      { key:'b',   label:'b mm'  },
+      { key:'e',   label:'t mm'  },
+      { key:'ri',  label:'ri mm' },
+      { key:'re',  label:'re mm' },
+      { key:'pml', label:'kg/m'  },
+    ];
+    // SHS (et fallback)
+    return [
+      fab,
+      { key:'a',   label:'h mm'  },
+      { key:'e',   label:'t mm'  },
+      { key:'ri',  label:'ri mm' },
+      { key:'re',  label:'re mm' },
+      { key:'pml', label:'kg/m'  },
+    ];
+  }
   switch (famille) {
     case 'Profilés I':
       return [
@@ -917,17 +1164,38 @@ function _colonnesFamille(famille) {
         { key:'pml', label:'kg/m'  },
       ];
     case 'Cornière':
+      if (serie === 'L inégale') {
+        return [
+          { key:'a',   label:'h mm'  },
+          { key:'b',   label:'b mm'  },
+          { key:'t',   label:'t mm'  },
+          { key:'r1',  label:'r1 mm' },
+          { key:'pml', label:'kg/m'  },
+        ];
+      }
       return [
-        { key:'h',   label:'a mm'  },
-        { key:'b',   label:'b mm'  },
-        { key:'tw',  label:'e mm'  },
+        { key:'a',   label:'h mm'  },
+        { key:'t',   label:'t mm'  },
+        { key:'r1',  label:'r1 mm' },
         { key:'pml', label:'kg/m'  },
       ];
     case 'Plat':
       return [
         { key:'b',   label:'b mm'  },
-        { key:'tw',  label:'e mm'  },
+        { key:'e',   label:'e mm'  },
         { key:'pml', label:'kg/m'  },
+      ];
+    case 'Barres rondes':
+      return [
+        { key:'d',   label:'d mm'  },
+        { key:'pml', label:'kg/m'  },
+        { key:'A',   label:'A cm²' },
+      ];
+    case 'Barres carrées':
+      return [
+        { key:'a',   label:'a mm'  },
+        { key:'pml', label:'kg/m'  },
+        { key:'A',   label:'A cm²' },
       ];
     default:
       return [
@@ -961,16 +1229,62 @@ function _dimsSection(s, famille) {
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     case 'Cornière':
+      if (s.serie === 'L inégale') {
+        return [
+          ['h — Hauteur',       (s.a  ||'—')+' mm'],
+          ['b — Largeur',       (s.b  ||'—')+' mm'],
+          ['t — Épaisseur',     (s.t  ||'—')+' mm'],
+          ['r1 — Rayon int.',   (s.r1 ||'—')+' mm'],
+          ['Poids/ml',          (s.pml||'—')+' kg/m'],
+        ];
+      }
       return [
-        ['a — Grand côté',  (s.h  ||'—')+' mm'],
-        ['b — Petit côté',  (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.tw ||'—')+' mm'],
-        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+        ['h — Largeur d\'aile', (s.a  ||'—')+' mm'],
+        ['t — Épaisseur',       (s.t  ||'—')+' mm'],
+        ['r1 — Rayon int.',     (s.r1 ||'—')+' mm'],
+        ['Poids/ml',            (s.pml||'—')+' kg/m'],
       ];
     case 'Plat':
       return [
         ['b — Largeur',     (s.b  ||'—')+' mm'],
-        ['e — Épaisseur',   (s.tw ||'—')+' mm'],
+        ['e — Épaisseur',   (s.e  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+    case 'Barres rondes':
+      return [
+        ['d — Diamètre',    (s.d  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+        ['Section',         (s.A  ||'—')+' cm²'],
+      ];
+    case 'Barres carrées':
+      return [
+        ['a — Côté',        (s.a  ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+        ['Section',         (s.A  ||'—')+' cm²'],
+      ];
+    case 'Profilés creux':
+      if (s.serie === 'CHS') return [
+        ['Façonnage',          s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['de — Diamètre ext.', (s.d  ||'—')+' mm'],
+        ['di — Diamètre int.', (s.di ||'—')+' mm'],
+        ['t — Épaisseur',      ((s.e ?? s.t) ||'—')+' mm'],
+        ['Poids/ml',           (s.pml||'—')+' kg/m'],
+      ];
+      if (s.serie === 'RHS') return [
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['h — Hauteur',     (s.a  ||'—')+' mm'],
+        ['b — Largeur',     (s.b  ||'—')+' mm'],
+        ['t — Épaisseur',   ((s.e ?? s.t) ||'—')+' mm'],
+        ['ri — Rayon int.', (s.ri ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
+        ['Poids/ml',        (s.pml||'—')+' kg/m'],
+      ];
+      return [ // SHS
+        ['Façonnage',         s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : s.fabrication === 'froid' ? 'À froid (EN 10219)' : '—'],
+        ['h — Hauteur',     (s.a  ||'—')+' mm'],
+        ['t — Épaisseur',   ((s.e ?? s.t) ||'—')+' mm'],
+        ['ri — Rayon int.', (s.ri ||'—')+' mm'],
+        ['re — Rayon ext.', (s.re ||'—')+' mm'],
         ['Poids/ml',        (s.pml||'—')+' kg/m'],
       ];
     default:
@@ -1013,14 +1327,14 @@ function biblioOuvrirFiche(idSec) {
   const svgZone = modale.querySelector('.detail-svg-zone');
   if (svgZone) {
     svgZone.innerHTML = `
-      <div class="schema-titre">Schéma coté ${section.famille} ${section.desig}</div>
-      ${biblioSvgCote(section, 180, 180)}`;
+      <div class="schema-titre">Schéma coté ${_e(section.famille)} ${_e(section.desig)}</div>
+      ${profilSvgCote(section, 180, 180)}`;
   }
 
   // Tableau des dimensions
   const dimsZone = modale.querySelector('.detail-dims-zone');
   if (dimsZone) {
-    dimsZone.innerHTML = biblioDimsTableau(section);
+    dimsZone.innerHTML = profilDimsTableau(section);
   }
 
   modale.classList.add('open');
@@ -1033,18 +1347,48 @@ function biblioDimsTableau(s) {
   const lignes = [];
 
   // Dimensions selon le type de section
-  if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
-  if (s.b  !== undefined) lignes.push(['b — Largeur aile',     `${s.b} mm`]);
-  if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
-  if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
-  if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
-  if (s.a  !== undefined) lignes.push(['a — Côté',             `${s.a} mm`]);
-  if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
-  if (s.b_plat !== undefined) lignes.push(['b — Largeur',      `${s.b_plat} mm`]);
-  if (s.e  !== undefined) lignes.push(['e — Épaisseur',        `${s.e} mm`]);
-  if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
-  if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
-  if (s.norme) lignes.push(['Norme', s.norme]);
+  if (s.famille === 'Profilés creux') {
+    if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
+    if (s.serie === 'CHS') {
+      if (s.d   !== undefined) lignes.push(['de — Diamètre ext.', `${s.d} mm`]);
+      if (s.di  !== undefined) lignes.push(['di — Diamètre int.', `${s.di} mm`]);
+      const ep = s.e ?? s.t;
+      if (ep    !== undefined) lignes.push(['t — Épaisseur',      `${ep} mm`]);
+    } else if (s.serie === 'RHS') {
+      if (s.a   !== undefined) lignes.push(['h — Hauteur',       `${s.a} mm`]);
+      if (s.b   !== undefined) lignes.push(['b — Largeur',       `${s.b} mm`]);
+      const ep = s.e ?? s.t;
+      if (ep    !== undefined) lignes.push(['t — Épaisseur',     `${ep} mm`]);
+      if (s.ri  !== undefined) lignes.push(['ri — Rayon int.',   `${s.ri} mm`]);
+      if (s.re  !== undefined) lignes.push(['re — Rayon ext.',   `${s.re} mm`]);
+    } else { // SHS
+      if (s.a   !== undefined) lignes.push(['h — Hauteur',       `${s.a} mm`]);
+      const ep = s.e ?? s.t;
+      if (ep    !== undefined) lignes.push(['t — Épaisseur',     `${ep} mm`]);
+      if (s.ri  !== undefined) lignes.push(['ri — Rayon int.',   `${s.ri} mm`]);
+      if (s.re  !== undefined) lignes.push(['re — Rayon ext.',   `${s.re} mm`]);
+    }
+    if (s.pml !== undefined) lignes.push(['Poids/ml',            `${s.pml} kg/m`]);
+  } else {
+    if (s.h  !== undefined) lignes.push(['h — Hauteur',          `${s.h} mm`]);
+    if (s.b  !== undefined) {
+      const lblB = (s.famille === 'Cornière') ? 'b — Petit côté' : 'b — Largeur aile';
+      lignes.push([lblB, `${s.b} mm`]);
+    }
+    if (s.tw !== undefined) lignes.push(['tw — Épaisseur âme',   `${s.tw} mm`]);
+    if (s.tf !== undefined) lignes.push(['tf — Épaisseur aile',  `${s.tf} mm`]);
+    if (s.r  !== undefined) lignes.push(['r — Congé',            `${s.r} mm`]);
+    if (s.a  !== undefined) {
+      const lblA = (s.famille === 'Cornière') ? 'h — Hauteur' : 'a — Côté';
+      lignes.push([lblA, `${s.a} mm`]);
+    }
+    if (s.t  !== undefined) lignes.push(['t — Épaisseur',        `${s.t} mm`]);
+    if (s.r1 !== undefined) lignes.push(['r1 — Rayon int.',      `${s.r1} mm`]);
+    if (s.pml!== undefined) lignes.push(['Poids/ml',             `${s.pml} kg/m`]);
+    if (s.A  !== undefined) lignes.push(['Section',              `${s.A} cm²`]);
+    if (s.norme) lignes.push(['Norme', s.norme]);
+    if (s.fabrication) lignes.push(['Façonnage', s.fabrication === 'chaud' ? 'À chaud (EN 10210)' : 'À froid (EN 10219)']);
+  }
 
   return lignes.map(([label, val]) => `
     <div class="dim-row">
@@ -1364,9 +1708,9 @@ function biblioSvgCote(section, w, h) {
 
   switch (section.famille) {
     case 'Profilés I': case 'Profilés H': {
-      const bw = section.famille === 'IPE' ? 90 : 110;
+      const bw = section.serie?.startsWith('IPE') ? 90 : 110;
       const ox = (w - bw) / 2;
-      const th = section.famille === 'HEB' ? 18 : 13;
+      const th = section.serie === 'HEB' || section.serie === 'HEM' ? 18 : 13;
       const tw = section.tw || 6;
 
       inner += e('rect', { x: ox, y: 18, width: bw, height: th, fill: F, stroke: S, 'stroke-width': 1.5 });
@@ -1473,6 +1817,14 @@ function nsChampsDims(famille) {
            + f('e','e — Épaisseur (mm)','10')
            + f('pml','Poids/ml (kg/m)','7.85');
 
+    case 'Barres rondes':
+      return f('d','d — Diamètre (mm)','20')
+           + f('pml','Poids/ml (kg/m)','2.47');
+
+    case 'Barres carrées':
+      return f('a','a — Côté (mm)','20')
+           + f('pml','Poids/ml (kg/m)','3.14');
+
     default:
       return f('h','h — Hauteur (mm)','')
            + f('b','b — Largeur (mm)','')
@@ -1497,6 +1849,7 @@ function nsLireDims() {
     a:   lire('a'),
     t:   lire('t'),
     e:   lire('e'),
+    d:   lire('d'),
     pml: lire('pml')
   };
 }
@@ -1505,7 +1858,7 @@ function nsLireDims() {
  * Vide les champs de dimensions
  */
 function nsViderDims() {
-  const ids = ['h','b','tw','tf','r','a','t','e','pml'];
+  const ids = ['h','b','tw','tf','r','a','t','e','d','pml'];
   ids.forEach(id => {
     const el = document.getElementById(`ns-${id}`);
     if (el) el.value = '';
@@ -1528,6 +1881,7 @@ function nsRemplirDims(section) {
   remplir('a',   section.a);
   remplir('t',   section.t);
   remplir('e',   section.e);
+  remplir('d',   section.d);
   remplir('pml', section.pml);
 }
 
@@ -1550,11 +1904,11 @@ function nsUpdateRecap() {
   const desig   = modale.querySelector('#ns-desig')  .value || '—';
 
   recap.innerHTML = `
-    <div class="dim-row"><span class="dim-label">Famille</span>   <span class="dim-val">${famille}</span></div>
-    <div class="dim-row"><span class="dim-label">Désignation</span><span class="dim-val">${desig}</span></div>
-    <div class="dim-row"><span class="dim-label">h</span>          <span class="dim-val">${getVal('h')}</span></div>
-    <div class="dim-row"><span class="dim-label">b</span>          <span class="dim-val">${getVal('b')}</span></div>
-    <div class="dim-row"><span class="dim-label">Poids/ml</span>   <span class="dim-val">${getVal('pml')}</span></div>`;
+    <div class="dim-row"><span class="dim-label">Famille</span>   <span class="dim-val">${_e(famille)}</span></div>
+    <div class="dim-row"><span class="dim-label">Désignation</span><span class="dim-val">${_e(desig)}</span></div>
+    <div class="dim-row"><span class="dim-label">h</span>          <span class="dim-val">${_e(getVal('h'))}</span></div>
+    <div class="dim-row"><span class="dim-label">b</span>          <span class="dim-val">${_e(getVal('b'))}</span></div>
+    <div class="dim-row"><span class="dim-label">Poids/ml</span>   <span class="dim-val">${_e(getVal('pml'))}</span></div>`;
 }
 
 /* ══════════════════════════════════════════════
