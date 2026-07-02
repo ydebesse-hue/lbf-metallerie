@@ -821,20 +821,24 @@
       background: #fff; color: var(--noir); font-family: Tahoma; text-transform: none; letter-spacing: normal;
     }
 
-    .cpt-table td:last-child { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-    .cpt-table td:last-child .btn-ligne { margin-right: 0; width: 100%; text-align: center; }
+    .cpt-table td:last-child { white-space: nowrap; }
+    .cpt-table td:last-child .btn-ligne { display: block; width: 100%; margin: 0 0 4px; text-align: center; }
+    .cpt-table td:last-child .btn-ligne:last-child { margin-bottom: 0; }
 
     /* Colonnes ajustées au contenu : seule Email prend l'espace restant */
     .cpt-table { table-layout: auto; }
+    .cpt-table th:nth-child(1), .cpt-table td:nth-child(1) { white-space: nowrap; }
     .cpt-table th:nth-child(2), .cpt-table td:nth-child(2),
     .cpt-table th:nth-child(3), .cpt-table td:nth-child(3),
     .cpt-table th:nth-child(4), .cpt-table td:nth-child(4),
-    .cpt-table th:nth-child(5), .cpt-table td:nth-child(5),
-    .cpt-table th:nth-child(6), .cpt-table td:nth-child(6) {
+    .cpt-table th:nth-child(5), .cpt-table td:nth-child(5) {
       width: 1%; white-space: nowrap;
     }
     .cpt-table input.cpt-inline-input   { width: auto; min-width: 90px; }
     .cpt-table select.cpt-inline-input  { width: auto; }
+    .cpt-table thead th[data-tri] { cursor: pointer; user-select: none; }
+    .cpt-table thead th[data-tri]:hover { color: var(--or); }
+    .tri-fleche { font-size: 9px; opacity: .8; }
     .statut-actif   { color: var(--vert); font-weight: bold; }
     .statut-inactif { color: #aaa; }
     .bl-modifier  { background: var(--vert);  color: white; }
@@ -2210,7 +2214,12 @@
           <table class="cpt-table">
             <thead>
               <tr>
-                <th>Email</th><th>Prénom</th><th>Nom</th><th>Profil</th><th>Statut</th><th>Actions</th>
+                <th data-tri="email">Email <span class="tri-fleche"></span></th>
+                <th data-tri="prenom">Prénom <span class="tri-fleche"></span></th>
+                <th data-tri="nom">Nom <span class="tri-fleche"></span></th>
+                <th data-tri="profil">Profil <span class="tri-fleche"></span></th>
+                <th data-tri="actif">Statut <span class="tri-fleche"></span></th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="comptes-tbody">

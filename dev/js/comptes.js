@@ -15,9 +15,11 @@
    ============================================================ */
 
 // ── État local ───────────────────────────────────────────────
-let _users  = [];   // Tableau complet des comptes
-let _editId = null; // ID du compte concerné par la réinitialisation de mdp
-let _supId  = null; // ID du compte à supprimer
+let _users     = [];             // Tableau complet des comptes
+let _editId    = null;           // ID du compte concerné par la réinitialisation de mdp
+let _supId     = null;           // ID du compte à supprimer
+let _triChamp  = 'profil';       // Colonne de tri active : email, prenom, nom, profil, actif
+let _triAsc    = true;           // Sens du tri
 
 /* ============================================================
    CHARGEMENT DES DONNÉES
@@ -35,7 +37,66 @@ async function chargerUsers() {
     afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
     _users = [];
   }
+  _trierUsers();
   _rendreTableau();
+}
+
+/* ============================================================
+   TRI
+   ============================================================ */
+
+const _ORDRE_PROFIL = { consultation: 0, gestion: 1, administration: 2 };
+
+function _prenomDe(u) { return (u.nomComplet || '').split(' ')[0] || ''; }
+function _nomDe(u)    { return (u.nomComplet || '').split(' ').slice(1).join(' '); }
+
+/**
+ * Trie _users selon _triChamp / _triAsc. Égalité départagée par l'email.
+ */
+function _trierUsers() {
+  _users.sort((a, b) => {
+    let va, vb;
+    switch (_triChamp) {
+      case 'profil': va = _ORDRE_PROFIL[a.profil] ?? 9; vb = _ORDRE_PROFIL[b.profil] ?? 9; break;
+      case 'prenom': va = _prenomDe(a).toLowerCase(); vb = _prenomDe(b).toLowerCase(); break;
+      case 'nom':    va = _nomDe(a).toLowerCase();    vb = _nomDe(b).toLowerCase();    break;
+      case 'actif':  va = a.actif ? 1 : 0; vb = b.actif ? 1 : 0; break;
+      case 'email':
+      default:       va = (a.email || '').toLowerCase(); vb = (b.email || '').toLowerCase();
+    }
+    let cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+    if (cmp === 0) cmp = (a.email || '').toLowerCase().localeCompare((b.email || '').toLowerCase());
+    return _triAsc ? cmp : -cmp;
+  });
+}
+
+/**
+ * Met à jour les flèches de tri dans l'en-tête et branche le clic sur les colonnes.
+ */
+function _initTriTableau() {
+  const thead = document.querySelector('#admin-panel-comptes thead');
+  if (!thead) return;
+
+  const majFleches = () => {
+    thead.querySelectorAll('th[data-tri]').forEach(th => {
+      const fleche = th.querySelector('.tri-fleche');
+      if (!fleche) return;
+      fleche.textContent = th.dataset.tri === _triChamp ? (_triAsc ? '▲' : '▼') : '';
+    });
+  };
+
+  thead.addEventListener('click', e => {
+    const th = e.target.closest('th[data-tri]');
+    if (!th) return;
+    const champ = th.dataset.tri;
+    if (_triChamp === champ) _triAsc = !_triAsc;
+    else { _triChamp = champ; _triAsc = true; }
+    _trierUsers();
+    _rendreTableau();
+    majFleches();
+  });
+
+  majFleches();
 }
 
 /* ============================================================
@@ -138,6 +199,8 @@ async function _sauvegarderChampInline(tr, field, valeur) {
 
 // Délégation d'événements sur le tableau : sauvegarde au blur (texte) / change (select)
 document.addEventListener('DOMContentLoaded', () => {
+  _initTriTableau();
+
   const tbody = document.getElementById('comptes-tbody');
   if (!tbody) return;
 
