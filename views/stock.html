@@ -782,7 +782,13 @@
 
     /* ── Table comptes inline ────────────────────────────────────── */
     .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow-x: auto; }
-    .cpt-table { width: auto; min-width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cpt-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+    .cpt-table col.cpt-col-email    { width: 28%; }
+    .cpt-table col.cpt-col-prenom   { width: 13%; }
+    .cpt-table col.cpt-col-nom      { width: 14%; }
+    .cpt-table col.cpt-col-profil   { width: 15%; }
+    .cpt-table col.cpt-col-statut   { width: 12%; }
+    .cpt-table col.cpt-col-actions  { width: 18%; }
     .cpt-table thead th {
       background: var(--noir); color: white; font-family: Impact, sans-serif; font-size: 11px;
       letter-spacing: 1px; text-transform: uppercase; padding: 9px 8px; text-align: left; white-space: nowrap;
@@ -821,21 +827,10 @@
       background: #fff; color: var(--noir); font-family: Tahoma; text-transform: none; letter-spacing: normal;
     }
 
-    .cpt-table td:last-child { white-space: nowrap; }
-    .cpt-table td:last-child .btn-ligne { display: block; width: 100%; margin: 0 0 4px; text-align: center; }
+    .cpt-table td:last-child .btn-ligne { display: block; width: 100%; margin: 0 0 4px; text-align: center; box-sizing: border-box; }
     .cpt-table td:last-child .btn-ligne:last-child { margin-bottom: 0; }
 
-    /* Colonnes ajustées au contenu : seule Email prend l'espace restant */
-    .cpt-table { table-layout: auto; }
-    .cpt-table th:nth-child(1), .cpt-table td:nth-child(1) { white-space: nowrap; }
-    .cpt-table th:nth-child(2), .cpt-table td:nth-child(2),
-    .cpt-table th:nth-child(3), .cpt-table td:nth-child(3),
-    .cpt-table th:nth-child(4), .cpt-table td:nth-child(4),
-    .cpt-table th:nth-child(5), .cpt-table td:nth-child(5) {
-      width: 1%; white-space: nowrap;
-    }
-    .cpt-table input.cpt-inline-input   { width: auto; min-width: 70px; }
-    .cpt-table select.cpt-inline-input  { width: auto; }
+    .cpt-table td:first-child strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cpt-table thead th[data-tri] { cursor: pointer; user-select: none; }
     .cpt-table thead th[data-tri]:hover { color: var(--or); }
     .tri-fleche { font-size: 9px; opacity: .8; }
@@ -2212,6 +2207,10 @@
         </div>
         <div class="cpt-table-wrap">
           <table class="cpt-table">
+            <colgroup>
+              <col class="cpt-col-email"><col class="cpt-col-prenom"><col class="cpt-col-nom">
+              <col class="cpt-col-profil"><col class="cpt-col-statut"><col class="cpt-col-actions">
+            </colgroup>
             <thead>
               <tr>
                 <th data-tri="email">Email <span class="tri-fleche"></span></th>
