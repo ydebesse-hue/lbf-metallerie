@@ -1,0 +1,26 @@
+name: Deploy dev preview
+
+# Publie la branche dev à l'adresse /dev/ pour permettre de tester
+# les améliorations avant de les valider sur main.
+# Ne touche jamais aux fichiers de la version en ligne (main).
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publier dans gh-pages/dev
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          destination_dir: dev
+          keep_files: true
+          commit_message: "Preview dev : ${{ github.event.head_commit.message }}"
