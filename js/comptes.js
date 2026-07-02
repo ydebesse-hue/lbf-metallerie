@@ -94,7 +94,8 @@ function _rendreTableau() {
    MODALE CRÉATION
    ============================================================ */
 
-function ouvrirCreation() {
+async function ouvrirCreation() {
+  await chargerUsers(); // liste à jour avant la vérification de doublon
   _editId = null;
   document.getElementById('m-compte-titre').textContent = 'Nouveau compte';
   document.getElementById('mc-email').value    = '';
