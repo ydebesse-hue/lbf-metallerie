@@ -1153,6 +1153,7 @@ header {
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase.js?v=20260413"></script>
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
@@ -1201,7 +1202,10 @@ function biblioAfficheAlerteAttente() {
 /* ══ Démarrage ══ */
 (async function demarrer() {
   // Garde de route — redirige vers login si pas de session
-  if (window.Auth) window.Auth.requireAuth();
+  if (window.Auth) {
+    await window.Auth.ready();
+    window.Auth.requireAuth();
+  }
 
   const profil = getProfilCourant();
   biblioSetHeaderProfil(profil);

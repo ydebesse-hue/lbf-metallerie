@@ -74,6 +74,8 @@
     <div class="barre"><div class="barre-progress"></div></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
   <script src="auth/auth.js"></script>
   <script>
     /**
@@ -81,7 +83,8 @@
      * Rôle : vérifier la session et rediriger vers la bonne page.
      * Aucun contenu applicatif ici.
      */
-    (function router() {
+    (async function router() {
+      await window.Auth.ready();
       const session = window.Auth.getSession();
 
       if (!session) {

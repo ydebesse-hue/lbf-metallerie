@@ -2173,11 +2173,11 @@
           <table class="cpt-table">
             <thead>
               <tr>
-                <th>Identifiant</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Profil</th><th>Statut</th><th>Actions</th>
+                <th>Email</th><th>Prénom</th><th>Nom</th><th>Profil</th><th>Statut</th><th>Actions</th>
               </tr>
             </thead>
             <tbody id="comptes-tbody">
-              <tr><td colspan="7" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
+              <tr><td colspan="6" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
             </tbody>
           </table>
         </div>
@@ -3218,8 +3218,8 @@
       <div class="modale-titre" id="m-compte-titre">Nouveau compte</div>
       <div class="note-info" id="m-compte-info" style="display:none"></div>
       <div class="champ">
-        <label for="mc-identifiant">Identifiant *</label>
-        <input type="text" id="mc-identifiant" placeholder="ex : p.dupont" autocapitalize="none" spellcheck="false">
+        <label for="mc-email">Email *</label>
+        <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr" autocapitalize="none" spellcheck="false">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="champ">
@@ -3232,10 +3232,6 @@
         </div>
       </div>
       <div class="champ">
-        <label for="mc-email">Email</label>
-        <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr">
-      </div>
-      <div class="champ">
         <label for="mc-profil">Profil *</label>
         <select id="mc-profil">
           <option value="consultation">Consultation — lecture seule</option>
@@ -3243,21 +3239,7 @@
           <option value="administration">Administration — accès complet</option>
         </select>
       </div>
-      <div class="champ" id="mc-mdp-zone">
-        <label for="mc-mdp">Mot de passe *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mc-mdp" placeholder="Mot de passe">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
-        </div>
-      </div>
-      <div class="champ" id="mc-mdp2-zone">
-        <label for="mc-mdp2">Confirmer le mot de passe *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mc-mdp2" placeholder="Confirmation">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp2','mc-oeil2')" id="mc-oeil2">👁</button>
-        </div>
-      </div>
-      <div class="champ">
+      <div class="champ" id="mc-actif-zone">
         <label for="mc-actif">Statut</label>
         <select id="mc-actif">
           <option value="true">Actif</option>
@@ -3274,26 +3256,18 @@
 
   <div id="m-mdp" class="modale-bg" onclick="bgClose(event,'m-mdp')">
     <div class="modale" onclick="event.stopPropagation()">
-      <div class="modale-titre">Changer le mot de passe</div>
-      <p style="font-size:13px;color:#555;margin-bottom:14px">Compte : <strong id="mdp-nom-compte"></strong></p>
-      <div class="champ">
-        <label for="mdp-nouveau">Nouveau mot de passe *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-nouveau','mdp-oeil1')" id="mdp-oeil1">👁</button>
-        </div>
+      <div class="modale-titre">Réinitialiser le mot de passe</div>
+      <div class="note-info">
+        Un email de réinitialisation sera envoyé à l'utilisateur, qui choisira
+        lui-même son nouveau mot de passe.
       </div>
-      <div class="champ">
-        <label for="mdp-confirme">Confirmer *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mdp-confirme" placeholder="Confirmation">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-confirme','mdp-oeil2')" id="mdp-oeil2">👁</button>
-        </div>
-      </div>
+      <p style="font-size:13px;color:#555;margin-bottom:14px">
+        Envoyer le lien à <strong id="mdp-nom-compte"></strong> (<span id="mdp-email-compte"></span>) ?
+      </p>
       <div class="msg-erreur-modale" id="mdp-erreur"></div>
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="fermerM('m-mdp')">Annuler</button>
-        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderMdp()">Enregistrer</button>
+        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderMdp()">Envoyer le lien</button>
       </div>
     </div>
   </div>
@@ -3393,6 +3367,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>

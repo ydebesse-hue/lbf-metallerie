@@ -1,7 +1,15 @@
 /**
- * auth.js — Moteur d'authentification Stock Métallerie LBF
- * Session courte : sessionStorage (effacée à la fermeture de l'onglet)
- * Pas de dépendance externe — JS Vanilla pur
+ * auth.js — Moteur d'authentification Stock Métallerie LBF (Supabase Auth)
+ *
+ * L'authentification réelle (email + mot de passe) est déléguée à Supabase Auth.
+ * Pour compatibilité avec le reste de l'application (qui lit la session de façon
+ * synchrone un peu partout), la session est mise en cache localement dès le
+ * chargement du script. Les pages qui décident d'un accès dès le chargement
+ * (redirection si non connecté, etc.) doivent `await Auth.ready()` avant de lire
+ * la session — c'est la seule différence de branchement par rapport à avant.
+ *
+ * L'accès « Consulter sans connexion » (visiteur anonyme) reste géré à part,
+ * via sessionStorage, sans passer par Supabase Auth.
  */
 
 // ═══════════════════════════════════════════════════════
@@ -11,7 +19,6 @@
 // Calcule la racine absolue du site (fonctionne sur GitHub Pages et en local)
 const _racine = (function() {
   const path = window.location.pathname;
-  // Supprimer tout ce qui suit /auth/ ou /views/ ou le fichier html à la racine
   const base = path
     .replace(/\/auth\/[^/]*$/, '/')
     .replace(/\/views\/[^/]*$/, '/')
@@ -20,10 +27,9 @@ const _racine = (function() {
 })();
 
 const AUTH_CONFIG = {
-  sessionKey: 'lbf_session',
-  usersPath:  _racine + 'data/users.json',
-  loginPage:  _racine + 'login.html',
-  homePage:   _racine + 'index.html',
+  sessionAnonKey: 'lbf_session_anon',
+  loginPage:      _racine + 'login.html',
+  homePage:       _racine + 'index.html',
 };
 
 // Table des droits par profil
@@ -63,131 +69,150 @@ const REDIRECT_APRES_LOGIN = {
 
 
 // ═══════════════════════════════════════════════════════
-//  LECTURE DES UTILISATEURS (Supabase)
+//  CACHE DE SESSION (alimenté par Supabase Auth)
 // ═══════════════════════════════════════════════════════
 
-/**
- * Charge les utilisateurs depuis Supabase.
- * Fallback sur users.json local si Supabase indisponible.
- * @returns {Promise<Array>}
- */
-async function chargerUtilisateurs() {
-  // Tentative Supabase
-  try {
-    if (window.SB) {
-      const users = await window.SB.lire('users');
-      if (users && users.length) return users;
-    }
-  } catch (err) {
-    console.warn('[Auth] Supabase indisponible, fallback JSON :', err);
-  }
+let _cachedSession = null;
+let _isReady        = false;
+let _readyResolve;
+const _readyPromise  = new Promise(res => { _readyResolve = res; });
 
-  // Fallback — fichier JSON local
-  try {
-    const racine = _racine;
-    const rep = await fetch(racine + 'data/users.json');
-    if (!rep.ok) throw new Error('Impossible de charger users.json');
-    const data = await rep.json();
-    return data.users || [];
-  } catch (err) {
-    console.error('[Auth] Erreur chargement users.json :', err);
-    return [];
+/**
+ * Construit l'objet session applicatif à partir d'un utilisateur Supabase Auth.
+ * Le rôle (« profil ») est stocké dans user_metadata à la création du compte.
+ * @param {Object|null} supaUser
+ * @returns {object|null}
+ */
+function _construireSession(supaUser) {
+  if (!supaUser) return null;
+  const profil = supaUser.user_metadata?.profil;
+  if (!DROITS[profil]) return null;
+  if (supaUser.user_metadata?.actif === false) return null;
+  return {
+    id:          supaUser.id,
+    identifiant: supaUser.email,
+    nomComplet:  supaUser.user_metadata?.nom_complet || supaUser.email,
+    profil,
+    droits:      DROITS[profil],
+    loginAt:     Date.now(),
+  };
+}
+
+/**
+ * Initialise le cache de session au chargement du script :
+ * lit la session Supabase déjà persistée (si l'utilisateur était connecté),
+ * puis écoute les changements (login/logout/refresh de token).
+ */
+async function _initAuth() {
+  if (!window.SB?.client) {
+    _isReady = true;
+    _readyResolve();
+    return;
   }
+  try {
+    const { data: { session } } = await window.SB.client.auth.getSession();
+    _cachedSession = _construireSession(session?.user);
+  } catch (err) {
+    console.warn('[Auth] Erreur lecture session initiale :', err);
+  }
+  _isReady = true;
+  _readyResolve();
+
+  window.SB.client.auth.onAuthStateChange((_event, session) => {
+    _cachedSession = _construireSession(session?.user);
+  });
+}
+_initAuth();
+
+/**
+ * Attend que la session initiale ait été chargée depuis Supabase.
+ * À `await` avant tout appel à getSession()/requireAuth() en tête de page.
+ * @returns {Promise<void>}
+ */
+function ready() {
+  return _isReady ? Promise.resolve() : _readyPromise;
 }
 
 
 // ═══════════════════════════════════════════════════════
-//  HACHAGE MOT DE PASSE (SHA-256 natif)
+//  SESSION VISITEUR (consultation anonyme, sans compte)
 // ═══════════════════════════════════════════════════════
 
+function _lireSessionAnon() {
+  const raw = sessionStorage.getItem(AUTH_CONFIG.sessionAnonKey);
+  if (!raw) return null;
+  try {
+    const s = JSON.parse(raw);
+    return s?.anonyme === true ? s : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Retourne le hash SHA-256 d'une chaîne (hex).
- * @param {string} texte
- * @returns {Promise<string>}
+ * Ouvre un accès en lecture seule sans compte (lien « Consulter sans connexion »).
  */
-async function sha256(texte) {
-  const buf = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(texte)
-  );
-  return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+function entrerEnConsultation() {
+  const sessionAnon = {
+    id:          'anon',
+    identifiant: 'visiteur',
+    nomComplet:  'Visiteur',
+    profil:      'consultation',
+    droits:      DROITS.consultation,
+    loginAt:     Date.now(),
+    anonyme:     true,
+  };
+  sessionStorage.setItem(AUTH_CONFIG.sessionAnonKey, JSON.stringify(sessionAnon));
 }
 
 
 // ═══════════════════════════════════════════════════════
-//  LOGIN
+//  LOGIN / LOGOUT
 // ═══════════════════════════════════════════════════════
 
 /**
- * Tente de connecter un utilisateur.
- * @param {string} identifiant
- * @param {string} motDePasse   — texte clair (sera haché ici)
+ * Tente de connecter un utilisateur via Supabase Auth.
+ * @param {string} email
+ * @param {string} motDePasse
  * @returns {Promise<{ok: boolean, erreur?: string, utilisateur?: object}>}
  */
-async function login(identifiant, motDePasse) {
-  if (!identifiant || !motDePasse) {
-    return { ok: false, erreur: 'Identifiant et mot de passe requis.' };
+async function login(email, motDePasse) {
+  if (!email || !motDePasse) {
+    return { ok: false, erreur: 'Email et mot de passe requis.' };
+  }
+  if (!window.SB?.client) {
+    return { ok: false, erreur: 'Service de connexion indisponible.' };
   }
 
-  const utilisateurs = await chargerUtilisateurs();
-  const user = utilisateurs.find(
-    u => u.identifiant.toLowerCase() === identifiant.toLowerCase()
-  );
+  const { data, error } = await window.SB.client.auth.signInWithPassword({
+    email:    email.trim(),
+    password: motDePasse,
+  });
 
-  if (!user) {
-    return { ok: false, erreur: 'Identifiant introuvable.' };
+  if (error) {
+    return { ok: false, erreur: 'Identifiant ou mot de passe incorrect.' };
   }
 
-  if (!user.actif) {
-    return { ok: false, erreur: 'Compte désactivé. Contactez l\'administrateur.' };
+  const session = _construireSession(data.user);
+  if (!session) {
+    await window.SB.client.auth.signOut();
+    return { ok: false, erreur: 'Compte désactivé ou non configuré. Contactez l\'administrateur.' };
   }
 
-  if (!user.motDePasse) {
-    return { ok: false, erreur: 'Ce compte ne supporte pas la connexion par mot de passe.' };
-  }
-
-  // Comparaison mot de passe
-  // users.json peut stocker soit le hash SHA-256, soit le texte clair (dev)
-  let mdpValide = false;
-  if (user.motDePasse.length === 64) {
-    // Hash SHA-256 stocké
-    const hash = await sha256(motDePasse);
-    mdpValide = (hash === user.motDePasse);
-  } else {
-    // Texte clair (environnement de dev uniquement)
-    mdpValide = (motDePasse === user.motDePasse);
-  }
-
-  if (!mdpValide) {
-    return { ok: false, erreur: 'Mot de passe incorrect.' };
-  }
-
-  // Création de la session
-  const session = {
-    id:           user.id,
-    identifiant:  user.identifiant,
-    nomComplet:   user.nomComplet,
-    profil:       user.profil,
-    droits:       DROITS[user.profil] || DROITS.consultation,
-    loginAt:      Date.now(),
-  };
-
-  sessionStorage.setItem(AUTH_CONFIG.sessionKey, JSON.stringify(session));
+  sessionStorage.removeItem(AUTH_CONFIG.sessionAnonKey);
+  _cachedSession = session;
   return { ok: true, utilisateur: session };
 }
-
-
-// ═══════════════════════════════════════════════════════
-//  LOGOUT
-// ═══════════════════════════════════════════════════════
 
 /**
  * Déconnecte l'utilisateur et redirige vers la page de login.
  */
-function logout() {
-  sessionStorage.removeItem(AUTH_CONFIG.sessionKey);
+async function logout() {
+  sessionStorage.removeItem(AUTH_CONFIG.sessionAnonKey);
+  _cachedSession = null;
+  if (window.SB?.client) {
+    try { await window.SB.client.auth.signOut(); } catch {}
+  }
   window.location.href = AUTH_CONFIG.loginPage;
 }
 
@@ -197,22 +222,12 @@ function logout() {
 // ═══════════════════════════════════════════════════════
 
 /**
- * Retourne l'utilisateur en session, ou null.
+ * Retourne l'utilisateur en session (compte réel ou visiteur anonyme), ou null.
+ * Lecture synchrone depuis le cache — appeler `Auth.ready()` avant en tête de page.
  * @returns {object|null}
  */
 function getSession() {
-  const raw = sessionStorage.getItem(AUTH_CONFIG.sessionKey);
-  if (!raw) return null;
-  try {
-    const s = JSON.parse(raw);
-    // Valide la structure minimale et le profil connu
-    if (!s || typeof s.id !== 'string' || !DROITS[s.profil]) return null;
-    // Redérive les droits depuis le profil pour empêcher la falsification
-    s.droits = DROITS[s.profil];
-    return s;
-  } catch {
-    return null;
-  }
+  return _cachedSession || _lireSessionAnon();
 }
 
 
@@ -221,7 +236,7 @@ function getSession() {
 // ═══════════════════════════════════════════════════════
 
 /**
- * À appeler en tête de chaque page protégée.
+ * À appeler en tête de chaque page protégée (après `await Auth.ready()`).
  * Redirige vers login si pas de session, ou si le profil est insuffisant.
  *
  * @param {string|null} profilMinimum  — 'consultation' | 'gestion' | 'administration' | null
@@ -325,11 +340,13 @@ function appliquerDroitsDOM() {
 
 // Disponible en script classique via window.Auth
 window.Auth = {
+  ready,
   login,
   logout,
   getSession,
   requireAuth,
   hasRight,
+  entrerEnConsultation,
   afficherInfosSession,
   appliquerDroitsDOM,
   DROITS,

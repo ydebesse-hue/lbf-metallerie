@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer le premier compte administrateur — LBF</title>
+  <style>
+    :root {
+      --rouge: rgb(210, 35, 42);
+      --rouge-dark: rgb(170, 25, 30);
+      --noir:  rgb(30, 30, 35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Tahoma, Geneva, sans-serif;
+      background: var(--noir);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .carte {
+      background: white;
+      border-top: 5px solid var(--rouge);
+      border-radius: 4px;
+      width: 380px;
+      max-width: 92vw;
+      padding: 32px 34px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    h1 {
+      font-family: Impact, Haettenschweiler, sans-serif;
+      font-size: 17px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    p.desc { font-size: 12px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+    .champ { margin-bottom: 14px; }
+    .champ label {
+      display: block; font-size: 10px; font-weight: bold; color: #666;
+      text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px;
+    }
+    .champ input {
+      width: 100%; padding: 9px 12px; border: 1px solid #c4c4c4;
+      border-radius: 3px; font-family: Tahoma; font-size: 13px; outline: none;
+    }
+    .champ input:focus { border-color: var(--rouge); }
+    button {
+      width: 100%; padding: 11px; background: var(--rouge); color: white;
+      border: none; border-radius: 3px; font-family: Impact, Haettenschweiler, sans-serif;
+      font-size: 14px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+      margin-top: 6px;
+    }
+    button:hover { background: var(--rouge-dark); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .msg { display: none; padding: 9px 12px; border-radius: 3px; font-size: 12px; margin-top: 12px; }
+    .msg.erreur  { display: block; background: #fde8e8; border: 1px solid var(--rouge); color: var(--rouge); }
+    .msg.succes  { display: block; background: #e6f4ea; border: 1px solid rgb(45,95,50); color: rgb(45,95,50); }
+  </style>
+</head>
+<body>
+
+  <div class="carte">
+    <h1>Premier compte administrateur</h1>
+    <p class="desc">
+      Cette page ne fonctionne qu'une seule fois : dès qu'un compte existe,
+      elle se désactive automatiquement. À utiliser uniquement lors de la
+      mise en place initiale.
+    </p>
+
+    <div class="champ">
+      <label for="in-nom">Nom complet</label>
+      <input type="text" id="in-nom" placeholder="ex : Yoann Debesse">
+    </div>
+    <div class="champ">
+      <label for="in-email">Email</label>
+      <input type="email" id="in-email" placeholder="ex : yoann-debesse@lebrasfreres.fr" autocapitalize="none">
+    </div>
+    <div class="champ">
+      <label for="in-mdp">Mot de passe (8 caractères minimum)</label>
+      <input type="password" id="in-mdp" placeholder="••••••••">
+    </div>
+
+    <button id="btn-creer" onclick="creerAdmin()">Créer le compte</button>
+
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    async function creerAdmin() {
+      const btn   = document.getElementById('btn-creer');
+      const msg   = document.getElementById('msg');
+      const nom   = document.getElementById('in-nom').value.trim();
+      const email = document.getElementById('in-email').value.trim();
+      const mdp   = document.getElementById('in-mdp').value;
+
+      msg.className = 'msg';
+
+      if (!nom || !email || !mdp) {
+        msg.textContent = 'Tous les champs sont obligatoires.';
+        msg.className = 'msg erreur';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Création…';
+
+      try {
+        const { data, error } = await window.SB.client.functions.invoke('bootstrap-admin', {
+          body: { email, motDePasse: mdp, nomComplet: nom },
+        });
+        if (error || data?.error) {
+          throw new Error(data?.error || error.message);
+        }
+        msg.textContent = 'Compte créé ! Vous pouvez maintenant vous connecter avec cet email et ce mot de passe.';
+        msg.className = 'msg succes';
+        document.getElementById('in-nom').disabled = true;
+        document.getElementById('in-email').disabled = true;
+        document.getElementById('in-mdp').disabled = true;
+        btn.style.display = 'none';
+      } catch (err) {
+        msg.textContent = err.message || 'Erreur lors de la création du compte.';
+        msg.className = 'msg erreur';
+        btn.disabled = false;
+        btn.textContent = 'Créer le compte';
+      }
+    }
+  </script>
+
+</body>
+</html>
