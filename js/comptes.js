@@ -222,7 +222,7 @@ async function sauvegarderMdp() {
 function ouvrirSuppression(id, nom) {
   _supId = id;
   document.getElementById('sup-nom-compte').textContent = nom;
-  ouvrirM('m-supprimer');
+  ouvrirM('m-supprimer-compte');
 }
 
 async function confirmerSuppression() {
@@ -238,7 +238,7 @@ async function confirmerSuppression() {
   }
 
   _supId = null;
-  fermerM('m-supprimer');
+  fermerM('m-supprimer-compte');
 }
 
 /* ============================================================
