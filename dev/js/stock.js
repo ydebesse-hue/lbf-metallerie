@@ -232,7 +232,6 @@ const Stock = (() => {
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
   let _fournisseurs = [];  // { id, nom } depuis Supabase
-  let _demandeurs   = [];  // { id, nom, prenom, email } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis Supabase (Conv. 6)
@@ -359,10 +358,6 @@ const Stock = (() => {
       try {
         const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
         _fournisseurs = rows.filter(f => f.actif);
-      } catch(e) {}
-      try {
-        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-        _demandeurs = rows.filter(d => d.actif);
       } catch(e) {}
 
       // Charger les données du plan (positions + image) depuis Supabase
@@ -4346,7 +4341,6 @@ ${hasT ? `
     _attacherAdminPlan();
     _attacherAdminChantiers();
     _attacherAdminFournisseurs();
-    _attacherAdminDemandeurs();
     _attacherNavAdmin();
 
     // ── Modale modification — dispo ↔ chantier ────────────────────
@@ -7232,20 +7226,6 @@ ${hasT ? `
     }
     _majBannieresDemandes();
 
-    // Sauvegarder le nouveau demandeur s'il n'était pas encore dans la liste
-    if (!dem.demandeur_id && dem.demandeur_nom) {
-      try {
-        const res = await window.SB.inserer('demandeurs', {
-          nom:    dem.demandeur_nom,
-          prenom: dem.demandeur_prenom || null,
-          email:  dem.demandeur_email  || null,
-          actif:  true
-        });
-        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-        _demandeurs = rows.filter(d => d.actif);
-      } catch(e) { console.warn('[Stock] Impossible de sauvegarder le demandeur :', e); }
-    }
-
     // Envoyer email de confirmation
     await _envoyerMailConfirmation(dem, 'accepte');
 
@@ -8072,11 +8052,14 @@ ${hasT ? `
     });
   }
 
-  function _monterPickerDemandeur(wrap, demandeurId = '') {
+  /**
+   * Affiche l'identité du demandeur d'après le compte connecté. Les demandes
+   * d'attribution ne sont plus ouvertes au visiteur anonyme : la liste des
+   * demandeurs référentiels a été supprimée, il faut un compte réel.
+   */
+  function _monterPickerDemandeur(wrap) {
     if (!wrap) return;
 
-    // Compte réel connecté (pas le visiteur anonyme) : on utilise directement
-    // son identité, pas besoin de choisir/saisir un demandeur.
     const session = Auth.getSession();
     if (session && !session.anonyme) {
       const [prenom, ...resteNom] = (session.nomComplet || '').split(' ');
@@ -8094,44 +8077,10 @@ ${hasT ? `
     }
 
     delete wrap.dataset.compte;
-    const opts = `<option value="">— Choisir un demandeur —</option>` +
-      _demandeurs.map(d => {
-        const label = [d.prenom, d.nom].filter(Boolean).join(' ') + (d.email ? ` (${d.email})` : '');
-        return `<option value="${_e(d.id)}"${d.id === demandeurId ? ' selected' : ''}>${_e(label)}</option>`;
-      }).join('') +
-      `<option value="__nouveau__">— Nouveau demandeur —</option>`;
-
     wrap.innerHTML = `
-      <select id="dem-demandeur-sel" style="width:100%">${opts}</select>
-      <div id="dem-demandeur-email-affiche" style="margin-top:4px;font-size:12px;color:#666;min-height:18px"></div>
-      <div id="dem-nouveau-form" style="display:none;margin-top:8px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" id="dem-new-prenom" placeholder="Prénom" style="flex:1;min-width:0">
-          <input type="text" id="dem-new-nom" placeholder="Nom *" style="flex:1;min-width:0">
-        </div>
-        <input type="email" id="dem-new-email" placeholder="Email (confirmation de demande)" style="width:100%;box-sizing:border-box">
+      <div style="padding:8px 10px;background:#fde8e8;border-radius:6px;border:1px solid var(--rouge);font-size:13px;color:var(--rouge)">
+        ⚠ Un compte est nécessaire pour soumettre une demande d'attribution. Connectez-vous pour continuer.
       </div>`;
-
-    const sel = wrap.querySelector('#dem-demandeur-sel');
-    const emailAffiche = wrap.querySelector('#dem-demandeur-email-affiche');
-    const formNouv = wrap.querySelector('#dem-nouveau-form');
-
-    function majEmail() {
-      const v = sel.value;
-      if (v === '__nouveau__') {
-        formNouv.style.display = '';
-        emailAffiche.textContent = '';
-      } else if (v) {
-        formNouv.style.display = 'none';
-        const d = _demandeurs.find(x => x.id === v);
-        emailAffiche.innerHTML = d?.email ? `📧 ${_e(d.email)}` : '';
-      } else {
-        formNouv.style.display = 'none';
-        emailAffiche.textContent = '';
-      }
-    }
-    sel.addEventListener('change', majEmail);
-    majEmail();
   }
 
   function _lireDemandeurPicker(m) {
@@ -8145,19 +8094,7 @@ ${hasT ? `
         isNew:  false,
       };
     }
-    const sel = m?.querySelector('#dem-demandeur-sel');
-    if (!sel) return null;
-    const v = sel.value;
-    if (!v) return null;
-    if (v === '__nouveau__') {
-      const prenom = m.querySelector('#dem-new-prenom')?.value?.trim() || '';
-      const nom    = m.querySelector('#dem-new-nom')?.value?.trim() || '';
-      const email  = m.querySelector('#dem-new-email')?.value?.trim() || '';
-      if (!nom) return null;
-      return { id: null, nom, prenom, email, isNew: true };
-    }
-    const d = _demandeurs.find(x => x.id === v);
-    return d ? { ...d, isNew: false } : null;
+    return null;
   }
 
   async function _envoyerMailConfirmation(dem, statut, motif = '') {
@@ -9474,7 +9411,6 @@ ${hasT ? `
     if (onglet === 'stockage')     { _rendreRacks(); _rendreAdminPlan(); }
     if (onglet === 'chantiers')    _rendreChantiers();
     if (onglet === 'fournisseurs') _rendreFournisseurs();
-    if (onglet === 'demandeurs')   _rendreDemandeurs();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
     if (onglet === 'sauvegarde') {
       const btnExp = document.getElementById('btn-backup-export');
@@ -10161,128 +10097,6 @@ ${hasT ? `
     m.querySelector('#admin-btn-fournisseur')?.addEventListener('click', _adminAjouterFournisseur);
     m.querySelector('#admin-fv-nom')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') _adminAjouterFournisseur();
-    });
-  }
-
-  function _pseudoDemandeur(d) {
-    const init = d.prenom ? d.prenom.trim()[0].toUpperCase() + '.' : '';
-    return init ? `${init} ${d.nom}` : d.nom;
-  }
-
-  function _rendreDemandeurs() {
-    const zone = document.getElementById('admin-demandeurs-liste');
-    if (!zone) return;
-    if (!_demandeurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun demandeur enregistré</div>'; return; }
-    const tries = [..._demandeurs].sort((a, b) =>
-      (a.prenom || '').localeCompare(b.prenom || '', 'fr', { sensitivity: 'base' })
-    );
-    zone.innerHTML = `
-      <table class="admin-rack-table">
-        <thead><tr><th>Prénom</th><th>Nom</th><th>Pseudo</th><th>Email</th><th></th></tr></thead>
-        <tbody>
-          ${tries.map(d => `<tr data-dem-row="${_e(d.id)}">
-            <td>${_e(d.prenom || '—')}</td>
-            <td><strong>${_e(d.nom)}</strong></td>
-            <td><span class="dem-pseudo">${_e(_pseudoDemandeur(d))}</span></td>
-            <td>${d.email ? `<a href="mailto:${_e(d.email)}">${_e(d.email)}</a>` : '—'}</td>
-            <td class="admin-ch-actions">
-              <button class="admin-ref-edit" data-dem-id="${_e(d.id)}" title="Modifier">✎</button>
-              <button class="admin-ref-del" data-dem-id="${_e(d.id)}" data-nom="${_e(d.nom)}" title="Supprimer">✕</button>
-            </td>
-          </tr>
-          <tr class="admin-ch-edit-row" data-dem-edit="${_e(d.id)}" style="display:none">
-            <td colspan="5">
-              <div class="admin-ch-edit-form">
-                <input class="admin-input-sm" data-dem-field="prenom" placeholder="Prénom" value="${_e(d.prenom || '')}">
-                <input class="admin-input-sm" data-dem-field="nom" placeholder="Nom" value="${_e(d.nom || '')}">
-                <input class="admin-input-sm" data-dem-field="email" type="email" placeholder="Email" value="${_e(d.email || '')}" style="flex:2">
-                <button class="btn-sm btn-valider" data-dem-save="${_e(d.id)}">Enregistrer</button>
-                <button class="btn-sm btn-annuler" data-dem-cancel="${_e(d.id)}">Annuler</button>
-              </div>
-            </td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
-  }
-
-  async function _adminModifierDemandeur(id) {
-    const editRow = document.querySelector(`[data-dem-edit="${id}"]`);
-    if (!editRow) return;
-    const prenom = editRow.querySelector('[data-dem-field="prenom"]')?.value?.trim();
-    const nom    = editRow.querySelector('[data-dem-field="nom"]')?.value?.trim();
-    const email  = editRow.querySelector('[data-dem-field="email"]')?.value?.trim();
-    if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
-    try {
-      await window.SB.mettreAJour('demandeurs', id, { nom, prenom: prenom || null, email: email || null });
-      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-      _demandeurs = rows.filter(d => d.actif);
-      _rendreDemandeurs();
-      _notif('Demandeur modifié', 'succes');
-    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
-  }
-
-  async function _adminAjouterDemandeur() {
-    const m      = document.getElementById('admin-panel-demandeurs');
-    const prenom = m?.querySelector('#admin-dem-prenom')?.value?.trim();
-    const nom    = m?.querySelector('#admin-dem-nom')?.value?.trim();
-    const email  = m?.querySelector('#admin-dem-email')?.value?.trim();
-    if (!nom) return;
-    try {
-      await window.SB.inserer('demandeurs', { nom, prenom: prenom || null, email: email || null, actif: true });
-      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-      _demandeurs = rows.filter(d => d.actif);
-      _rendreDemandeurs();
-      if (m) { m.querySelector('#admin-dem-prenom').value = ''; m.querySelector('#admin-dem-nom').value = ''; m.querySelector('#admin-dem-email').value = ''; }
-      _notif('Demandeur ajouté', 'succes');
-    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
-  }
-
-  async function _adminSupprimerDemandeur(id, nom) {
-    try {
-      await window.SB.supprimer('demandeurs', id);
-      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-      _demandeurs = rows.filter(d => d.actif);
-      _rendreDemandeurs();
-      _notif(`"${nom}" supprimé`, 'succes');
-    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
-  }
-
-  function _attacherAdminDemandeurs() {
-    const m = document.getElementById('admin-panel-demandeurs');
-    if (!m) return;
-    m.addEventListener('click', e => {
-      const del = e.target.closest('.admin-ref-del[data-dem-id]');
-      if (del) { _adminSupprimerDemandeur(del.dataset.demId, del.dataset.nom); return; }
-
-      const edit = e.target.closest('.admin-ref-edit[data-dem-id]');
-      if (edit) {
-        const id = edit.dataset.demId;
-        const editRow = m.querySelector(`[data-dem-edit="${id}"]`);
-        const mainRow = m.querySelector(`[data-dem-row="${id}"]`);
-        if (editRow && mainRow) {
-          const open = editRow.style.display !== 'none';
-          editRow.style.display = open ? 'none' : '';
-          mainRow.style.opacity = open ? '' : '0.4';
-        }
-        return;
-      }
-
-      const save = e.target.closest('[data-dem-save]');
-      if (save) { _adminModifierDemandeur(save.dataset.demSave); return; }
-
-      const cancel = e.target.closest('[data-dem-cancel]');
-      if (cancel) {
-        const id = cancel.dataset.demCancel;
-        const editRow = m.querySelector(`[data-dem-edit="${id}"]`);
-        const mainRow = m.querySelector(`[data-dem-row="${id}"]`);
-        if (editRow) editRow.style.display = 'none';
-        if (mainRow) mainRow.style.opacity = '';
-        return;
-      }
-    });
-    m.querySelector('#admin-btn-demandeur')?.addEventListener('click', _adminAjouterDemandeur);
-    m.querySelector('#admin-dem-nom')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') _adminAjouterDemandeur();
     });
   }
 
