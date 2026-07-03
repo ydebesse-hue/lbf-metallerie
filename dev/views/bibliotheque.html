@@ -880,6 +880,59 @@ header {
 .mf-ligne.mf-active td { color: white !important; }
 
 /* ══════════════════════════════════════════════
+   CALCUL TÔLES
+══════════════════════════════════════════════ */
+.calc-wrap { padding: 20px 24px 40px; max-width: 1100px; margin: 0 auto; }
+.calc-bloc {
+  background: #fff;
+  border: 1px solid var(--gris-cl);
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+}
+.calc-bloc h3 {
+  font-family: Impact, sans-serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--rouge);
+  margin-bottom: 6px;
+}
+.calc-aide { font-size: 12px; color: #888; margin-bottom: 14px; }
+
+.calc-conv-grille {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+
+.calc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.calc-table th {
+  background: var(--noir);
+  color: white;
+  font-family: Impact, sans-serif;
+  font-size: 10px;
+  letter-spacing: .5px;
+  padding: 7px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+.calc-table th:first-child { text-align: left; }
+.calc-table td { padding: 4px 6px; border-bottom: 1px solid #eee; text-align: right; white-space: nowrap; }
+.calc-table td:first-child { text-align: left; font-weight: bold; }
+.calc-table tbody tr:hover { background: #fafafa; }
+.calc-table input[type="number"] {
+  width: 74px; padding: 3px 5px; border: 1px solid #ccc; border-radius: 3px;
+  text-align: right; font-size: 12px; font-family: inherit;
+}
+.calc-total-row td { font-weight: bold; background: #f5f5f5; }
+.calc-chantier-poids { color: #666; font-size: 10px; }
+.calc-btn-suppr {
+  background: none; border: none; color: var(--rouge); cursor: pointer; font-size: 14px; padding: 0 4px;
+}
+
+/* ══════════════════════════════════════════════
    RESPONSIVE MOBILE
 ══════════════════════════════════════════════ */
 @media (max-width: 640px) {
@@ -940,35 +993,135 @@ header {
 ══════════════════════ -->
 <div class="sub-tabs">
   <button class="sub-tab active" onclick="switchOnglet('profils',this)">Bibliothèque profilés</button>
+  <button class="sub-tab" onclick="switchOnglet('calcul-toles',this)">Calcul tôles</button>
 </div>
 
 <!-- ══════════════════════
-     TOOLBAR
+     PANNEAU — BIBLIOTHÈQUE PROFILÉS
 ══════════════════════ -->
-<div class="biblio-toolbar">
-  <span class="lbl">Filtrer :</span>
-  <select class="sel" id="biblio-filtre-famille">
-    <option value="">Toutes les familles</option>
-    <option value="IPE">IPE · IPN</option>
-    <option value="HE">HEA · HEB · HEM</option>
-    <option value="U">UPN · UPE</option>
-    <option value="Cornière">Cornière</option>
-    <option value="Profilés creux">Profilés creux (SHS · RHS · CHS)</option>
-    <option value="Barres pleines">Barres pleines (Plat · Rond · Carré)</option>
-  </select>
+<div id="panel-profils">
 
-  <div class="toolbar-sep">
-</div>
-  <input class="search" type="text" id="biblio-recherche"
-         placeholder="🔍 Rechercher une désignation...">
+  <!-- TOOLBAR -->
+  <div class="biblio-toolbar">
+    <span class="lbl">Filtrer :</span>
+    <select class="sel" id="biblio-filtre-famille">
+      <option value="">Toutes les familles</option>
+      <option value="IPE">IPE · IPN</option>
+      <option value="HE">HEA · HEB · HEM</option>
+      <option value="U">UPN · UPE</option>
+      <option value="Cornière">Cornière</option>
+      <option value="Profilés creux">Profilés creux (SHS · RHS · CHS)</option>
+      <option value="Barres pleines">Barres pleines (Plat · Rond · Carré)</option>
+    </select>
+
+    <div class="toolbar-sep">
+  </div>
+    <input class="search" type="text" id="biblio-recherche"
+           placeholder="🔍 Rechercher une désignation...">
+  </div>
+
+  <!-- CONTENU -->
+  <div class="biblio-wrapper">
+    <div id="biblio-compteur" class="biblio-compteur">Chargement...</div>
+    <div id="biblio-grille"></div>
+  </div>
+
 </div>
 
 <!-- ══════════════════════
-     CONTENU PRINCIPAL
+     PANNEAU — CALCUL TÔLES
 ══════════════════════ -->
-<div class="biblio-wrapper">
-  <div id="biblio-compteur" class="biblio-compteur">Chargement...</div>
-  <div id="biblio-grille"></div>
+<div id="panel-calcul-toles" class="calc-wrap" style="display:none">
+
+  <!-- BLOC 1 — Convertisseur rapide -->
+  <div class="calc-bloc">
+    <h3>Convertisseur rapide</h3>
+    <p class="calc-aide">Renseigne l'épaisseur et les dimensions (ou le poids) : le reste se calcule automatiquement.</p>
+    <div class="calc-conv-grille">
+      <div class="fr">
+        <label>Épaisseur (mm)</label>
+        <input type="number" id="cv-epaisseur" step="0.1" placeholder="6" oninput="calcConvertisseur()">
+      </div>
+      <div class="fr">
+        <label>Largeur (mm)</label>
+        <input type="number" id="cv-largeur" step="1" placeholder="1500" oninput="calcConvertisseur('dims')">
+      </div>
+      <div class="fr">
+        <label>Longueur (mm)</label>
+        <input type="number" id="cv-longueur" step="1" placeholder="3000" oninput="calcConvertisseur('dims')">
+      </div>
+      <div class="fr">
+        <label>Nombre</label>
+        <input type="number" id="cv-nombre" step="1" min="1" value="1" oninput="calcConvertisseur('dims')">
+      </div>
+      <div class="fr">
+        <label>Poids total (kg)</label>
+        <input type="number" id="cv-poids" step="0.1" placeholder="—" oninput="calcConvertisseur('poids')">
+      </div>
+      <div class="fr">
+        <label>Surface (m²)</label>
+        <input type="number" id="cv-surface" step="0.01" placeholder="—" readonly>
+      </div>
+      <div class="fr">
+        <label>Prix / kg (€)</label>
+        <input type="number" id="cv-prix-kg" step="0.01" placeholder="0.97" oninput="calcConvertisseur('dims')">
+      </div>
+      <div class="fr">
+        <label>Prix total (€)</label>
+        <input type="text" id="cv-prix" placeholder="—" readonly>
+      </div>
+    </div>
+    <button type="button" class="btn btn-gris" onclick="calcReinitialiserConvertisseur()">↺ Réinitialiser</button>
+  </div>
+
+  <!-- BLOC 2 — Répartition des besoins par chantier -->
+  <div class="calc-bloc">
+    <h3>Répartition des besoins par chantier</h3>
+    <p class="calc-aide">Une ligne par épaisseur, une colonne par chantier — renseigne largeur / longueur / nombre pour chaque chantier concerné.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <select id="rep-sel-chantier" class="sel"></select>
+      <button type="button" class="btn btn-rouge" onclick="calcAjouterChantierRepartition()">+ Ajouter ce chantier</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="calc-table" id="rep-table"></table>
+    </div>
+  </div>
+
+  <!-- BLOC 3 — Commande multi-lignes -->
+  <div class="calc-bloc">
+    <h3>Commande multi-lignes</h3>
+    <p class="calc-aide">Ajoute une ligne par référence de tôle à commander.</p>
+    <div style="overflow-x:auto">
+      <table class="calc-table" id="cmd-table">
+        <thead>
+          <tr>
+            <th style="text-align:left">Épaisseur (mm)</th>
+            <th style="text-align:left">Largeur (mm)</th>
+            <th style="text-align:left">Longueur (mm)</th>
+            <th style="text-align:left">Nombre</th>
+            <th>Surface (m²)</th>
+            <th>Poids (kg)</th>
+            <th style="text-align:left">Prix / kg (€)</th>
+            <th>Prix (€)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cmd-tbody"></tbody>
+        <tfoot>
+          <tr class="calc-total-row">
+            <td colspan="4">Total</td>
+            <td id="cmd-total-surface">0.00 m²</td>
+            <td id="cmd-total-poids">0 kg</td>
+            <td></td>
+            <td id="cmd-total-prix">0.00 €</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <button type="button" class="btn btn-rouge" onclick="calcAjouterLigneCommande()">+ Ajouter une ligne</button>
+  </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -1066,6 +1219,7 @@ header {
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
+<script src="../js/calcul-toles.js?v=20260703"></script>
 <script>
 /* ══════════════════════════════════════════════
    INITIALISATION DE LA PAGE
@@ -1121,15 +1275,27 @@ function retourAccueil() {
 }
 
 /**
- * Basculement sous-onglet (seul "Bibliothèque profilés" existe pour l'instant —
+ * Basculement sous-onglet ("Bibliothèque profilés" / "Calcul tôles" —
  * d'autres outils viendront s'ajouter ici)
  */
 function switchOnglet(onglet, btn) {
   document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  document.title = 'Bibliothèque profilés — LBF';
-  document.getElementById('biblio-filtre-famille').style.display = '';
-  biblioRendreGrille();
+
+  const panelProfils = document.getElementById('panel-profils');
+  const panelCalcul  = document.getElementById('panel-calcul-toles');
+
+  if (onglet === 'calcul-toles') {
+    document.title = 'Calcul tôles — LBF';
+    panelProfils.style.display = 'none';
+    panelCalcul.style.display  = '';
+    calcInit();
+  } else {
+    document.title = 'Bibliothèque profilés — LBF';
+    panelCalcul.style.display  = 'none';
+    panelProfils.style.display = '';
+    biblioRendreGrille();
+  }
 }
 </script>
 
