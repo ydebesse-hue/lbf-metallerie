@@ -1338,13 +1338,13 @@ const Stock = (() => {
     // Vérifier si une demande d'attribution est en cours sur cet élément
     const demandeEnCours = _demandes.find(d => d.id_barre === item.id);
     if (demandeEnCours) {
-      const infos = [
-        `Demandeur : ${demandeEnCours.demandeur || '—'}`,
-        `Destination : ${_labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—'}`,
-        `Date : ${demandeEnCours.date_demande || '—'}`,
-        demandeEnCours.commentaire ? `Remarque : ${demandeEnCours.commentaire}` : null,
-      ].filter(Boolean).join('\n');
-      return `<span class="badge badge-attente" title="${_e(infos)}">⏳ Attribution demandée</span>`;
+      const destination = _labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—';
+      return `<span class="badge badge-attente">⏳ Attribution demandée</span>
+        <span class="infos-demande">
+          👤 <b>${_e(demandeEnCours.demandeur || '—')}</b><br>
+          📅 ${_e(demandeEnCours.date_demande || '—')}<br>
+          🏗 ${_e(destination)}
+        </span>`;
     }
     if (item.disponibilite === 'disponible') return `<span class="badge badge-dispo">Disponible</span>`;
     return                                          `<span class="badge badge-affecte">Affecté</span>`;
