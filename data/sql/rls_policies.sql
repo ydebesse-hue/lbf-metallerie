@@ -75,7 +75,9 @@ CREATE POLICY "stock_delete" ON stock
 
 -- ═══════════════════════════════════════════════════════════════
 --  TABLE : demandes
---  Création : tous (y compris visiteur anonyme — "Demander l'attribution").
+--  Création : comptes authentifiés uniquement — le visiteur anonyme
+--  n'a plus accès à la demande d'attribution (identité toujours liée
+--  au compte connecté, plus de référentiel "demandeurs" libre).
 --  Validation/refus (UPDATE) : administration uniquement (seul profil
 --  avec can_validate=true côté application).
 -- ═══════════════════════════════════════════════════════════════
@@ -93,7 +95,7 @@ CREATE POLICY "demandes_select" ON demandes
   FOR SELECT TO anon, authenticated USING (true);
 
 CREATE POLICY "demandes_insert" ON demandes
-  FOR INSERT TO anon, authenticated WITH CHECK (true);
+  FOR INSERT TO authenticated WITH CHECK (true);
 
 CREATE POLICY "demandes_update" ON demandes
   FOR UPDATE TO authenticated
@@ -158,17 +160,20 @@ CREATE POLICY "historique_insert" ON lbf_barres_historique
 
 -- ═══════════════════════════════════════════════════════════════
 --  RÉFÉRENTIELS ADMINISTRABLES
---  fournisseurs, demandeurs, racks, config
+--  fournisseurs, racks, config
 --  Lecture pour tous (pickers accessibles au visiteur), écriture
 --  réservée à l'administration (seul profil accédant à l'onglet
 --  Administration où ces référentiels sont gérés).
 --
 --  chantiers est un cas à part : sa création est aussi accessible
---  depuis le modal « Demande d'attribution » (accessible à tous les
---  profils, y compris le visiteur anonyme, via le bouton « + Nouveau »
---  du sélecteur de chantier). L'INSERT y est donc ouvert à anon +
---  authenticated ; seules UPDATE/DELETE restent réservées à
---  l'administration (gérées depuis l'onglet Administration).
+--  depuis le modal « Demande d'attribution » (bouton « + Nouveau »
+--  du sélecteur de chantier), désormais réservé aux comptes
+--  authentifiés (le visiteur n'a plus accès aux demandes). Seules
+--  UPDATE/DELETE restent réservées à l'administration.
+--
+--  demandeurs : table conservée pour l'historique mais verrouillée
+--  (RLS activée, aucune policy) — le référentiel libre de demandeurs
+--  a été supprimé, l'identité du demandeur vient toujours du compte.
 -- ═══════════════════════════════════════════════════════════════
 
 DROP POLICY IF EXISTS "chantiers_select_anon" ON chantiers;
@@ -185,18 +190,30 @@ ALTER TABLE chantiers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "chantiers_select" ON chantiers
   FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "chantiers_insert" ON chantiers
-  FOR INSERT TO anon, authenticated WITH CHECK (true);
+  FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "chantiers_update" ON chantiers
   FOR UPDATE TO authenticated USING (jwt_profil() = 'administration');
 CREATE POLICY "chantiers_delete" ON chantiers
   FOR DELETE TO authenticated USING (jwt_profil() = 'administration');
+
+DROP POLICY IF EXISTS "demandeurs_select_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_insert_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_update_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_delete_anon" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_select" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_insert" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_update" ON demandeurs;
+DROP POLICY IF EXISTS "demandeurs_delete" ON demandeurs;
+ALTER TABLE demandeurs ENABLE ROW LEVEL SECURITY;
+-- Aucune policy créée : table verrouillée, accès refusé à tous
+-- hormis service_role (utilisé uniquement pour la sauvegarde/export).
 
 
 DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['fournisseurs','demandeurs','racks','config']
+  FOREACH t IN ARRAY ARRAY['fournisseurs','racks','config']
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
 
