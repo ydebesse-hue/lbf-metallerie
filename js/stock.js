@@ -1369,63 +1369,6 @@ const Stock = (() => {
     return                              `<span class="badge badge-affecte">Affecté</span>`;
   }
 
-  function _actionsLigneProfil(b, modif, admin) {
-    let h = '';
-
-    if (b.statut === 'en_attente' && admin) {
-      // Admin : boutons valider / refuser sur ajout en attente
-      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(b.id)}')" title="Valider">✔</button>`;
-      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(b.id)}')" title="Refuser">✘</button>`;
-    } else {
-      // Vérifier si une demande d'attribution est en attente sur cette barre
-      const demandeEnCours = _demandes.find(d => d.id_barre === b.id);
-      if (demandeEnCours && admin) {
-        // Admin : boutons valider / refuser sur la demande (id DEM-XXXX)
-        h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(demandeEnCours.id)}')" title="Valider la demande">✔</button>`;
-        h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
-      } else if (modif) {
-        // Gestion / Admin : modifier
-        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${_e(b.id)}')" title="Modifier">Modifier</button>`;
-        // Utiliser : barre validée avec longueur > 0
-        if (b.statut === 'valide' && b.longueur_m > 0) {
-          h += ` <button class="btn-ligne btn-utiliser" onclick="Stock.ouvrirUtiliserBarre('${_e(b.id)}')" title="Utiliser">Utiliser</button>`;
-        }
-      }
-    }
-
-    // Demander : comptes connectés uniquement (le visiteur anonyme n'y a plus accès)
-    const demandeActifP = _demandes.find(d => d.id_barre === b.id);
-    const sessionDem = Auth.getSession();
-    if (b.statut !== 'en_attente' && !demandeActifP && sessionDem && !sessionDem.anonyme) {
-      const dis = b.disponibilite !== 'disponible' ? ' disabled' : '';
-      h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${_e(b.id)}')" title="Demander l'attribution">Demander</button>`;
-    }
-
-    return h;
-  }
-
-  function _actionsLigneTole(t, modif, admin) {
-    let h = '';
-
-    if (t.statut === 'en_attente' && admin) {
-      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(t.id)}')" title="Valider">✔</button>`;
-      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(t.id)}')" title="Refuser">✘</button>`;
-    } else {
-      const demandeEnCours = _demandes.find(d => d.id_barre === t.id);
-      if (demandeEnCours && admin) {
-        h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(demandeEnCours.id)}')" title="Valider la demande">✔</button>`;
-        h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
-      } else if (modif) {
-        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${_e(t.id)}')" title="Modifier">Modifier</button>`;
-        const dis = t.quantite <= 0 ? ' disabled' : '';
-        h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirSortieTole('${_e(t.id)}')" title="Sortie chantier">Sortie</button>`;
-      }
-    }
-
-    return h;
-  }
-
-
   /* ──────────────────────────────────────────────────────────────
      PEUPLEMENT DES FILTRES
      ────────────────────────────────────────────────────────────── */
