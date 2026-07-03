@@ -854,7 +854,10 @@ const Stock = (() => {
       case 'poids':       return item.categorie === 'profil' ? _poidsEffectifProfil(item) : (item.poids_unitaire_kg || 0);
       case 'chantier':    return item.chantier_affectation || '';
       case 'lieu':        return item.lieu_stockage    || '';
-      case 'dispo':       return item.disponibilite    || '';
+      case 'dispo': {
+        const ordre = { ajout_en_attente: 0, attribution_demandee: 1, disponible: 2, affecte: 3 };
+        return ordre[_statutAffiche(item)] ?? 9;
+      }
       case 'date':        return item.date_modif || item.date_validation || item.date_ajout || '';
       case 'epaisseur':   return item.epaisseur_mm     || 0;
       case 'dimensions':  return (item.largeur_mm || 0) * 100000 + (item.longueur_mm || 0);
@@ -1333,11 +1336,23 @@ const Stock = (() => {
      BADGES ET BOUTONS LIGNE
      ────────────────────────────────────────────────────────────── */
 
+  /**
+   * Statut affiché synthétique d'un élément (barre/tôle), utilisé à la fois
+   * pour le badge et pour le tri par colonne « Statut » — sans ça, une
+   * demande d'attribution en cours restait indissociable de « Disponible »
+   * au tri puisque disponibilite ne change qu'à la validation.
+   */
+  function _statutAffiche(item) {
+    if (item.statut === 'en_attente') return 'ajout_en_attente';
+    if (_demandes.find(d => d.id_barre === item.id)) return 'attribution_demandee';
+    return item.disponibilite === 'disponible' ? 'disponible' : 'affecte';
+  }
+
   function _badgeDispo(item) {
-    if (item.statut === 'en_attente')        return `<span class="badge badge-attente">⏳ En attente</span>`;
-    // Vérifier si une demande d'attribution est en cours sur cet élément
-    const demandeEnCours = _demandes.find(d => d.id_barre === item.id);
-    if (demandeEnCours) {
+    const statut = _statutAffiche(item);
+    if (statut === 'ajout_en_attente') return `<span class="badge badge-attente">⏳ En attente</span>`;
+    if (statut === 'attribution_demandee') {
+      const demandeEnCours = _demandes.find(d => d.id_barre === item.id);
       const destination = _labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—';
       return `<span class="badge badge-attente">⏳ Attribution demandée</span>
         <span class="infos-demande">
@@ -1346,8 +1361,8 @@ const Stock = (() => {
           🏗 ${_e(destination)}
         </span>`;
     }
-    if (item.disponibilite === 'disponible') return `<span class="badge badge-dispo">Disponible</span>`;
-    return                                          `<span class="badge badge-affecte">Affecté</span>`;
+    if (statut === 'disponible') return `<span class="badge badge-dispo">Disponible</span>`;
+    return                              `<span class="badge badge-affecte">Affecté</span>`;
   }
 
   function _actionsLigneProfil(b, modif, admin) {
