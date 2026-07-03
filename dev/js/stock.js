@@ -3283,12 +3283,14 @@ ${hasT ? `
   function _majBannieresDemandes() {
     const z = document.getElementById('stock-alerte-demandes');
     if (z) {
-      if (!Auth.hasRight('can_validate') || _demandes.length === 0) {
+      const nbAjoutsEnAttente = (_data?.barres || []).filter(b => b.statut === 'en_attente').length;
+      const nb = _demandes.length + nbAjoutsEnAttente;
+      if (!Auth.hasRight('can_validate') || nb === 0) {
         z.style.display = 'none';
       } else {
         z.style.display = 'flex';
         const span = z.querySelector('.alerte-nb-demandes');
-        if (span) span.textContent = _demandes.length;
+        if (span) span.textContent = nb;
       }
     }
     _majBanniereMesDemandes();
@@ -6340,17 +6342,19 @@ ${hasT ? `
       btnSortie.onclick = () => { _fermerModale('m-detail-tole'); _ouvrirSortieTole(id); };
     }
 
-    // Demande d'attribution en cours sur cette tôle : Valider / Refuser (admin)
+    // Nouvel ajout en attente OU demande d'attribution en cours : Valider / Refuser (admin)
+    const ajoutEnAttenteT = t.statut === 'en_attente';
+    const idAValiderT = ajoutEnAttenteT ? t.id : demandeEnCoursT?.id;
     const adminT = Auth.hasRight('can_validate');
     const btnValiderT = m.querySelector('#dtole-btn-valider');
     if (btnValiderT) {
-      btnValiderT.style.display = (!opts.readOnly && adminT && demandeEnCoursT) ? '' : 'none';
-      btnValiderT.onclick = () => { _fermerModale('m-detail-tole'); validerElement(demandeEnCoursT.id); };
+      btnValiderT.style.display = (!opts.readOnly && adminT && idAValiderT) ? '' : 'none';
+      btnValiderT.onclick = () => { _fermerModale('m-detail-tole'); validerElement(idAValiderT); };
     }
     const btnRefuserT = m.querySelector('#dtole-btn-refuser');
     if (btnRefuserT) {
-      btnRefuserT.style.display = (!opts.readOnly && adminT && demandeEnCoursT) ? '' : 'none';
-      btnRefuserT.onclick = () => { _fermerModale('m-detail-tole'); refuserElement(demandeEnCoursT.id); };
+      btnRefuserT.style.display = (!opts.readOnly && adminT && idAValiderT) ? '' : 'none';
+      btnRefuserT.onclick = () => { _fermerModale('m-detail-tole'); refuserElement(idAValiderT); };
     }
 
     // Champs conditionnels en mode lecture seule (depuis bilan)
@@ -6497,18 +6501,20 @@ ${hasT ? `
       btnUtiliser.style.display = canUtiliser ? '' : 'none';
       btnUtiliser.onclick = () => _entrerModeUtiliserFicheProfil(id, m);
     }
-    // Demande d'attribution en cours sur cette barre : Valider / Refuser (admin)
-    const demandeActif = _demandes.find(d => d.id_barre === b.id);
+    // Nouvel ajout en attente OU demande d'attribution en cours : Valider / Refuser (admin)
+    const demandeActif  = _demandes.find(d => d.id_barre === b.id);
+    const ajoutEnAttente = b.statut === 'en_attente';
+    const idAValider = ajoutEnAttente ? b.id : demandeActif?.id;
     const admin = Auth.hasRight('can_validate');
     const btnValider = m.querySelector('#dprofil-btn-valider');
     if (btnValider) {
-      btnValider.style.display = (!opts.readOnly && admin && demandeActif) ? '' : 'none';
-      btnValider.onclick = () => { _fermerModale('m-detail-profil'); validerElement(demandeActif.id); };
+      btnValider.style.display = (!opts.readOnly && admin && idAValider) ? '' : 'none';
+      btnValider.onclick = () => { _fermerModale('m-detail-profil'); validerElement(idAValider); };
     }
     const btnRefuser = m.querySelector('#dprofil-btn-refuser');
     if (btnRefuser) {
-      btnRefuser.style.display = (!opts.readOnly && admin && demandeActif) ? '' : 'none';
-      btnRefuser.onclick = () => { _fermerModale('m-detail-profil'); refuserElement(demandeActif.id); };
+      btnRefuser.style.display = (!opts.readOnly && admin && idAValider) ? '' : 'none';
+      btnRefuser.onclick = () => { _fermerModale('m-detail-profil'); refuserElement(idAValider); };
     }
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
