@@ -3588,6 +3588,7 @@ ${hasT ? `
 
     // Bannière demandes : clic pour basculer sur Profilés filtré sur les en_attente
     document.getElementById('stock-alerte-demandes')?.addEventListener('click', () => {
+      _activerSectionStock();
       _basculerOnglet('profils', true);
       _filtreEnAttente = true;
       _majBadgeAttente();
