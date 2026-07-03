@@ -3279,9 +3279,11 @@ ${hasT ? `
   }
 
   /* ──────────────────────────────────────────────────────────────
-     MES NOTIFICATIONS — demandes personnelles traitées
-     (acceptées/refusées), sans passer par l'email pour ne pas
-     surcharger la boîte mail. "Vu" est mémorisé localement.
+     MES NOTIFICATIONS — mes demandes personnelles :
+     - en_attente : toujours affichées (rien à "lire", on suit juste
+       leur statut, elles disparaissent d'elles-mêmes une fois traitées)
+     - valide/refuse : affichées tant que non "vues" (mémorisé en
+       local, sans passer par l'email pour ne pas surcharger la boîte)
      ────────────────────────────────────────────────────────────── */
 
   const CLE_NOTIFS_VUES = 'lbf_notifs_demandes_vues';
@@ -3297,21 +3299,20 @@ ${hasT ? `
     try { localStorage.setItem(CLE_NOTIFS_VUES, JSON.stringify([...vus])); } catch {}
   }
 
-  function _mesDemandesNonVues() {
+  function _mesDemandesActives() {
     const session = Auth.getSession();
     if (!session || session.anonyme) return [];
     const vus = _idsNotifsVus();
     return _demandesToutes.filter(d =>
       d.demande_par === session.identifiant &&
-      (d.statut === 'valide' || d.statut === 'refuse') &&
-      !vus.includes(d.id)
+      (d.statut === 'en_attente' || ((d.statut === 'valide' || d.statut === 'refuse') && !vus.includes(d.id)))
     );
   }
 
   function _majBanniereMesDemandes() {
     const z = document.getElementById('stock-alerte-mes-demandes');
     if (!z) return;
-    const mesNotifs = _mesDemandesNonVues();
+    const mesNotifs = _mesDemandesActives();
     if (mesNotifs.length === 0) {
       z.style.display = 'none';
     } else {
@@ -3324,22 +3325,22 @@ ${hasT ? `
   function _ouvrirMesDemandes() {
     const zone = document.getElementById('mdem-liste');
     if (!zone) return;
-    const notifs = _mesDemandesNonVues();
+    const notifs = _mesDemandesActives();
     if (!notifs.length) {
-      zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande traitée à afficher.</div>';
+      zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande à afficher.</div>';
     } else {
       zone.innerHTML = notifs.map(d => {
-        const ok = d.statut === 'valide';
-        const badge = ok
-          ? '<span class="statut-actif">✔ Acceptée</span>'
-          : '<span style="color:var(--rouge);font-weight:bold">✘ Refusée</span>';
+        let badge;
+        if (d.statut === 'en_attente') badge = '<span class="badge badge-attente">⏳ En attente</span>';
+        else if (d.statut === 'valide') badge = '<span class="statut-actif">✔ Acceptée</span>';
+        else badge = '<span style="color:var(--rouge);font-weight:bold">✘ Refusée</span>';
         return `<div style="padding:10px 4px;border-bottom:1px solid #eee">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <strong>${_e(d.id)}</strong> ${badge}
           </div>
           <div style="font-size:13px;color:#555">Chantier : ${_e(_labelChantier(d.chantier_demande) || d.chantier_demande || '—')}</div>
-          ${!ok && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
-          <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || '')}</div>
+          ${d.statut === 'refuse' && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
+          <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || d.date_demande || '')}</div>
         </div>`;
       }).join('');
     }
@@ -3347,7 +3348,13 @@ ${hasT ? `
   }
 
   function fermerMesDemandes() {
-    _marquerNotifsVues(_mesDemandesNonVues().map(d => d.id));
+    // Seules les demandes traitées (valide/refuse) sont marquées "vues" —
+    // les en_attente doivent continuer à s'afficher tant qu'elles ne
+    // sont pas résolues.
+    const idsTraitees = _mesDemandesActives()
+      .filter(d => d.statut === 'valide' || d.statut === 'refuse')
+      .map(d => d.id);
+    _marquerNotifsVues(idsTraitees);
     _fermerModale('m-mes-demandes');
     _majBanniereMesDemandes();
   }
