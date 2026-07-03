@@ -170,10 +170,6 @@ CREATE POLICY "historique_insert" ON lbf_barres_historique
 --  du sélecteur de chantier), désormais réservé aux comptes
 --  authentifiés (le visiteur n'a plus accès aux demandes). Seules
 --  UPDATE/DELETE restent réservées à l'administration.
---
---  demandeurs : table conservée pour l'historique mais verrouillée
---  (RLS activée, aucune policy) — le référentiel libre de demandeurs
---  a été supprimé, l'identité du demandeur vient toujours du compte.
 -- ═══════════════════════════════════════════════════════════════
 
 DROP POLICY IF EXISTS "chantiers_select_anon" ON chantiers;
@@ -196,17 +192,11 @@ CREATE POLICY "chantiers_update" ON chantiers
 CREATE POLICY "chantiers_delete" ON chantiers
   FOR DELETE TO authenticated USING (jwt_profil() = 'administration');
 
-DROP POLICY IF EXISTS "demandeurs_select_anon" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_insert_anon" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_update_anon" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_delete_anon" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_select" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_insert" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_update" ON demandeurs;
-DROP POLICY IF EXISTS "demandeurs_delete" ON demandeurs;
-ALTER TABLE demandeurs ENABLE ROW LEVEL SECURITY;
--- Aucune policy créée : table verrouillée, accès refusé à tous
--- hormis service_role (utilisé uniquement pour la sauvegarde/export).
+-- La table demandeurs a été entièrement supprimée (DROP TABLE) — le
+-- référentiel libre de demandeurs n'existe plus du tout, ni en lecture
+-- ni en écriture. L'identité du demandeur vient uniquement du compte
+-- connecté (voir table demandes, colonnes demandeur_*).
+DROP TABLE IF EXISTS demandeurs;
 
 
 DO $$

@@ -377,21 +377,30 @@ const Stock = (() => {
     _initialiserModales();
     _initStickyTop();
 
-    // Rafraîchissement automatique des demandes pour les admins
+    // Rafraîchissement automatique (demandes + ajouts en attente) pour les admins
     if (Auth.hasRight('can_validate')) {
       setInterval(async () => {
         try {
-          const demandes = await window.SB.lire('demandes');
-          const nouvelles = demandes.filter(d => d.statut === 'en_attente');
-          const avant = _demandes.length;
-          _demandes = nouvelles;
-          if (nouvelles.length !== avant) {
+          const [demandes, barres] = await Promise.all([
+            window.SB.lire('demandes'),
+            window.SB.lire('stock'),
+          ]);
+          const nouvellesDemandes = demandes.filter(d => d.statut === 'en_attente');
+          const avantDemandes = _demandes.length;
+          const avantAjouts   = (_data?.barres || []).filter(b => b.statut === 'en_attente').length;
+          const nouveauxAjouts = barres.filter(b => b.statut === 'en_attente').length;
+
+          _demandesToutes = demandes;
+          _demandes = nouvellesDemandes;
+          if (_data) _data.barres = barres;
+
+          if (nouvellesDemandes.length !== avantDemandes || nouveauxAjouts !== avantAjouts) {
             _filtrer();
             _majAlerteAttente();
             _majBannieresDemandes();
           }
         } catch(e) {}
-      }, 30000);
+      }, 10000);
     }
   }
 
@@ -7230,9 +7239,6 @@ ${hasT ? `
     }
     _majBannieresDemandes();
 
-    // Envoyer email de confirmation
-    await _envoyerMailConfirmation(dem, 'accepte');
-
     _fermerModale('m-valider-demande');
     _filtrer();
     _majAlerteAttente();
@@ -7271,7 +7277,6 @@ ${hasT ? `
           try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
         }
       }
-      if (dem) await _envoyerMailConfirmation(dem, 'refuse', motif);
       try {
         const demandes = await window.SB.lire('demandes');
         _demandesToutes = demandes;
@@ -8101,22 +8106,6 @@ ${hasT ? `
     return null;
   }
 
-  async function _envoyerMailConfirmation(dem, statut, motif = '') {
-    const email = dem.demandeur_email;
-    if (!email) return;
-    try {
-      await window.SB.appelerFonction('notifier-demande', {
-        email,
-        nom:       dem.demandeur,
-        statut,
-        demandeId: dem.id,
-        chantier:  _labelChantier(dem.chantier_demande) || dem.chantier_demande,
-        motif:     motif || '',
-      });
-    } catch(e) {
-      console.warn('[Stock] Envoi email échoué :', e);
-    }
-  }
 
   function _labelChantier(nom) {
     if (!nom) return '';
@@ -9250,7 +9239,6 @@ ${hasT ? `
     { id: 'racks',                 label: 'Zones de stockage',        pk: 'id',  chkBkp: 'chk-bkp-racks',        chkRaz: 'chk-raz-racks' },
     { id: 'chantiers',             label: 'Chantiers',                pk: 'id',  chkBkp: 'chk-bkp-chantiers',    chkRaz: 'chk-raz-chantiers' },
     { id: 'fournisseurs',          label: 'Fournisseurs',             pk: 'id',  chkBkp: 'chk-bkp-fournisseurs', chkRaz: 'chk-raz-fournisseurs' },
-    { id: 'demandeurs',            label: 'Demandeurs',               pk: 'id',  chkBkp: 'chk-bkp-demandeurs',   chkRaz: 'chk-raz-demandeurs' },
     { id: 'config',                label: 'Configuration',            pk: 'key', chkBkp: 'chk-bkp-config',       chkRaz: 'chk-raz-config' },
   ];
 
