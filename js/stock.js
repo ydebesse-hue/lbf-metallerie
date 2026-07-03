@@ -3323,40 +3323,46 @@ ${hasT ? `
   }
 
   function _ouvrirMesDemandes() {
+    _rendreMesDemandes();
+    _ouvrirModale('m-mes-demandes');
+  }
+
+  function _rendreMesDemandes() {
     const zone = document.getElementById('mdem-liste');
     if (!zone) return;
     const notifs = _mesDemandesActives();
     if (!notifs.length) {
       zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande à afficher.</div>';
-    } else {
-      zone.innerHTML = notifs.map(d => {
-        let badge;
-        if (d.statut === 'en_attente') badge = '<span class="badge badge-attente">⏳ En attente</span>';
-        else if (d.statut === 'valide') badge = '<span class="statut-actif">✔ Acceptée</span>';
-        else badge = '<span style="color:var(--rouge);font-weight:bold">✘ Refusée</span>';
-        return `<div style="padding:10px 4px;border-bottom:1px solid #eee">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <strong>${_e(d.id)}</strong> ${badge}
-          </div>
-          <div style="font-size:13px;color:#555">Chantier : ${_e(_labelChantier(d.chantier_demande) || d.chantier_demande || '—')}</div>
-          ${d.statut === 'refuse' && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
-          <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || d.date_demande || '')}</div>
-        </div>`;
-      }).join('');
+      return;
     }
-    _ouvrirModale('m-mes-demandes');
+    zone.innerHTML = notifs.map(d => {
+      const traitee = d.statut === 'valide' || d.statut === 'refuse';
+      let badge;
+      if (d.statut === 'en_attente') badge = '<span class="badge badge-attente">⏳ En attente</span>';
+      else if (d.statut === 'valide') badge = '<span class="statut-actif">✔ Acceptée</span>';
+      else badge = '<span style="color:var(--rouge);font-weight:bold">✘ Refusée</span>';
+      return `<div style="padding:10px 4px;border-bottom:1px solid #eee">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <strong>${_e(d.id)}</strong> ${badge}
+        </div>
+        <div style="font-size:13px;color:#555">Chantier : ${_e(_labelChantier(d.chantier_demande) || d.chantier_demande || '—')}</div>
+        ${d.statut === 'refuse' && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
+        <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || d.date_demande || '')}</div>
+        ${traitee ? `<div style="text-align:right;margin-top:4px">
+          <button class="btn-ligne" style="background:#e8e8e8;color:var(--noir)" onclick="Stock.marquerDemandeLue('${_e(d.id)}')">Marquer comme lu</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function marquerDemandeLue(id) {
+    _marquerNotifsVues([id]);
+    _rendreMesDemandes();
+    _majBanniereMesDemandes();
   }
 
   function fermerMesDemandes() {
-    // Seules les demandes traitées (valide/refuse) sont marquées "vues" —
-    // les en_attente doivent continuer à s'afficher tant qu'elles ne
-    // sont pas résolues.
-    const idsTraitees = _mesDemandesActives()
-      .filter(d => d.statut === 'valide' || d.statut === 'refuse')
-      .map(d => d.id);
-    _marquerNotifsVues(idsTraitees);
     _fermerModale('m-mes-demandes');
-    _majBanniereMesDemandes();
   }
 
   function _majBanniereRecents() {
@@ -10275,6 +10281,7 @@ ${hasT ? `
     validerElement,
     refuserElement,
     fermerMesDemandes,
+    marquerDemandeLue,
     getSelection,
     ouvrirHistoriqueBarre,
     ouvrirHistoriqueTole,
