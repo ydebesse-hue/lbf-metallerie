@@ -749,7 +749,7 @@ const Stock = (() => {
       if (desig.size      && !desig.has(b.designation))             return false;
       if (chantier.size   && !chantier.has(b.chantier_affectation)) return false;
       if (lieu.size       && !lieu.has(b.lieu_stockage))            return false;
-      if (dispo.size      && !dispo.has(b.disponibilite))           return false;
+      if (dispo.size      && !dispo.has(_statutAffiche(b)))         return false;
       if (classe.size     && !classe.has(b.classe_acier))           return false;
       if (origine.size    && !origine.has(b.chantier_origine))      return false;
       if (fournisseur.size && !fournisseur.has(b.fournisseur))      return false;
@@ -774,7 +774,7 @@ const Stock = (() => {
       if (epaisseur.size && !epaisseur.has(String(b.epaisseur_mm))) return false;
       if (chantier.size  && !chantier.has(b.chantier_origine))     return false;
       if (lieu.size      && !lieu.has(b.lieu_stockage))            return false;
-      if (dispo.size     && !dispo.has(b.disponibilite))           return false;
+      if (dispo.size     && !dispo.has(_statutAffiche(b)))         return false;
       if (texte) {
         const h = [b.epaisseur_mm, b.largeur_mm, b.longueur_mm,
           b.type_tole, b.ref_commande,
@@ -929,7 +929,7 @@ const Stock = (() => {
         filtre = `<button type="button" class="th-filtre-btn${nD ? ' th-filtre-actif' : ''}" data-filtre="p-desig">${_e(lblD)}</button>`;
       } else if (c.key === 'dispo') {
         const setDp = _filtresP.dispo; const nDp = setDp.size;
-        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
+        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté', attribution_demandee: 'Attrib. demandée', ajout_en_attente: 'Ajout en attente' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${nDp ? ' th-filtre-actif' : ''}" data-filtre="p-dispo">${_e(lblDp)}</button>`;
       } else if (c.key === 'chantier') {
         const setCh = _filtresP.chantier; const nCh = setCh.size;
@@ -1240,7 +1240,7 @@ const Stock = (() => {
         filtre = `<button type="button" class="th-filtre-btn${nE ? ' th-filtre-actif' : ''}" data-filtre="t-epaisseur">${_e(lblE)}</button>`;
       } else if (c.key === 'dispo') {
         const setDp = _filtresT.dispo; const nDp = setDp.size;
-        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
+        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté', attribution_demandee: 'Attrib. demandée', ajout_en_attente: 'Ajout en attente' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${nDp ? ' th-filtre-actif' : ''}" data-filtre="t-dispo">${_e(lblDp)}</button>`;
       } else if (c.key === 'chantier') {
         const setCh = _filtresT.chantier; const nCh = setCh.size;
@@ -3141,7 +3141,12 @@ ${hasT ? `
           .map(v => ({ value: v, label: v }));
       }
       case 'p-dispo': case 't-dispo':
-        return [{ value: 'disponible', label: 'Disponible' }, { value: 'affecte', label: 'Affecté' }];
+        return [
+          { value: 'disponible',           label: 'Disponible' },
+          { value: 'affecte',              label: 'Affecté' },
+          { value: 'attribution_demandee', label: 'Attribution demandée' },
+          { value: 'ajout_en_attente',     label: 'Ajout en attente' },
+        ];
       case 'p-chantier':
         return uniq(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))
           .map(v => ({ value: v, label: _labelChantier(v) }));
