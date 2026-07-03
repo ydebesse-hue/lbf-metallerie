@@ -1384,9 +1384,10 @@ const Stock = (() => {
       }
     }
 
-    // Demander : tous les profils (si disponible et pas de demande en cours)
+    // Demander : comptes connectés uniquement (le visiteur anonyme n'y a plus accès)
     const demandeActifP = _demandes.find(d => d.id_barre === b.id);
-    if (b.statut !== 'en_attente' && !demandeActifP) {
+    const sessionDem = Auth.getSession();
+    if (b.statut !== 'en_attente' && !demandeActifP && sessionDem && !sessionDem.anonyme) {
       const dis = b.disponibilite !== 'disponible' ? ' disabled' : '';
       h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${_e(b.id)}')" title="Demander l'attribution">Demander</button>`;
     }
@@ -6516,7 +6517,9 @@ ${hasT ? `
     }
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
-      const canDemander = !opts.readOnly && !canModif && b.statut !== 'en_attente' && !demandeActif;
+      const sessionDp = Auth.getSession();
+      const canDemander = !opts.readOnly && !canModif && b.statut !== 'en_attente' && !demandeActif
+        && sessionDp && !sessionDp.anonyme;
       btnDemander.style.display = canDemander ? '' : 'none';
       btnDemander.disabled = b.disponibilite !== 'disponible';
       btnDemander.onclick = () => { _fermerModale('m-detail-profil'); ouvrirDemande(id); };
