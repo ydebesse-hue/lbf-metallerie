@@ -495,6 +495,11 @@
     .badge-dispo   { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert);  }
     .badge-affecte { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
     .badge-attente { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+    .infos-demande {
+      display: block; margin-top: 3px; font-size: 11px; color: #8a6d1f;
+      white-space: normal; line-height: 1.4;
+    }
+    .infos-demande b { color: inherit; }
 
     .chip-chantier {
       display: inline-block;
@@ -1148,6 +1153,7 @@
     .col-p-poids       { width: 68px;  text-align: center; }
     .col-p-classe      { width: 62px;  text-align: center; }
     .col-p-dispo       { width: 108px; }
+    .col-p-dispo:has(.infos-demande) { width: 180px; white-space: normal; overflow: visible; vertical-align: top; }
     .col-p-date        { width: 82px;  }
     .col-p-chantier    { width: 112px; }
     .col-p-lieu        { width: 95px;  }
@@ -1197,6 +1203,7 @@
     .col-t-date       { width: 82px;  }
     .col-t-chantier   { width: 118px; }
     .col-t-dispo      { width: 108px; }
+    .col-t-dispo:has(.infos-demande) { width: 180px; white-space: normal; overflow: visible; vertical-align: top; }
     .col-t-ref_cmd    { width: 110px; }
     .col-t-actions    { width: 108px; }
 
@@ -3434,7 +3441,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260702"></script>
+  <script src="../js/stock.js?v=20260703"></script>
 
 </body>
 </html>
