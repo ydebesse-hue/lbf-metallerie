@@ -4652,11 +4652,9 @@ ${hasT ? `
           classe_acier: classe || null,
           ref_commande: refCmd,
           fournisseur: fournisseur,
-          statut: 'valide',
+          ..._statutNouvelAjout(session),
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
-          valide_par: session?.identifiant || null,
-          date_validation: _dateAujourdhui(),
           commentaire,
         };
         const enLigne = await _persisterElement(barre);
@@ -4738,11 +4736,9 @@ ${hasT ? `
           classe_acier: classe || null,
           ref_commande: refCmd || null,
           fournisseur: fournisseur || null,
-          statut: 'valide',
+          ..._statutNouvelAjout(session),
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
-          valide_par: session?.identifiant || null,
-          date_validation: _dateAujourdhui(),
           commentaire: '',
         };
 
@@ -5293,11 +5289,9 @@ ${hasT ? `
       lieu_stockage: lieu,
       disponibilite: dispo,
       chantier_affectation: null,
-      statut: 'valide',
+      ..._statutNouvelAjout(session),
       date_ajout: _dateAujourdhui(),
       ajoute_par: session?.identifiant || 'inconnu',
-      valide_par: session?.identifiant || null,
-      date_validation: _dateAujourdhui(),
       commentaire
     };
 
@@ -8287,6 +8281,19 @@ ${hasT ? `
   /** Retourne la date du jour au format ISO (YYYY-MM-DD) */
   function _dateAujourdhui() {
     return new Date().toISOString();
+  }
+
+  /**
+   * Statut et infos de validation initiaux pour un NOUVEL ajout au stock.
+   * Un compte "gestion" soumet pour validation (en_attente) ; un compte
+   * "administration" est auto-validé. Ne concerne que les ajouts — les
+   * modifications, sorties/utilisations et chutes restent immédiates.
+   */
+  function _statutNouvelAjout(session) {
+    if (session?.profil === 'gestion') {
+      return { statut: 'en_attente', valide_par: null, date_validation: null };
+    }
+    return { statut: 'valide', valide_par: session?.identifiant || null, date_validation: _dateAujourdhui() };
   }
 
 
