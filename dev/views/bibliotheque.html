@@ -994,6 +994,7 @@ header {
 <div class="sub-tabs">
   <button class="sub-tab active" onclick="switchOnglet('profils',this)">Bibliothèque profilés</button>
   <button class="sub-tab" onclick="switchOnglet('calcul-toles',this)">Calcul tôles</button>
+  <button class="sub-tab" onclick="switchOnglet('comparateur',this)">Comparateur profilés</button>
 </div>
 
 <!-- ══════════════════════
@@ -1124,6 +1125,32 @@ header {
 
 </div>
 
+<!-- ══════════════════════
+     PANNEAU — COMPARATEUR PROFILÉS
+══════════════════════ -->
+<div id="panel-comparateur" class="calc-wrap" style="display:none">
+  <div class="calc-bloc">
+    <h3>Comparateur de profilés</h3>
+    <p class="calc-aide">Ajoute plusieurs sections pour comparer leurs dimensions et leur poids côte à côte.</p>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:16px">
+      <div class="fr" style="margin-bottom:0">
+        <label>Famille</label>
+        <select id="comp-sel-famille" onchange="compMajDesignations()"></select>
+      </div>
+      <div class="fr" style="margin-bottom:0">
+        <label>Désignation</label>
+        <select id="comp-sel-desig"></select>
+      </div>
+      <button type="button" class="btn btn-rouge" onclick="compAjouterSection()">+ Ajouter au comparatif</button>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="calc-table" id="comp-table"></table>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════
      MODALE — FICHE DÉTAIL SECTION
 ══════════════════════════════════════════ -->
@@ -1220,6 +1247,7 @@ header {
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
 <script src="../js/calcul-toles.js?v=20260703"></script>
+<script src="../js/comparateur-profils.js?v=20260703"></script>
 <script>
 /* ══════════════════════════════════════════════
    INITIALISATION DE LA PAGE
@@ -1275,25 +1303,30 @@ function retourAccueil() {
 }
 
 /**
- * Basculement sous-onglet ("Bibliothèque profilés" / "Calcul tôles" —
- * d'autres outils viendront s'ajouter ici)
+ * Basculement sous-onglet ("Bibliothèque profilés" / "Calcul tôles" /
+ * "Comparateur profilés" — d'autres outils viendront s'ajouter ici)
  */
 function switchOnglet(onglet, btn) {
   document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
 
-  const panelProfils = document.getElementById('panel-profils');
-  const panelCalcul  = document.getElementById('panel-calcul-toles');
+  const panels = {
+    profils:      document.getElementById('panel-profils'),
+    'calcul-toles': document.getElementById('panel-calcul-toles'),
+    comparateur:  document.getElementById('panel-comparateur'),
+  };
+  Object.entries(panels).forEach(([key, el]) => {
+    if (el) el.style.display = key === onglet ? '' : 'none';
+  });
 
   if (onglet === 'calcul-toles') {
     document.title = 'Calcul tôles — LBF';
-    panelProfils.style.display = 'none';
-    panelCalcul.style.display  = '';
     calcInit();
+  } else if (onglet === 'comparateur') {
+    document.title = 'Comparateur profilés — LBF';
+    compInit();
   } else {
     document.title = 'Bibliothèque profilés — LBF';
-    panelCalcul.style.display  = 'none';
-    panelProfils.style.display = '';
     biblioRendreGrille();
   }
 }
