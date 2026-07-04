@@ -99,49 +99,33 @@ function compRendreTable() {
     return;
   }
 
-  // Dimensions par colonne + union ordonnée des libellés de lignes
-  const dimsParCol = cols.map(c => _dimsSection(c.section, c.famille));
+  // Dimensions par section + union ordonnée des libellés de colonnes
+  const dimsParSection = cols.map(c => _dimsSection(c.section, c.famille));
   const labels = [];
-  dimsParCol.forEach(dims => dims.forEach(([label]) => {
+  dimsParSection.forEach(dims => dims.forEach(([label]) => {
     if (!labels.includes(label)) labels.push(label);
   }));
 
-  // En-tête : nom de section + bouton retrait
-  let thead = '<thead><tr><th style="text-align:left"></th>';
-  cols.forEach(c => {
+  // En-tête : nom de la caractéristique, une colonne par label + Longueur/Poids total
+  let thead = '<thead><tr><th style="text-align:left">Section</th>';
+  labels.forEach(label => { thead += `<th>${_compEsc(label)}</th>`; });
+  thead += '<th>Longueur (m)</th><th>Poids total (kg)</th><th></th></tr></thead>';
+
+  // Une ligne par section comparée
+  const lignes = cols.map((c, i) => {
     const nomSection = `${c.famille} ${c.section.serie ? c.section.serie + ' ' : ''}${c.section.desig}`;
-    thead += `<th>
-      ${_compEsc(nomSection)}
-      <button type="button" class="calc-btn-suppr" onclick="compRetirerSection(${c.uid})" title="Retirer">✕</button>
-    </th>`;
-  });
-  thead += '</tr></thead>';
-
-  // Ligne longueur (éditable, sert au calcul du poids total)
-  let ligneLongueur = '<tr><td style="text-align:left">Longueur (m)</td>';
-  cols.forEach(c => {
-    ligneLongueur += `<td><input type="number" step="0.1" min="0" value="${_compEsc(c.longueur)}"
-      onchange="compMajLongueur(${c.uid},this.value)"></td>`;
-  });
-  ligneLongueur += '</tr>';
-
-  // Lignes de dimensions (union des libellés, "—" si absent pour une colonne)
-  const lignesDims = labels.map(label => {
-    let row = `<tr><td style="text-align:left">${_compEsc(label)}</td>`;
-    dimsParCol.forEach(dims => {
-      const paire = dims.find(([l]) => l === label);
+    const poids = (c.section.pml || 0) * (c.longueur || 0);
+    let row = `<tr><td style="text-align:left">${_compEsc(nomSection)}</td>`;
+    labels.forEach(label => {
+      const paire = dimsParSection[i].find(([l]) => l === label);
       row += `<td>${_compEsc(paire ? paire[1] : '—')}</td>`;
     });
+    row += `<td><input type="number" step="0.1" min="0" value="${_compEsc(c.longueur)}"
+      onchange="compMajLongueur(${c.uid},this.value)"></td>`;
+    row += `<td>${poids ? poids.toFixed(1) : '0.0'} kg</td>`;
+    row += `<td><button type="button" class="calc-btn-suppr" onclick="compRetirerSection(${c.uid})" title="Retirer">✕</button></td>`;
     return row + '</tr>';
   }).join('');
 
-  // Ligne poids total = poids/ml × longueur
-  let lignePoidsTotal = '<tr class="calc-total-row"><td style="text-align:left">Poids total (kg)</td>';
-  cols.forEach(c => {
-    const poids = (c.section.pml || 0) * (c.longueur || 0);
-    lignePoidsTotal += `<td>${poids ? poids.toFixed(1) : '0.0'} kg</td>`;
-  });
-  lignePoidsTotal += '</tr>';
-
-  table.innerHTML = thead + `<tbody>${ligneLongueur}${lignesDims}${lignePoidsTotal}</tbody>`;
+  table.innerHTML = thead + `<tbody>${lignes}</tbody>`;
 }
