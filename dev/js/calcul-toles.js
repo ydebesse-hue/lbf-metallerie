@@ -164,13 +164,17 @@ function calcRendreTableRepartition() {
   let thead = `<thead><tr>
     <th rowspan="2" style="text-align:left">Épaisseur</th>
     <th rowspan="2" style="text-align:left">Qualité</th>
-    <th rowspan="2">Format tôle (mm)</th>`;
+    <th rowspan="2">Format tôle (mm)</th>
+    <th rowspan="2">Surface totale</th>
+    <th rowspan="2">Nb tôles</th>
+    <th rowspan="2">Poids total</th>
+    <th rowspan="2">Taux de chute</th>`;
   chantiers.forEach(c => {
-    thead += `<th>${_calcEsc([c.numero_affaire, c.nom].filter(Boolean).join(' — '))}
+    thead += `<th colspan="2">${_calcEsc([c.numero_affaire, c.nom].filter(Boolean).join(' — '))}
       <button type="button" class="calc-btn-suppr" onclick="calcRetirerChantierRepartition('${_calcEsc(c.id)}')" title="Retirer">✕</button>
     </th>`;
   });
-  thead += `<th rowspan="2">Surface totale</th><th rowspan="2">Nb tôles</th><th rowspan="2">Taux de chute</th><th rowspan="2"></th></tr><tr>`;
+  thead += `<th rowspan="2"></th></tr><tr>`;
   chantiers.forEach(() => { thead += `<th>Poids (kg)</th><th>Surface (m²)</th>`; });
   thead += `</tr></thead>`;
 
@@ -190,16 +194,17 @@ function calcRendreTableRepartition() {
         <input type="number" value="${l.largeur}" onchange="calcMajRepartition(${l.id})" data-rep-field="largeur" style="width:60px">
         ×
         <input type="number" value="${l.longueur}" onchange="calcMajRepartition(${l.id})" data-rep-field="longueur" style="width:60px">
-      </td>`;
+      </td>
+      <td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
+      <td class="calc-cell-calc" data-rep-nb-toles>0</td>
+      <td class="calc-cell-calc" data-rep-total-poids>0 kg</td>
+      <td class="calc-cell-calc" data-rep-chute>—</td>`;
     chantiers.forEach(c => {
       const poids = l.poids[c.id] || 0;
       row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${l.id})" data-rep-chantier="${_calcEsc(c.id)}"></td>
         <td class="calc-cell-calc" data-rep-surface="${_calcEsc(c.id)}">0.00 m²</td>`;
     });
-    row += `<td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
-      <td class="calc-cell-calc" data-rep-nb-toles>0</td>
-      <td class="calc-cell-calc" data-rep-chute>—</td>
-      <td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneRepartition(${l.id})" title="Supprimer cette ligne">✕</button></td></tr>`;
+    row += `<td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneRepartition(${l.id})" title="Supprimer cette ligne">✕</button></td></tr>`;
     return row;
   }).join('');
 
@@ -224,7 +229,7 @@ function calcMajRepartition(id) {
   const estQualiteBase = !qualite.trim() || qualite.trim().toUpperCase() === 'S235';
   tr.classList.toggle('calc-ligne-alerte', !estQualiteBase);
 
-  let totalSurface = 0;
+  let totalSurface = 0, totalPoids = 0;
   CalcToles.chantiersRepartition.forEach(c => {
     const inp   = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
     const poids = parseFloat(inp?.value) || 0;
@@ -233,6 +238,7 @@ function calcMajRepartition(id) {
     const cellSurface = tr.querySelector(`[data-rep-surface="${c.id}"]`);
     if (cellSurface) cellSurface.textContent = surfaceChantier ? surfaceChantier.toFixed(2) + ' m²' : '0.00 m²';
     totalSurface += surfaceChantier;
+    totalPoids += poids;
   });
 
   const surfaceTole = (largeur * longueur) / 1e6;
@@ -242,6 +248,7 @@ function calcMajRepartition(id) {
 
   tr.querySelector('[data-rep-total-surface]').textContent = totalSurface.toFixed(2) + ' m²';
   tr.querySelector('[data-rep-nb-toles]').textContent = nbToles || 0;
+  tr.querySelector('[data-rep-total-poids]').textContent = totalPoids ? totalPoids.toFixed(0) + ' kg' : '0 kg';
   tr.querySelector('[data-rep-chute]').textContent = totalSurface > 0 ? tauxChute.toFixed(1) + ' %' : '—';
 }
 
