@@ -5,7 +5,6 @@
  * Outil de calcul à la volée (aucune sauvegarde en base) :
  *   1. Convertisseur rapide (dimensions ↔ poids ↔ prix)
  *   2. Répartition des besoins par chantier
- *   3. Commande multi-lignes
  *
  * Densité acier : 7.85 kg par m² et par mm d'épaisseur (7850 kg/m³).
  */
@@ -21,24 +20,14 @@ const CalcToles = {
   chantiers: [],              // chantiers actifs chargés depuis Supabase
   chantiersRepartition: [],   // chantiers ajoutés au tableau de répartition
   lignesRepartition: [],      // { id, epaisseur, qualite, largeur, longueur, poids: { [chantierId]: poids } }
-  lignesCommande: [],         // { id, epaisseur, largeur, longueur, nombre, prixKg }
 };
 
-let _cmdSeq = 0;
 let _repSeq = 0;
 
 function _calcEsc(val) {
   if (val == null) return '';
   return String(val)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function calcSurface(largeur_mm, longueur_mm, nombre) {
-  return ((largeur_mm || 0) * (longueur_mm || 0) / 1e6) * (nombre || 0);
-}
-
-function calcPoids(surface_m2, epaisseur_mm) {
-  return surface_m2 * (epaisseur_mm || 0) * DENSITE_ACIER;
 }
 
 /* ══════════════════════════════════════════════
@@ -65,7 +54,6 @@ async function calcInit() {
 
   calcRendreSelectChantier();
   calcRendreTableRepartition();
-  calcAjouterLigneCommande();
 }
 
 /* ══════════════════════════════════════════════
@@ -169,7 +157,8 @@ function calcCopierTableauRepartition() {
       entetes.push(`${nom} — Poids (kg)`, `${nom} — Surface (m²)`);
     });
   }
-  const lignes = [entetes];
+  const lignes = [];
+  const alertes = [];
 
   CalcToles.lignesRepartition.forEach(l => {
     const tr = table.querySelector(`tr[data-rep-id="${l.id}"]`);
@@ -189,12 +178,16 @@ function calcCopierTableauRepartition() {
       });
     }
     lignes.push(cells);
+    alertes.push((l.qualite || '').trim().toUpperCase() !== 'S235');
   });
 
-  const texte = lignes.map(l => l.join('\t')).join('\n');
-  const html = '<table>'
-    + '<tr>' + entetes.map(e => `<th>${_calcEsc(e)}</th>`).join('') + '</tr>'
-    + lignes.slice(1).map(l => '<tr>' + l.map(v => `<td>${_calcEsc(v)}</td>`).join('') + '</tr>').join('')
+  const texte = [entetes, ...lignes].map(l => l.join('\t')).join('\n');
+  const styleEntete = 'background:#e0e0e0;font-weight:bold;border:1px solid #999;padding:4px 8px';
+  const styleCellule = 'border:1px solid #ccc;padding:4px 8px';
+  const styleCelluleAlerte = styleCellule + ';background:#fdecea';
+  const html = '<table style="border-collapse:collapse">'
+    + '<tr>' + entetes.map(e => `<th style="${styleEntete}">${_calcEsc(e)}</th>`).join('') + '</tr>'
+    + lignes.map((l, i) => '<tr>' + l.map(v => `<td style="${alertes[i] ? styleCelluleAlerte : styleCellule}">${_calcEsc(v)}</td>`).join('') + '</tr>').join('')
     + '</table>';
 
   if (navigator.clipboard && window.ClipboardItem) {
@@ -312,61 +305,3 @@ function calcMajRepartition(id) {
   tr.querySelector('[data-rep-chute]').textContent = totalSurface > 0 ? tauxChute.toFixed(1) + ' %' : '—';
 }
 
-/* ══════════════════════════════════════════════
-   BLOC 3 — COMMANDE MULTI-LIGNES
-══════════════════════════════════════════════ */
-
-function calcAjouterLigneCommande() {
-  CalcToles.lignesCommande.push({ id: ++_cmdSeq, epaisseur: '', largeur: '', longueur: '', nombre: 1, prixKg: '' });
-  calcRendreCommande();
-}
-
-function calcSupprimerLigneCommande(id) {
-  CalcToles.lignesCommande = CalcToles.lignesCommande.filter(l => l.id !== id);
-  calcRendreCommande();
-}
-
-function calcMajLigneCommande(id, champ, valeur) {
-  const ligne = CalcToles.lignesCommande.find(l => l.id === id);
-  if (!ligne) return;
-  ligne[champ] = valeur;
-  calcRendreCommande();
-}
-
-function calcRendreCommande() {
-  const tbody = document.getElementById('cmd-tbody');
-  if (!tbody) return;
-
-  if (!CalcToles.lignesCommande.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#aaa;padding:14px">Aucune ligne — clique sur « + Ajouter une ligne »</td></tr>';
-  } else {
-    tbody.innerHTML = CalcToles.lignesCommande.map(l => {
-      const surface = calcSurface(l.largeur, l.longueur, l.nombre);
-      const poids   = calcPoids(surface, l.epaisseur);
-      const prix    = poids * (parseFloat(l.prixKg) || 0);
-      return `<tr>
-        <td><input type="number" step="1" value="${_calcEsc(l.epaisseur)}" onchange="calcMajLigneCommande(${l.id},'epaisseur',this.value)"></td>
-        <td><input type="number" step="100" value="${_calcEsc(l.largeur)}" onchange="calcMajLigneCommande(${l.id},'largeur',this.value)"></td>
-        <td><input type="number" step="100" value="${_calcEsc(l.longueur)}" onchange="calcMajLigneCommande(${l.id},'longueur',this.value)"></td>
-        <td><input type="number" min="1" value="${_calcEsc(l.nombre)}" onchange="calcMajLigneCommande(${l.id},'nombre',this.value)"></td>
-        <td class="calc-cell-calc">${surface ? surface.toFixed(2) : '0.00'} m²</td>
-        <td class="calc-cell-calc">${poids ? poids.toFixed(0) : 0} kg</td>
-        <td><input type="number" step="0.01" value="${_calcEsc(l.prixKg)}" onchange="calcMajLigneCommande(${l.id},'prixKg',this.value)"></td>
-        <td class="calc-cell-calc">${prix ? prix.toFixed(2) : '0.00'} €</td>
-        <td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneCommande(${l.id})" title="Supprimer">✕</button></td>
-      </tr>`;
-    }).join('');
-  }
-
-  let totS = 0, totP = 0, totPrix = 0;
-  CalcToles.lignesCommande.forEach(l => {
-    const surface = calcSurface(l.largeur, l.longueur, l.nombre);
-    const poids   = calcPoids(surface, l.epaisseur);
-    totS += surface;
-    totP += poids;
-    totPrix += poids * (parseFloat(l.prixKg) || 0);
-  });
-  document.getElementById('cmd-total-surface').textContent = totS.toFixed(2) + ' m²';
-  document.getElementById('cmd-total-poids').textContent   = totP.toFixed(0) + ' kg';
-  document.getElementById('cmd-total-prix').textContent    = totPrix.toFixed(2) + ' €';
-}
