@@ -1051,39 +1051,46 @@ header {
   <!-- BLOC 1 — Convertisseur rapide -->
   <div class="calc-bloc">
     <h3>Convertisseur rapide</h3>
-    <p class="calc-aide">Renseigne l'épaisseur et les dimensions (ou le poids) : le reste se calcule automatiquement.</p>
+    <p class="calc-aide">Renseigne l'épaisseur et le poids : la surface nécessaire se calcule automatiquement.</p>
     <div class="calc-conv-grille">
       <div class="fr">
         <label>Épaisseur (mm)</label>
         <input type="number" id="cv-epaisseur" step="0.1" placeholder="6" oninput="calcConvertisseur()">
       </div>
       <div class="fr">
-        <label>Largeur (mm)</label>
-        <input type="number" id="cv-largeur" step="1" placeholder="1500" oninput="calcConvertisseur('dims')">
-      </div>
-      <div class="fr">
-        <label>Longueur (mm)</label>
-        <input type="number" id="cv-longueur" step="1" placeholder="3000" oninput="calcConvertisseur('dims')">
-      </div>
-      <div class="fr">
-        <label>Nombre</label>
-        <input type="number" id="cv-nombre" step="1" min="1" value="1" oninput="calcConvertisseur('dims')">
-      </div>
-      <div class="fr">
         <label>Poids total (kg)</label>
-        <input type="number" id="cv-poids" step="0.1" placeholder="—" oninput="calcConvertisseur('poids')">
+        <input type="number" id="cv-poids" step="0.1" placeholder="—" oninput="calcConvertisseur()">
       </div>
       <div class="fr">
-        <label>Surface (m²)</label>
+        <label>Surface nécessaire (m²)</label>
         <input type="number" id="cv-surface" step="0.01" placeholder="—" readonly>
       </div>
+    </div>
+    <p class="calc-aide">Indique ensuite un format de tôle pour connaître le nombre de tôles à commander et la chute.</p>
+    <div class="calc-conv-grille">
       <div class="fr">
-        <label>Prix / kg (€)</label>
-        <input type="number" id="cv-prix-kg" step="0.01" placeholder="0.97" oninput="calcConvertisseur('dims')">
+        <label>Largeur tôle (mm)</label>
+        <input type="number" id="cv-tole-largeur" step="1" placeholder="1500" oninput="calcConvertisseur()">
       </div>
       <div class="fr">
-        <label>Prix total (€)</label>
-        <input type="text" id="cv-prix" placeholder="—" readonly>
+        <label>Longueur tôle (mm)</label>
+        <input type="number" id="cv-tole-longueur" step="1" placeholder="3000" oninput="calcConvertisseur()">
+      </div>
+      <div class="fr">
+        <label>Surface / tôle (m²)</label>
+        <input type="number" id="cv-tole-surface" step="0.01" placeholder="—" readonly>
+      </div>
+      <div class="fr">
+        <label>Nombre de tôles</label>
+        <input type="number" id="cv-tole-nombre" placeholder="—" readonly>
+      </div>
+      <div class="fr">
+        <label>Chute (%)</label>
+        <input type="text" id="cv-chute-pct" placeholder="—" readonly>
+      </div>
+      <div class="fr">
+        <label>Surface de chute (m²)</label>
+        <input type="number" id="cv-chute-surface" step="0.01" placeholder="—" readonly>
       </div>
     </div>
     <button type="button" class="btn btn-gris" onclick="calcReinitialiserConvertisseur()">↺ Réinitialiser</button>
@@ -1260,7 +1267,7 @@ header {
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
-<script src="../js/calcul-toles.js?v=20260705"></script>
+<script src="../js/calcul-toles.js?v=20260705b"></script>
 <script src="../js/comparateur-profils.js?v=20260705"></script>
 <script>
 /* ══════════════════════════════════════════════
