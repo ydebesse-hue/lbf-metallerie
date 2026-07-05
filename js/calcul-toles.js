@@ -19,7 +19,7 @@ const CalcToles = {
   chantiers: [],              // chantiers actifs chargés depuis Supabase
   chantiersRepartition: [],   // chantiers ajoutés au tableau de répartition
   epaisseurs: [2, 4, 6, 8, 10, 12, 15, 20, 25, 30],
-  dimsParEpaisseur: {},       // { [epaisseur]: { largeur, longueur } }
+  dimsParEpaisseur: {},       // { [epaisseur]: { qualite, largeur, longueur } }
   lignesCommande: [],         // { id, epaisseur, largeur, longueur, nombre, prixKg }
 };
 
@@ -142,28 +142,33 @@ function calcRendreTableRepartition() {
 
   let thead = `<thead><tr>
     <th rowspan="2" style="text-align:left">Épaisseur</th>
-    <th rowspan="2">Largeur (mm)</th>
-    <th rowspan="2">Longueur (mm)</th>`;
+    <th rowspan="2" style="text-align:left">Qualité</th>
+    <th rowspan="2">Format tôle (mm)</th>`;
   chantiers.forEach(c => {
-    thead += `<th colspan="2">${_calcEsc(c.nom)}
+    thead += `<th>${_calcEsc(c.nom)}
       <button type="button" class="calc-btn-suppr" onclick="calcRetirerChantierRepartition('${_calcEsc(c.id)}')" title="Retirer">✕</button>
     </th>`;
   });
-  thead += `<th colspan="2">Total</th></tr><tr>`;
-  chantiers.forEach(() => { thead += `<th>Nombre</th><th>Poids</th>`; });
-  thead += `<th>Poids</th><th>Surface</th></tr></thead>`;
+  thead += `<th rowspan="2">Surface totale</th><th rowspan="2">Nb tôles</th><th rowspan="2">Taux de chute</th></tr><tr>`;
+  chantiers.forEach(() => { thead += `<th>Poids (kg)</th>`; });
+  thead += `</tr></thead>`;
 
   const tbody = CalcToles.epaisseurs.map(ep => {
-    const dims = CalcToles.dimsParEpaisseur[ep] || { largeur: 1500, longueur: 3000 };
+    const dims = CalcToles.dimsParEpaisseur[ep] || { qualite: '', largeur: 1500, longueur: 3000 };
     let row = `<tr data-ep="${ep}">
       <td>${ep} mm</td>
-      <td><input type="number" value="${dims.largeur}" onchange="calcMajRepartition(${ep})" data-rep-field="largeur"></td>
-      <td><input type="number" value="${dims.longueur}" onchange="calcMajRepartition(${ep})" data-rep-field="longueur"></td>`;
+      <td><input type="text" value="${_calcEsc(dims.qualite || '')}" placeholder="—" onchange="calcMajRepartition(${ep})" data-rep-field="qualite" style="width:80px"></td>
+      <td>
+        <input type="number" value="${dims.largeur}" onchange="calcMajRepartition(${ep})" data-rep-field="largeur" style="width:60px">
+        ×
+        <input type="number" value="${dims.longueur}" onchange="calcMajRepartition(${ep})" data-rep-field="longueur" style="width:60px">
+      </td>`;
     chantiers.forEach(c => {
-      row += `<td><input type="number" min="0" value="0" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>
-        <td class="calc-chantier-poids" data-rep-poids="${_calcEsc(c.id)}">0 kg</td>`;
+      row += `<td><input type="number" min="0" step="0.1" value="0" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>`;
     });
-    row += `<td data-rep-total-poids>0 kg</td><td data-rep-total-surface>0.00 m²</td></tr>`;
+    row += `<td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
+      <td class="calc-cell-calc" data-rep-nb-toles>0</td>
+      <td class="calc-cell-calc" data-rep-chute>—</td></tr>`;
     return row;
   }).join('');
 
@@ -175,24 +180,26 @@ function calcMajRepartition(ep) {
   const tr = document.querySelector(`#rep-table tr[data-ep="${ep}"]`);
   if (!tr) return;
 
+  const qualite  = tr.querySelector('[data-rep-field="qualite"]').value;
   const largeur  = parseFloat(tr.querySelector('[data-rep-field="largeur"]').value) || 0;
   const longueur = parseFloat(tr.querySelector('[data-rep-field="longueur"]').value) || 0;
-  CalcToles.dimsParEpaisseur[ep] = { largeur, longueur };
+  CalcToles.dimsParEpaisseur[ep] = { qualite, largeur, longueur };
 
-  let totalPoids = 0, totalSurface = 0;
+  let totalSurface = 0;
   CalcToles.chantiersRepartition.forEach(c => {
-    const inp = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
-    const nombre  = parseFloat(inp?.value) || 0;
-    const surface = calcSurface(largeur, longueur, nombre);
-    const poids   = calcPoids(surface, ep);
-    const cellPoids = tr.querySelector(`[data-rep-poids="${c.id}"]`);
-    if (cellPoids) cellPoids.textContent = poids ? poids.toFixed(0) + ' kg' : '0 kg';
-    totalPoids += poids;
-    totalSurface += surface;
+    const inp   = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
+    const poids = parseFloat(inp?.value) || 0;
+    totalSurface += ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
   });
 
-  tr.querySelector('[data-rep-total-poids]').textContent   = totalPoids.toFixed(0) + ' kg';
+  const surfaceTole = (largeur * longueur) / 1e6;
+  const nbToles = surfaceTole > 0 ? Math.ceil(totalSurface / surfaceTole) : 0;
+  const surfaceCommandee = nbToles * surfaceTole;
+  const tauxChute = surfaceCommandee > 0 ? ((surfaceCommandee - totalSurface) / surfaceCommandee) * 100 : 0;
+
   tr.querySelector('[data-rep-total-surface]').textContent = totalSurface.toFixed(2) + ' m²';
+  tr.querySelector('[data-rep-nb-toles]').textContent = nbToles || 0;
+  tr.querySelector('[data-rep-chute]').textContent = totalSurface > 0 ? tauxChute.toFixed(1) + ' %' : '—';
 }
 
 /* ══════════════════════════════════════════════
