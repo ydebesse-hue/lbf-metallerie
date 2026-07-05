@@ -167,6 +167,7 @@ function calcRendreTableRepartition() {
     <th rowspan="2">Format tôle (mm)</th>
     <th rowspan="2">Surface totale</th>
     <th rowspan="2">Nb tôles</th>
+    <th rowspan="2">Surface tôles</th>
     <th rowspan="2">Poids total</th>
     <th rowspan="2">Taux de chute</th>`;
   chantiers.forEach(c => {
@@ -191,17 +192,18 @@ function calcRendreTableRepartition() {
         </select>
       </td>
       <td>
-        <input type="number" value="${l.largeur}" onchange="calcMajRepartition(${l.id})" data-rep-field="largeur" style="width:60px">
+        <input type="number" value="${l.largeur}" step="100" onchange="calcMajRepartition(${l.id})" data-rep-field="largeur" style="width:60px">
         ×
-        <input type="number" value="${l.longueur}" onchange="calcMajRepartition(${l.id})" data-rep-field="longueur" style="width:60px">
+        <input type="number" value="${l.longueur}" step="100" onchange="calcMajRepartition(${l.id})" data-rep-field="longueur" style="width:60px">
       </td>
       <td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-nb-toles>0</td>
+      <td class="calc-cell-calc" data-rep-surface-toles>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-total-poids>0 kg</td>
       <td class="calc-cell-calc" data-rep-chute>—</td>`;
     chantiers.forEach(c => {
       const poids = l.poids[c.id] || 0;
-      row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${l.id})" data-rep-chantier="${_calcEsc(c.id)}"></td>
+      row += `<td><input type="number" min="0" step="5" value="${poids}" onchange="calcMajRepartition(${l.id})" data-rep-chantier="${_calcEsc(c.id)}"></td>
         <td class="calc-cell-calc" data-rep-surface="${_calcEsc(c.id)}">0.00 m²</td>`;
     });
     row += `<td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneRepartition(${l.id})" title="Supprimer cette ligne">✕</button></td></tr>`;
@@ -229,7 +231,7 @@ function calcMajRepartition(id) {
   const estQualiteBase = !qualite.trim() || qualite.trim().toUpperCase() === 'S235';
   tr.classList.toggle('calc-ligne-alerte', !estQualiteBase);
 
-  let totalSurface = 0, totalPoids = 0;
+  let totalSurface = 0;
   CalcToles.chantiersRepartition.forEach(c => {
     const inp   = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
     const poids = parseFloat(inp?.value) || 0;
@@ -238,17 +240,18 @@ function calcMajRepartition(id) {
     const cellSurface = tr.querySelector(`[data-rep-surface="${c.id}"]`);
     if (cellSurface) cellSurface.textContent = surfaceChantier ? surfaceChantier.toFixed(2) + ' m²' : '0.00 m²';
     totalSurface += surfaceChantier;
-    totalPoids += poids;
   });
 
   const surfaceTole = (largeur * longueur) / 1e6;
   const nbToles = surfaceTole > 0 ? Math.ceil(totalSurface / surfaceTole) : 0;
   const surfaceCommandee = nbToles * surfaceTole;
+  const poidsBrut = surfaceCommandee * ep * DENSITE_ACIER;
   const tauxChute = surfaceCommandee > 0 ? ((surfaceCommandee - totalSurface) / surfaceCommandee) * 100 : 0;
 
   tr.querySelector('[data-rep-total-surface]').textContent = totalSurface.toFixed(2) + ' m²';
   tr.querySelector('[data-rep-nb-toles]').textContent = nbToles || 0;
-  tr.querySelector('[data-rep-total-poids]').textContent = totalPoids ? totalPoids.toFixed(0) + ' kg' : '0 kg';
+  tr.querySelector('[data-rep-surface-toles]').textContent = surfaceCommandee.toFixed(2) + ' m²';
+  tr.querySelector('[data-rep-total-poids]').textContent = poidsBrut ? poidsBrut.toFixed(0) + ' kg' : '0 kg';
   tr.querySelector('[data-rep-chute]').textContent = totalSurface > 0 ? tauxChute.toFixed(1) + ' %' : '—';
 }
 
@@ -285,9 +288,9 @@ function calcRendreCommande() {
       const poids   = calcPoids(surface, l.epaisseur);
       const prix    = poids * (parseFloat(l.prixKg) || 0);
       return `<tr>
-        <td><input type="number" step="0.1" value="${_calcEsc(l.epaisseur)}" onchange="calcMajLigneCommande(${l.id},'epaisseur',this.value)"></td>
-        <td><input type="number" value="${_calcEsc(l.largeur)}" onchange="calcMajLigneCommande(${l.id},'largeur',this.value)"></td>
-        <td><input type="number" value="${_calcEsc(l.longueur)}" onchange="calcMajLigneCommande(${l.id},'longueur',this.value)"></td>
+        <td><input type="number" step="1" value="${_calcEsc(l.epaisseur)}" onchange="calcMajLigneCommande(${l.id},'epaisseur',this.value)"></td>
+        <td><input type="number" step="100" value="${_calcEsc(l.largeur)}" onchange="calcMajLigneCommande(${l.id},'largeur',this.value)"></td>
+        <td><input type="number" step="100" value="${_calcEsc(l.longueur)}" onchange="calcMajLigneCommande(${l.id},'longueur',this.value)"></td>
         <td><input type="number" min="1" value="${_calcEsc(l.nombre)}" onchange="calcMajLigneCommande(${l.id},'nombre',this.value)"></td>
         <td class="calc-cell-calc">${surface ? surface.toFixed(2) : '0.00'} m²</td>
         <td class="calc-cell-calc">${poids ? poids.toFixed(0) : 0} kg</td>
