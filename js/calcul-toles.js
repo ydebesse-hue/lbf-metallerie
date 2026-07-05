@@ -20,13 +20,12 @@ const CalcToles = {
   initialized: false,
   chantiers: [],              // chantiers actifs chargés depuis Supabase
   chantiersRepartition: [],   // chantiers ajoutés au tableau de répartition
-  epaisseurs: [6, 10, 15],    // lignes d'épaisseur affichées (extensible via calcAjouterEpaisseur)
-  dimsParEpaisseur: {},       // { [epaisseur]: { qualite, largeur, longueur } }
-  poidsParEpaisseur: {},      // { [epaisseur]: { [chantierId]: poids } }
+  lignesRepartition: [],      // { id, epaisseur, qualite, largeur, longueur, poids: { [chantierId]: poids } }
   lignesCommande: [],         // { id, epaisseur, largeur, longueur, nombre, prixKg }
 };
 
 let _cmdSeq = 0;
+let _repSeq = 0;
 
 function _calcEsc(val) {
   if (val == null) return '';
@@ -56,6 +55,12 @@ async function calcInit() {
   } catch (e) {
     console.warn('[CalcToles] Impossible de charger les chantiers :', e);
     CalcToles.chantiers = [];
+  }
+
+  if (!CalcToles.lignesRepartition.length) {
+    [6, 10, 15].forEach(ep => {
+      CalcToles.lignesRepartition.push({ id: ++_repSeq, epaisseur: ep, qualite: 'S235', largeur: 1500, longueur: 3000, poids: {} });
+    });
   }
 
   calcRendreSelectChantier();
@@ -141,16 +146,13 @@ function calcRetirerChantierRepartition(id) {
   calcRendreTableRepartition();
 }
 
-function calcAjouterEpaisseur() {
-  const dispo = EPAISSEURS_DISPONIBLES.filter(ep => !CalcToles.epaisseurs.includes(ep));
-  if (!dispo.length) { alert('Toutes les épaisseurs disponibles sont déjà ajoutées.'); return; }
-  CalcToles.epaisseurs.push(dispo[0]);
-  CalcToles.epaisseurs.sort((a, b) => a - b);
+function calcAjouterLigneRepartition() {
+  CalcToles.lignesRepartition.push({ id: ++_repSeq, epaisseur: 6, qualite: 'S235', largeur: 1500, longueur: 3000, poids: {} });
   calcRendreTableRepartition();
 }
 
-function calcRetirerEpaisseur(ep) {
-  CalcToles.epaisseurs = CalcToles.epaisseurs.filter(e => e !== ep);
+function calcSupprimerLigneRepartition(id) {
+  CalcToles.lignesRepartition = CalcToles.lignesRepartition.filter(l => l.id !== id);
   calcRendreTableRepartition();
 }
 
@@ -172,55 +174,61 @@ function calcRendreTableRepartition() {
   chantiers.forEach(() => { thead += `<th>Poids (kg)</th><th>Surface (m²)</th>`; });
   thead += `</tr></thead>`;
 
-  const tbody = CalcToles.epaisseurs.map(ep => {
-    const dims = CalcToles.dimsParEpaisseur[ep] || { qualite: 'S235', largeur: 1500, longueur: 3000 };
-    let row = `<tr data-ep="${ep}">
-      <td>${ep} mm</td>
+  const tbody = CalcToles.lignesRepartition.map(l => {
+    let row = `<tr data-rep-id="${l.id}">
       <td>
-        <select onchange="calcMajRepartition(${ep})" data-rep-field="qualite" style="width:80px">
-          ${QUALITES_ACIER.map(q => `<option value="${q}"${q === dims.qualite ? ' selected' : ''}>${q}</option>`).join('')}
+        <select onchange="calcMajRepartition(${l.id})" data-rep-field="epaisseur" style="width:70px">
+          ${EPAISSEURS_DISPONIBLES.map(ep => `<option value="${ep}"${ep === l.epaisseur ? ' selected' : ''}>${ep} mm</option>`).join('')}
         </select>
       </td>
       <td>
-        <input type="number" value="${dims.largeur}" onchange="calcMajRepartition(${ep})" data-rep-field="largeur" style="width:60px">
+        <select onchange="calcMajRepartition(${l.id})" data-rep-field="qualite" style="width:80px">
+          ${QUALITES_ACIER.map(q => `<option value="${q}"${q === l.qualite ? ' selected' : ''}>${q}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <input type="number" value="${l.largeur}" onchange="calcMajRepartition(${l.id})" data-rep-field="largeur" style="width:60px">
         ×
-        <input type="number" value="${dims.longueur}" onchange="calcMajRepartition(${ep})" data-rep-field="longueur" style="width:60px">
+        <input type="number" value="${l.longueur}" onchange="calcMajRepartition(${l.id})" data-rep-field="longueur" style="width:60px">
       </td>`;
     chantiers.forEach(c => {
-      const poids = (CalcToles.poidsParEpaisseur[ep] || {})[c.id] || 0;
-      row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>
+      const poids = l.poids[c.id] || 0;
+      row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${l.id})" data-rep-chantier="${_calcEsc(c.id)}"></td>
         <td class="calc-cell-calc" data-rep-surface="${_calcEsc(c.id)}">0.00 m²</td>`;
     });
     row += `<td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-nb-toles>0</td>
       <td class="calc-cell-calc" data-rep-chute>—</td>
-      <td><button type="button" class="calc-btn-suppr" onclick="calcRetirerEpaisseur(${ep})" title="Retirer cette épaisseur">✕</button></td></tr>`;
+      <td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneRepartition(${l.id})" title="Supprimer cette ligne">✕</button></td></tr>`;
     return row;
   }).join('');
 
   table.innerHTML = thead + `<tbody>${tbody}</tbody>`;
-  CalcToles.epaisseurs.forEach(ep => calcMajRepartition(ep));
+  CalcToles.lignesRepartition.forEach(l => calcMajRepartition(l.id));
 }
 
-function calcMajRepartition(ep) {
-  const tr = document.querySelector(`#rep-table tr[data-ep="${ep}"]`);
-  if (!tr) return;
+function calcMajRepartition(id) {
+  const tr = document.querySelector(`#rep-table tr[data-rep-id="${id}"]`);
+  const ligne = CalcToles.lignesRepartition.find(l => l.id === id);
+  if (!tr || !ligne) return;
 
+  const ep       = parseFloat(tr.querySelector('[data-rep-field="epaisseur"]').value) || 0;
   const qualite  = tr.querySelector('[data-rep-field="qualite"]').value;
   const largeur  = parseFloat(tr.querySelector('[data-rep-field="largeur"]').value) || 0;
   const longueur = parseFloat(tr.querySelector('[data-rep-field="longueur"]').value) || 0;
-  CalcToles.dimsParEpaisseur[ep] = { qualite, largeur, longueur };
+  ligne.epaisseur = ep;
+  ligne.qualite   = qualite;
+  ligne.largeur   = largeur;
+  ligne.longueur  = longueur;
 
   const estQualiteBase = !qualite.trim() || qualite.trim().toUpperCase() === 'S235';
   tr.classList.toggle('calc-ligne-alerte', !estQualiteBase);
-
-  if (!CalcToles.poidsParEpaisseur[ep]) CalcToles.poidsParEpaisseur[ep] = {};
 
   let totalSurface = 0;
   CalcToles.chantiersRepartition.forEach(c => {
     const inp   = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
     const poids = parseFloat(inp?.value) || 0;
-    CalcToles.poidsParEpaisseur[ep][c.id] = poids;
+    ligne.poids[c.id] = poids;
     const surfaceChantier = ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
     const cellSurface = tr.querySelector(`[data-rep-surface="${c.id}"]`);
     if (cellSurface) cellSurface.textContent = surfaceChantier ? surfaceChantier.toFixed(2) + ' m²' : '0.00 m²';
