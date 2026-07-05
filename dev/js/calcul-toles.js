@@ -64,45 +64,43 @@ async function calcInit() {
    BLOC 1 — CONVERTISSEUR RAPIDE
 ══════════════════════════════════════════════ */
 
-function calcConvertisseur(mode) {
-  const epEl      = document.getElementById('cv-epaisseur');
-  const largeurEl = document.getElementById('cv-largeur');
-  const longueurEl = document.getElementById('cv-longueur');
-  const nombreEl  = document.getElementById('cv-nombre');
-  const poidsEl   = document.getElementById('cv-poids');
-  const surfaceEl = document.getElementById('cv-surface');
-  const prixKgEl  = document.getElementById('cv-prix-kg');
-  const prixEl    = document.getElementById('cv-prix');
+function calcConvertisseur() {
+  const ep         = parseFloat(document.getElementById('cv-epaisseur').value) || 0;
+  const poids      = parseFloat(document.getElementById('cv-poids').value) || 0;
+  const surfaceEl  = document.getElementById('cv-surface');
 
-  const ep     = parseFloat(epEl.value) || 0;
-  const prixKg = parseFloat(prixKgEl.value) || 0;
-
-  let surface = 0, poids = 0;
-
-  if (mode === 'poids') {
-    // Saisie du poids : on en déduit la surface équivalente
-    poids   = parseFloat(poidsEl.value) || 0;
-    surface = ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
-    largeurEl.value = '';
-    longueurEl.value = '';
-  } else {
-    const largeur  = parseFloat(largeurEl.value) || 0;
-    const longueur = parseFloat(longueurEl.value) || 0;
-    const nombre   = parseFloat(nombreEl.value) || 0;
-    surface = calcSurface(largeur, longueur, nombre);
-    poids   = calcPoids(surface, ep);
-    poidsEl.value = poids ? poids.toFixed(1) : '';
-  }
-
+  const surface = ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
   surfaceEl.value = surface ? surface.toFixed(2) : '';
-  const prix = poids * prixKg;
-  prixEl.value = prix ? prix.toFixed(2) + ' €' : '';
+
+  const largeurTole  = parseFloat(document.getElementById('cv-tole-largeur').value) || 0;
+  const longueurTole = parseFloat(document.getElementById('cv-tole-longueur').value) || 0;
+  const surfaceToleEl  = document.getElementById('cv-tole-surface');
+  const nombreToleEl   = document.getElementById('cv-tole-nombre');
+  const chutePctEl     = document.getElementById('cv-chute-pct');
+  const chuteSurfaceEl = document.getElementById('cv-chute-surface');
+
+  const surfaceTole = (largeurTole * longueurTole) / 1e6;
+  surfaceToleEl.value = surfaceTole ? surfaceTole.toFixed(2) : '';
+
+  if (surfaceTole > 0 && surface > 0) {
+    const nombreToles   = Math.ceil(surface / surfaceTole);
+    const surfaceTotale = nombreToles * surfaceTole;
+    const chuteSurface  = surfaceTotale - surface;
+    const chutePct      = (chuteSurface / surfaceTotale) * 100;
+    nombreToleEl.value   = nombreToles;
+    chutePctEl.value     = chutePct.toFixed(1) + ' %';
+    chuteSurfaceEl.value = chuteSurface.toFixed(2);
+  } else {
+    nombreToleEl.value = '';
+    chutePctEl.value = '';
+    chuteSurfaceEl.value = '';
+  }
 }
 
 function calcReinitialiserConvertisseur() {
-  ['cv-epaisseur', 'cv-largeur', 'cv-longueur', 'cv-poids', 'cv-surface', 'cv-prix-kg', 'cv-prix']
+  ['cv-epaisseur', 'cv-poids', 'cv-surface', 'cv-tole-largeur', 'cv-tole-longueur',
+   'cv-tole-surface', 'cv-tole-nombre', 'cv-chute-pct', 'cv-chute-surface']
     .forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('cv-nombre').value = 1;
 }
 
 /* ══════════════════════════════════════════════
