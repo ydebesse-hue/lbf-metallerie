@@ -53,6 +53,90 @@ function compMajDesignations() {
 }
 
 /* ══════════════════════════════════════════════
+   RECHERCHE PAR DIMENSION (hauteur / largeur)
+══════════════════════════════════════════════ */
+
+function _compHauteurLargeur(s, famille) {
+  switch (famille) {
+    case 'Profilés I': case 'Profilés H': case 'Profilés U':
+      return { hauteur: s.h, largeur: s.b };
+    case 'Cornière':
+      return s.serie === 'L inégale'
+        ? { hauteur: s.a, largeur: s.b }
+        : { hauteur: s.a, largeur: s.a };
+    case 'Plat':
+      return { hauteur: null, largeur: s.b };
+    case 'Barres rondes':
+      return { hauteur: s.d, largeur: s.d };
+    case 'Barres carrées':
+      return { hauteur: s.a, largeur: s.a };
+    case 'Profilés creux':
+      if (s.serie === 'CHS') return { hauteur: s.d, largeur: s.d };
+      if (s.serie === 'RHS') return { hauteur: s.a, largeur: s.b };
+      return { hauteur: s.a, largeur: s.a };
+    default:
+      return { hauteur: s.h, largeur: s.b };
+  }
+}
+
+function compRechercher() {
+  const hauteurVal  = parseFloat(document.getElementById('comp-rech-hauteur').value);
+  const largeurVal  = parseFloat(document.getElementById('comp-rech-largeur').value);
+  const tolerance   = parseFloat(document.getElementById('comp-rech-tolerance').value) || 0;
+  const zone = document.getElementById('comp-resultats');
+  if (!zone) return;
+
+  if (isNaN(hauteurVal) && isNaN(largeurVal)) {
+    zone.innerHTML = '<p class="calc-aide">Renseigne une hauteur et/ou une largeur pour lancer la recherche.</p>';
+    return;
+  }
+
+  const resultats = [];
+  (Biblio?.data?.standard || []).forEach(fam => {
+    fam.sections.forEach(s => {
+      const { hauteur, largeur } = _compHauteurLargeur(s, fam.famille);
+      const okHauteur = isNaN(hauteurVal) || (hauteur != null && Math.abs(hauteur - hauteurVal) <= tolerance);
+      const okLargeur = isNaN(largeurVal) || (largeur != null && Math.abs(largeur - largeurVal) <= tolerance);
+      if (okHauteur && okLargeur) {
+        resultats.push({ famille: fam.famille, section: s, hauteur, largeur });
+      }
+    });
+  });
+
+  if (!resultats.length) {
+    zone.innerHTML = '<p class="calc-aide">Aucun profilé ne correspond à cette recherche.</p>';
+    return;
+  }
+
+  zone.innerHTML = `<table class="calc-table"><thead><tr>
+      <th style="text-align:left">Famille</th>
+      <th style="text-align:left">Désignation</th>
+      <th>Hauteur (mm)</th>
+      <th>Largeur (mm)</th>
+      <th></th>
+    </tr></thead><tbody>${resultats.map((r, i) => `<tr>
+      <td style="text-align:left">${_compEsc(r.famille)}</td>
+      <td style="text-align:left">${_compEsc(r.section.desig)}</td>
+      <td>${r.hauteur ?? '—'}</td>
+      <td>${r.largeur ?? '—'}</td>
+      <td><button type="button" class="btn btn-rouge" onclick="compAjouterResultat(${i})">+ Ajouter</button></td>
+    </tr>`).join('')}</tbody></table>`;
+
+  CompProfils._resultatsRecherche = resultats;
+}
+
+function compAjouterResultat(index) {
+  const r = (CompProfils._resultatsRecherche || [])[index];
+  if (!r) return;
+
+  const dejaPresent = CompProfils.sections.some(c => c.famille === r.famille && c.section.desig === r.section.desig);
+  if (dejaPresent) { alert('Ce profilé est déjà dans le comparatif.'); return; }
+
+  CompProfils.sections.push({ uid: ++_compUid, famille: r.famille, section: r.section, longueur: 6 });
+  compRendreTable();
+}
+
+/* ══════════════════════════════════════════════
    GESTION DES SECTIONS COMPARÉES
 ══════════════════════════════════════════════ */
 
