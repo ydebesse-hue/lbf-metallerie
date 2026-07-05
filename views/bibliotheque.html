@@ -1101,10 +1101,12 @@ header {
   <!-- BLOC 2 — Répartition des besoins par chantier -->
   <div class="calc-bloc">
     <h3>Répartition des besoins par chantier</h3>
-    <p class="calc-aide">Une ligne par épaisseur : renseigne la qualité, le format de tôle (1500×3000 mm par défaut) et le poids de tôles par chantier. Les surfaces se cumulent et donnent le nombre de tôles à commander (arrondi au supérieur) avec le taux de chute.</p>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <p class="calc-aide">Trois épaisseurs par défaut (6 / 10 / 15 mm) — renseigne la qualité, le format de tôle (1500×3000 mm par défaut) et le poids de tôles par chantier. Les surfaces se cumulent et donnent le nombre de tôles à commander (arrondi au supérieur) avec le taux de chute.</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px">
       <select id="rep-sel-chantier" class="sel"></select>
       <button type="button" class="btn btn-rouge" onclick="calcAjouterChantierRepartition()">+ Ajouter ce chantier</button>
+      <select id="rep-sel-epaisseur" class="sel"></select>
+      <button type="button" class="btn btn-gris" onclick="calcAjouterEpaisseur()">+ Ajouter cette épaisseur</button>
     </div>
     <div style="overflow-x:auto">
       <table class="calc-table" id="rep-table"></table>
@@ -1269,7 +1271,7 @@ header {
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
-<script src="../js/calcul-toles.js?v=20260705e"></script>
+<script src="../js/calcul-toles.js?v=20260705f"></script>
 <script src="../js/comparateur-profils.js?v=20260705"></script>
 <script>
 /* ══════════════════════════════════════════════
