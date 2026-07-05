@@ -119,7 +119,7 @@ function calcRendreSelectChantier() {
   const dejaAjoutes = new Set(CalcToles.chantiersRepartition.map(c => c.id));
   const dispo = CalcToles.chantiers.filter(c => !dejaAjoutes.has(c.id));
   sel.innerHTML = dispo.length
-    ? dispo.map(c => `<option value="${_calcEsc(c.id)}">${_calcEsc(c.nom)}</option>`).join('')
+    ? dispo.map(c => `<option value="${_calcEsc(c.id)}">${_calcEsc([c.numero_affaire, c.nom].filter(Boolean).join(' — '))}</option>`).join('')
     : '<option value="">— Aucun chantier disponible —</option>';
 }
 
@@ -164,7 +164,7 @@ function calcRendreTableRepartition() {
     <th rowspan="2" style="text-align:left">Qualité</th>
     <th rowspan="2">Format tôle (mm)</th>`;
   chantiers.forEach(c => {
-    thead += `<th>${_calcEsc(c.nom)}
+    thead += `<th>${_calcEsc([c.numero_affaire, c.nom].filter(Boolean).join(' — '))}
       <button type="button" class="calc-btn-suppr" onclick="calcRetirerChantierRepartition('${_calcEsc(c.id)}')" title="Retirer">✕</button>
     </th>`;
   });
