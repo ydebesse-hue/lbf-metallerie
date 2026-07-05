@@ -182,7 +182,7 @@ function calcRendreTableRepartition() {
     </th>`;
   });
   thead += `<th rowspan="2">Surface totale</th><th rowspan="2">Nb tôles</th><th rowspan="2">Taux de chute</th><th rowspan="2"></th></tr><tr>`;
-  chantiers.forEach(() => { thead += `<th>Poids (kg)</th>`; });
+  chantiers.forEach(() => { thead += `<th>Poids (kg)</th><th>Surface (m²)</th>`; });
   thead += `</tr></thead>`;
 
   const tbody = CalcToles.epaisseurs.map(ep => {
@@ -201,7 +201,8 @@ function calcRendreTableRepartition() {
       </td>`;
     chantiers.forEach(c => {
       const poids = (CalcToles.poidsParEpaisseur[ep] || {})[c.id] || 0;
-      row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>`;
+      row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>
+        <td class="calc-cell-calc" data-rep-surface="${_calcEsc(c.id)}">0.00 m²</td>`;
     });
     row += `<td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-nb-toles>0</td>
@@ -233,7 +234,10 @@ function calcMajRepartition(ep) {
     const inp   = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
     const poids = parseFloat(inp?.value) || 0;
     CalcToles.poidsParEpaisseur[ep][c.id] = poids;
-    totalSurface += ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
+    const surfaceChantier = ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
+    const cellSurface = tr.querySelector(`[data-rep-surface="${c.id}"]`);
+    if (cellSurface) cellSurface.textContent = surfaceChantier ? surfaceChantier.toFixed(2) + ' m²' : '0.00 m²';
+    totalSurface += surfaceChantier;
   });
 
   const surfaceTole = (largeur * longueur) / 1e6;
