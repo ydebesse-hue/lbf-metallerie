@@ -169,7 +169,7 @@ function calcCopierTableauRepartition() {
       entetes.push(`${nom} — Poids (kg)`, `${nom} — Surface (m²)`);
     });
   }
-  const lignes = [entetes.join('\t')];
+  const lignes = [entetes];
 
   CalcToles.lignesRepartition.forEach(l => {
     const tr = table.querySelector(`tr[data-rep-id="${l.id}"]`);
@@ -188,13 +188,30 @@ function calcCopierTableauRepartition() {
         cells.push(tr.querySelector(`[data-rep-surface="${c.id}"]`)?.textContent || '0.00 m²');
       });
     }
-    lignes.push(cells.join('\t'));
+    lignes.push(cells);
   });
 
-  const texte = lignes.join('\n');
-  navigator.clipboard.writeText(texte)
-    .then(() => alert('Tableau copié dans le presse-papier.'))
-    .catch(() => alert('Impossible de copier automatiquement le tableau.'));
+  const texte = lignes.map(l => l.join('\t')).join('\n');
+  const html = '<table>'
+    + '<tr>' + entetes.map(e => `<th>${_calcEsc(e)}</th>`).join('') + '</tr>'
+    + lignes.slice(1).map(l => '<tr>' + l.map(v => `<td>${_calcEsc(v)}</td>`).join('') + '</tr>').join('')
+    + '</table>';
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    const item = new ClipboardItem({
+      'text/plain': new Blob([texte], { type: 'text/plain' }),
+      'text/html':  new Blob([html], { type: 'text/html' }),
+    });
+    navigator.clipboard.write([item])
+      .then(() => alert('Tableau copié dans le presse-papier (collable directement dans Excel/Word).'))
+      .catch(() => navigator.clipboard.writeText(texte)
+        .then(() => alert('Tableau copié dans le presse-papier.'))
+        .catch(() => alert('Impossible de copier automatiquement le tableau.')));
+  } else {
+    navigator.clipboard.writeText(texte)
+      .then(() => alert('Tableau copié dans le presse-papier.'))
+      .catch(() => alert('Impossible de copier automatiquement le tableau.'));
+  }
 }
 
 function calcRendreTableRepartition() {
