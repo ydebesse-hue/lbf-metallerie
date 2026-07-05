@@ -59,7 +59,6 @@ async function calcInit() {
   }
 
   calcRendreSelectChantier();
-  calcRendreSelectEpaisseur();
   calcRendreTableRepartition();
   calcAjouterLigneCommande();
 }
@@ -142,28 +141,16 @@ function calcRetirerChantierRepartition(id) {
   calcRendreTableRepartition();
 }
 
-function calcRendreSelectEpaisseur() {
-  const sel = document.getElementById('rep-sel-epaisseur');
-  if (!sel) return;
-  const dispo = EPAISSEURS_DISPONIBLES.filter(ep => !CalcToles.epaisseurs.includes(ep));
-  sel.innerHTML = dispo.length
-    ? dispo.map(ep => `<option value="${ep}">${ep} mm</option>`).join('')
-    : '<option value="">— Toutes les épaisseurs sont ajoutées —</option>';
-}
-
 function calcAjouterEpaisseur() {
-  const sel = document.getElementById('rep-sel-epaisseur');
-  const ep = parseInt(sel.value, 10);
-  if (!ep || CalcToles.epaisseurs.includes(ep)) return;
-  CalcToles.epaisseurs.push(ep);
+  const dispo = EPAISSEURS_DISPONIBLES.filter(ep => !CalcToles.epaisseurs.includes(ep));
+  if (!dispo.length) { alert('Toutes les épaisseurs disponibles sont déjà ajoutées.'); return; }
+  CalcToles.epaisseurs.push(dispo[0]);
   CalcToles.epaisseurs.sort((a, b) => a - b);
-  calcRendreSelectEpaisseur();
   calcRendreTableRepartition();
 }
 
 function calcRetirerEpaisseur(ep) {
   CalcToles.epaisseurs = CalcToles.epaisseurs.filter(e => e !== ep);
-  calcRendreSelectEpaisseur();
   calcRendreTableRepartition();
 }
 
