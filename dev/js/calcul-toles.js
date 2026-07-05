@@ -13,12 +13,14 @@
 'use strict';
 
 const DENSITE_ACIER = 7.85;
+const QUALITES_ACIER = ['S235', 'S275', 'S355', 'S420', 'S460', 'S690'];
+const EPAISSEURS_DISPONIBLES = [2, 4, 6, 8, 10, 12, 15, 20, 25, 30];
 
 const CalcToles = {
   initialized: false,
   chantiers: [],              // chantiers actifs chargés depuis Supabase
   chantiersRepartition: [],   // chantiers ajoutés au tableau de répartition
-  epaisseurs: [2, 4, 6, 8, 10, 12, 15, 20, 25, 30],
+  epaisseurs: [6, 10, 15],    // lignes d'épaisseur affichées (extensible via calcAjouterEpaisseur)
   dimsParEpaisseur: {},       // { [epaisseur]: { qualite, largeur, longueur } }
   poidsParEpaisseur: {},      // { [epaisseur]: { [chantierId]: poids } }
   lignesCommande: [],         // { id, epaisseur, largeur, longueur, nombre, prixKg }
@@ -57,6 +59,7 @@ async function calcInit() {
   }
 
   calcRendreSelectChantier();
+  calcRendreSelectEpaisseur();
   calcRendreTableRepartition();
   calcAjouterLigneCommande();
 }
@@ -139,6 +142,31 @@ function calcRetirerChantierRepartition(id) {
   calcRendreTableRepartition();
 }
 
+function calcRendreSelectEpaisseur() {
+  const sel = document.getElementById('rep-sel-epaisseur');
+  if (!sel) return;
+  const dispo = EPAISSEURS_DISPONIBLES.filter(ep => !CalcToles.epaisseurs.includes(ep));
+  sel.innerHTML = dispo.length
+    ? dispo.map(ep => `<option value="${ep}">${ep} mm</option>`).join('')
+    : '<option value="">— Toutes les épaisseurs sont ajoutées —</option>';
+}
+
+function calcAjouterEpaisseur() {
+  const sel = document.getElementById('rep-sel-epaisseur');
+  const ep = parseInt(sel.value, 10);
+  if (!ep || CalcToles.epaisseurs.includes(ep)) return;
+  CalcToles.epaisseurs.push(ep);
+  CalcToles.epaisseurs.sort((a, b) => a - b);
+  calcRendreSelectEpaisseur();
+  calcRendreTableRepartition();
+}
+
+function calcRetirerEpaisseur(ep) {
+  CalcToles.epaisseurs = CalcToles.epaisseurs.filter(e => e !== ep);
+  calcRendreSelectEpaisseur();
+  calcRendreTableRepartition();
+}
+
 function calcRendreTableRepartition() {
   const table = document.getElementById('rep-table');
   if (!table) return;
@@ -153,7 +181,7 @@ function calcRendreTableRepartition() {
       <button type="button" class="calc-btn-suppr" onclick="calcRetirerChantierRepartition('${_calcEsc(c.id)}')" title="Retirer">✕</button>
     </th>`;
   });
-  thead += `<th rowspan="2">Surface totale</th><th rowspan="2">Nb tôles</th><th rowspan="2">Taux de chute</th></tr><tr>`;
+  thead += `<th rowspan="2">Surface totale</th><th rowspan="2">Nb tôles</th><th rowspan="2">Taux de chute</th><th rowspan="2"></th></tr><tr>`;
   chantiers.forEach(() => { thead += `<th>Poids (kg)</th>`; });
   thead += `</tr></thead>`;
 
@@ -161,7 +189,11 @@ function calcRendreTableRepartition() {
     const dims = CalcToles.dimsParEpaisseur[ep] || { qualite: 'S235', largeur: 1500, longueur: 3000 };
     let row = `<tr data-ep="${ep}">
       <td>${ep} mm</td>
-      <td><input type="text" value="${_calcEsc(dims.qualite || '')}" placeholder="S235" onchange="calcMajRepartition(${ep})" data-rep-field="qualite" style="width:80px"></td>
+      <td>
+        <select onchange="calcMajRepartition(${ep})" data-rep-field="qualite" style="width:80px">
+          ${QUALITES_ACIER.map(q => `<option value="${q}"${q === dims.qualite ? ' selected' : ''}>${q}</option>`).join('')}
+        </select>
+      </td>
       <td>
         <input type="number" value="${dims.largeur}" onchange="calcMajRepartition(${ep})" data-rep-field="largeur" style="width:60px">
         ×
@@ -173,7 +205,8 @@ function calcRendreTableRepartition() {
     });
     row += `<td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-nb-toles>0</td>
-      <td class="calc-cell-calc" data-rep-chute>—</td></tr>`;
+      <td class="calc-cell-calc" data-rep-chute>—</td>
+      <td><button type="button" class="calc-btn-suppr" onclick="calcRetirerEpaisseur(${ep})" title="Retirer cette épaisseur">✕</button></td></tr>`;
     return row;
   }).join('');
 
