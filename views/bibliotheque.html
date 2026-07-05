@@ -941,6 +941,8 @@ header {
   color: #777;
 }
 .calc-total-row td { font-weight: bold; background: #f5f5f5; }
+.calc-ligne-alerte td { background: #fdecea; }
+.calc-ligne-alerte td.calc-cell-calc { background: #fbdad6; }
 .calc-chantier-poids { color: #666; font-size: 10px; }
 .calc-btn-suppr {
   background: none; border: none; color: var(--rouge); cursor: pointer; font-size: 14px; padding: 0 4px;
@@ -1070,11 +1072,11 @@ header {
     <div class="calc-conv-grille">
       <div class="fr">
         <label>Largeur tôle (mm)</label>
-        <input type="number" id="cv-tole-largeur" step="1" placeholder="1500" oninput="calcConvertisseur()">
+        <input type="number" id="cv-tole-largeur" step="1" value="1500" oninput="calcConvertisseur()">
       </div>
       <div class="fr">
         <label>Longueur tôle (mm)</label>
-        <input type="number" id="cv-tole-longueur" step="1" placeholder="3000" oninput="calcConvertisseur()">
+        <input type="number" id="cv-tole-longueur" step="1" value="3000" oninput="calcConvertisseur()">
       </div>
       <div class="fr">
         <label>Surface / tôle (m²)</label>
@@ -1267,7 +1269,7 @@ header {
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
-<script src="../js/calcul-toles.js?v=20260705c"></script>
+<script src="../js/calcul-toles.js?v=20260705d"></script>
 <script src="../js/comparateur-profils.js?v=20260705"></script>
 <script>
 /* ══════════════════════════════════════════════

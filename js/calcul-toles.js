@@ -98,9 +98,12 @@ function calcConvertisseur() {
 }
 
 function calcReinitialiserConvertisseur() {
-  ['cv-epaisseur', 'cv-poids', 'cv-surface', 'cv-tole-largeur', 'cv-tole-longueur',
+  ['cv-epaisseur', 'cv-poids', 'cv-surface',
    'cv-tole-surface', 'cv-tole-nombre', 'cv-chute-pct', 'cv-chute-surface']
     .forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('cv-tole-largeur').value = 1500;
+  document.getElementById('cv-tole-longueur').value = 3000;
+  calcConvertisseur();
 }
 
 /* ══════════════════════════════════════════════
@@ -154,10 +157,10 @@ function calcRendreTableRepartition() {
   thead += `</tr></thead>`;
 
   const tbody = CalcToles.epaisseurs.map(ep => {
-    const dims = CalcToles.dimsParEpaisseur[ep] || { qualite: '', largeur: 1500, longueur: 3000 };
+    const dims = CalcToles.dimsParEpaisseur[ep] || { qualite: 'S235', largeur: 1500, longueur: 3000 };
     let row = `<tr data-ep="${ep}">
       <td>${ep} mm</td>
-      <td><input type="text" value="${_calcEsc(dims.qualite || '')}" placeholder="—" onchange="calcMajRepartition(${ep})" data-rep-field="qualite" style="width:80px"></td>
+      <td><input type="text" value="${_calcEsc(dims.qualite || '')}" placeholder="S235" onchange="calcMajRepartition(${ep})" data-rep-field="qualite" style="width:80px"></td>
       <td>
         <input type="number" value="${dims.largeur}" onchange="calcMajRepartition(${ep})" data-rep-field="largeur" style="width:60px">
         ×
@@ -184,6 +187,9 @@ function calcMajRepartition(ep) {
   const largeur  = parseFloat(tr.querySelector('[data-rep-field="largeur"]').value) || 0;
   const longueur = parseFloat(tr.querySelector('[data-rep-field="longueur"]').value) || 0;
   CalcToles.dimsParEpaisseur[ep] = { qualite, largeur, longueur };
+
+  const estQualiteBase = !qualite.trim() || qualite.trim().toUpperCase() === 'S235';
+  tr.classList.toggle('calc-ligne-alerte', !estQualiteBase);
 
   let totalSurface = 0;
   CalcToles.chantiersRepartition.forEach(c => {
