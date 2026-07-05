@@ -156,6 +156,47 @@ function calcSupprimerLigneRepartition(id) {
   calcRendreTableRepartition();
 }
 
+function calcCopierTableauRepartition() {
+  const table = document.getElementById('rep-table');
+  if (!table) return;
+  const avecDetail = document.getElementById('rep-copie-detail')?.checked;
+  const chantiers = CalcToles.chantiersRepartition;
+
+  const entetes = ['Épaisseur (mm)', 'Qualité', 'Format tôle (mm)', 'Surface totale (m²)', 'Nb tôles', 'Surface tôles (m²)', 'Poids total (kg)', 'Taux de chute (%)'];
+  if (avecDetail) {
+    chantiers.forEach(c => {
+      const nom = [c.numero_affaire, c.nom].filter(Boolean).join(' — ');
+      entetes.push(`${nom} — Poids (kg)`, `${nom} — Surface (m²)`);
+    });
+  }
+  const lignes = [entetes.join('\t')];
+
+  CalcToles.lignesRepartition.forEach(l => {
+    const tr = table.querySelector(`tr[data-rep-id="${l.id}"]`);
+    if (!tr) return;
+    const cells = [
+      l.epaisseur, l.qualite, `${l.largeur}×${l.longueur}`,
+      tr.querySelector('[data-rep-total-surface]').textContent,
+      tr.querySelector('[data-rep-nb-toles]').textContent,
+      tr.querySelector('[data-rep-surface-toles]').textContent,
+      tr.querySelector('[data-rep-total-poids]').textContent,
+      tr.querySelector('[data-rep-chute]').textContent,
+    ];
+    if (avecDetail) {
+      chantiers.forEach(c => {
+        cells.push(l.poids[c.id] || 0);
+        cells.push(tr.querySelector(`[data-rep-surface="${c.id}"]`)?.textContent || '0.00 m²');
+      });
+    }
+    lignes.push(cells.join('\t'));
+  });
+
+  const texte = lignes.join('\n');
+  navigator.clipboard.writeText(texte)
+    .then(() => alert('Tableau copié dans le presse-papier.'))
+    .catch(() => alert('Impossible de copier automatiquement le tableau.'));
+}
+
 function calcRendreTableRepartition() {
   const table = document.getElementById('rep-table');
   if (!table) return;

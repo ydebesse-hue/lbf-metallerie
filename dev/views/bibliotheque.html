@@ -1113,7 +1113,13 @@ header {
       <option value="2"><option value="4"><option value="6"><option value="8"><option value="10">
       <option value="12"><option value="15"><option value="20"><option value="25"><option value="30">
     </datalist>
-    <button type="button" class="btn btn-gris" style="margin-top:10px" onclick="calcAjouterLigneRepartition()">+ Ajouter une ligne</button>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:10px">
+      <button type="button" class="btn btn-gris" onclick="calcAjouterLigneRepartition()">+ Ajouter une ligne</button>
+      <button type="button" class="btn btn-gris" onclick="calcCopierTableauRepartition()">📋 Copier le tableau</button>
+      <label style="font-size:12px;display:flex;align-items:center;gap:5px">
+        <input type="checkbox" id="rep-copie-detail" checked> Inclure le détail par chantier
+      </label>
+    </div>
   </div>
 
   <!-- BLOC 3 — Commande multi-lignes -->
@@ -1274,7 +1280,7 @@ header {
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
-<script src="../js/calcul-toles.js?v=20260705m"></script>
+<script src="../js/calcul-toles.js?v=20260705n"></script>
 <script src="../js/comparateur-profils.js?v=20260705"></script>
 <script>
 /* ══════════════════════════════════════════════
