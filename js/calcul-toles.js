@@ -20,6 +20,7 @@ const CalcToles = {
   chantiersRepartition: [],   // chantiers ajoutés au tableau de répartition
   epaisseurs: [2, 4, 6, 8, 10, 12, 15, 20, 25, 30],
   dimsParEpaisseur: {},       // { [epaisseur]: { qualite, largeur, longueur } }
+  poidsParEpaisseur: {},      // { [epaisseur]: { [chantierId]: poids } }
   lignesCommande: [],         // { id, epaisseur, largeur, longueur, nombre, prixKg }
 };
 
@@ -167,7 +168,8 @@ function calcRendreTableRepartition() {
         <input type="number" value="${dims.longueur}" onchange="calcMajRepartition(${ep})" data-rep-field="longueur" style="width:60px">
       </td>`;
     chantiers.forEach(c => {
-      row += `<td><input type="number" min="0" step="0.1" value="0" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>`;
+      const poids = (CalcToles.poidsParEpaisseur[ep] || {})[c.id] || 0;
+      row += `<td><input type="number" min="0" step="0.1" value="${poids}" onchange="calcMajRepartition(${ep})" data-rep-chantier="${_calcEsc(c.id)}"></td>`;
     });
     row += `<td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-nb-toles>0</td>
@@ -191,10 +193,13 @@ function calcMajRepartition(ep) {
   const estQualiteBase = !qualite.trim() || qualite.trim().toUpperCase() === 'S235';
   tr.classList.toggle('calc-ligne-alerte', !estQualiteBase);
 
+  if (!CalcToles.poidsParEpaisseur[ep]) CalcToles.poidsParEpaisseur[ep] = {};
+
   let totalSurface = 0;
   CalcToles.chantiersRepartition.forEach(c => {
     const inp   = tr.querySelector(`[data-rep-chantier="${c.id}"]`);
     const poids = parseFloat(inp?.value) || 0;
+    CalcToles.poidsParEpaisseur[ep][c.id] = poids;
     totalSurface += ep > 0 ? poids / (ep * DENSITE_ACIER) : 0;
   });
 
