@@ -48,8 +48,7 @@ function compMajDesignations() {
   const sections = fam ? fam.sections : [];
 
   selDesig.innerHTML = sections.map((s, i) => {
-    const label = `${s.serie ? s.serie + ' ' : ''}${s.desig}`;
-    return `<option value="${i}">${_compEsc(label)}</option>`;
+    return `<option value="${i}">${_compEsc(s.desig)}</option>`;
   }).join('');
 }
 
@@ -66,6 +65,9 @@ function compAjouterSection() {
   if (!fam) return;
   const section = fam.sections[parseInt(selDesig.value, 10)];
   if (!section) return;
+
+  const dejaPresent = CompProfils.sections.some(c => c.famille === fam.famille && c.section.desig === section.desig);
+  if (dejaPresent) { alert('Ce profilé est déjà dans le comparatif.'); return; }
 
   CompProfils.sections.push({ uid: ++_compUid, famille: fam.famille, section, longueur: 6 });
   compRendreTable();
@@ -113,7 +115,7 @@ function compRendreTable() {
 
   // Une ligne par section comparée
   const lignes = cols.map((c, i) => {
-    const nomSection = `${c.famille} ${c.section.serie ? c.section.serie + ' ' : ''}${c.section.desig}`;
+    const nomSection = `${c.famille} — ${c.section.desig}`;
     const poids = (c.section.pml || 0) * (c.longueur || 0);
     let row = `<tr><td style="text-align:left">${_compEsc(nomSection)}</td>`;
     labels.forEach(label => {
