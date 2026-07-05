@@ -182,9 +182,8 @@ function calcRendreTableRepartition() {
   const tbody = CalcToles.lignesRepartition.map(l => {
     let row = `<tr data-rep-id="${l.id}">
       <td>
-        <select onchange="calcMajRepartition(${l.id})" data-rep-field="epaisseur" style="width:70px">
-          ${EPAISSEURS_DISPONIBLES.map(ep => `<option value="${ep}"${ep === l.epaisseur ? ' selected' : ''}>${ep} mm</option>`).join('')}
-        </select>
+        <input type="number" list="rep-epaisseurs-dispo" step="1" min="0" value="${l.epaisseur}"
+          onchange="calcMajRepartition(${l.id})" data-rep-field="epaisseur" style="width:60px">
       </td>
       <td>
         <select onchange="calcMajRepartition(${l.id})" data-rep-field="qualite" style="width:80px">
