@@ -234,10 +234,10 @@ function calcRendreCommande() {
         <td><input type="number" value="${_calcEsc(l.largeur)}" onchange="calcMajLigneCommande(${l.id},'largeur',this.value)"></td>
         <td><input type="number" value="${_calcEsc(l.longueur)}" onchange="calcMajLigneCommande(${l.id},'longueur',this.value)"></td>
         <td><input type="number" min="1" value="${_calcEsc(l.nombre)}" onchange="calcMajLigneCommande(${l.id},'nombre',this.value)"></td>
-        <td>${surface ? surface.toFixed(2) : '0.00'} m²</td>
-        <td>${poids ? poids.toFixed(0) : 0} kg</td>
+        <td class="calc-cell-calc">${surface ? surface.toFixed(2) : '0.00'} m²</td>
+        <td class="calc-cell-calc">${poids ? poids.toFixed(0) : 0} kg</td>
         <td><input type="number" step="0.01" value="${_calcEsc(l.prixKg)}" onchange="calcMajLigneCommande(${l.id},'prixKg',this.value)"></td>
-        <td>${prix ? prix.toFixed(2) : '0.00'} €</td>
+        <td class="calc-cell-calc">${prix ? prix.toFixed(2) : '0.00'} €</td>
         <td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneCommande(${l.id})" title="Supprimer">✕</button></td>
       </tr>`;
     }).join('');

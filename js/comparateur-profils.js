@@ -120,11 +120,11 @@ function compRendreTable() {
     let row = `<tr><td style="text-align:left">${_compEsc(nomSection)}</td>`;
     labels.forEach(label => {
       const paire = dimsParSection[i].find(([l]) => l === label);
-      row += `<td>${_compEsc(paire ? paire[1] : '—')}</td>`;
+      row += `<td class="calc-cell-calc">${_compEsc(paire ? paire[1] : '—')}</td>`;
     });
     row += `<td><input type="number" step="0.1" min="0" value="${_compEsc(c.longueur)}"
       onchange="compMajLongueur(${c.uid},this.value)"></td>`;
-    row += `<td>${poids ? poids.toFixed(1) : '0.0'} kg</td>`;
+    row += `<td class="calc-cell-calc">${poids ? poids.toFixed(1) : '0.0'} kg</td>`;
     row += `<td><button type="button" class="calc-btn-suppr" onclick="compRetirerSection(${c.uid})" title="Retirer">✕</button></td>`;
     return row + '</tr>';
   }).join('');
