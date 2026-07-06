@@ -4925,12 +4925,9 @@ ${hasT ? `
 
     [selType, selDesig, btnSchema, inpLong, inpQte, spanPoids, btnDel].forEach(el => row1.appendChild(el));
 
-    // ── Ligne 2 : N° prévu | Classe | Commentaire | Origine ──
+    // ── Ligne 2 : Classe | Commentaire | Origine | Fournisseur | Réf. BL ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
-
-    const spanId = document.createElement('span');
-    spanId.className = 'inv-id-cell';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'inv-classe inv-ctrl';
@@ -4949,12 +4946,6 @@ ${hasT ? `
     _peuplerSelectAffectation(selOrigine, '');
     selOrigine.options[0].text = '— Origine —';
 
-    [spanId, selClasse, inpComm, selOrigine].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 : Fournisseur | Réf. BL ──
-    const row3 = document.createElement('div');
-    row3.className = 'inv-row-3';
-
     const selFourn = document.createElement('select');
     selFourn.className = 'inv-fournisseur inv-ctrl';
     const fopts = `<option value="">— Fournisseur —</option>` +
@@ -4966,7 +4957,16 @@ ${hasT ? `
     inpRef.type = 'text'; inpRef.className = 'inv-ref inv-ctrl';
     inpRef.placeholder = 'Réf. BL / commande';
 
-    [selFourn, inpRef].forEach(el => row3.appendChild(el));
+    [selClasse, inpComm, selOrigine, selFourn, inpRef].forEach(el => row2.appendChild(el));
+
+    // ── Ligne 3 : N° prévu ──
+    const row3 = document.createElement('div');
+    row3.className = 'inv-row-3';
+
+    const spanId = document.createElement('span');
+    spanId.className = 'inv-id-cell';
+
+    row3.appendChild(spanId);
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
