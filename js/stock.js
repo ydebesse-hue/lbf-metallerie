@@ -130,12 +130,6 @@ const Stock = (() => {
   const CLE_VUE_TOLES  = 'lbf-stock-vue-toles';
   const CLE_COLS_TOLES = 'lbf-stock-cols-toles';
 
-  // ── Configuration email (EmailJS) ───────────────────────────────
-  // Renseigner ces valeurs après création d'un compte sur emailjs.com
-  const EMAILJS_PUBLIC_KEY       = '';  // clé publique EmailJS
-  const EMAILJS_SERVICE_ID       = '';  // ID du service (ex. 'service_abc123')
-  const EMAILJS_TPL_ACCEPTATION  = '';  // ID template acceptation
-  const EMAILJS_TPL_REFUS        = '';  // ID template refus
 
   /** Plan provisoire embarqué en data URL — indépendant du serveur de fichiers */
   const PLAN_PROVISOIRE_SRC = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Tahoma,Geneva,sans-serif">
@@ -238,10 +232,10 @@ const Stock = (() => {
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
   let _fournisseurs = [];  // { id, nom } depuis Supabase
-  let _demandeurs   = [];  // { id, nom, prenom, email } depuis Supabase
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis Supabase (Conv. 6)
+  let _demandesToutes = [];     // dernier snapshot complet (toutes statuts confondus), pour Mes notifications
   let _demandCompteur = 0;      // compteur max des IDs DEM-XXXX connus (Supabase + localStorage)
   let _planImg   = null;        // image plan (base64), chargée au démarrage depuis Supabase
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
@@ -291,6 +285,7 @@ const Stock = (() => {
    * Point d'entrée — appelé au DOMContentLoaded
    */
   async function init() {
+    await Auth.ready();
     Auth.requireAuth();
     Auth.afficherInfosSession('#header-user', '#header-badge');
     Auth.appliquerDroitsDOM();
@@ -341,10 +336,12 @@ const Stock = (() => {
         const demandes = await window.SB.lire('demandes');
         const nums = demandes.map(d => parseInt((d.id||'').replace(/[^0-9]/g,''), 10)).filter(n => !isNaN(n));
         _demandCompteur = nums.length ? Math.max(...nums) : 0;
+        _demandesToutes = demandes;
         _demandes = demandes.filter(d => d.statut === 'en_attente');
       } catch(e) {
         const store = _chargerDemandes();
         _demandCompteur = store.compteur || 0;
+        _demandesToutes = store.demandes;
         _demandes = store.demandes.filter(d => d.statut === 'en_attente');
       }
 
@@ -361,10 +358,6 @@ const Stock = (() => {
       try {
         const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
         _fournisseurs = rows.filter(f => f.actif);
-      } catch(e) {}
-      try {
-        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-        _demandeurs = rows.filter(d => d.actif);
       } catch(e) {}
 
       // Charger les données du plan (positions + image) depuis Supabase
@@ -384,21 +377,30 @@ const Stock = (() => {
     _initialiserModales();
     _initStickyTop();
 
-    // Rafraîchissement automatique des demandes pour les admins
+    // Rafraîchissement automatique (demandes + ajouts en attente) pour les admins
     if (Auth.hasRight('can_validate')) {
       setInterval(async () => {
         try {
-          const demandes = await window.SB.lire('demandes');
-          const nouvelles = demandes.filter(d => d.statut === 'en_attente');
-          const avant = _demandes.length;
-          _demandes = nouvelles;
-          if (nouvelles.length !== avant) {
+          const [demandes, barres] = await Promise.all([
+            window.SB.lire('demandes'),
+            window.SB.lire('stock'),
+          ]);
+          const nouvellesDemandes = demandes.filter(d => d.statut === 'en_attente');
+          const avantDemandes = _demandes.length;
+          const avantAjouts   = (_data?.barres || []).filter(b => b.statut === 'en_attente').length;
+          const nouveauxAjouts = barres.filter(b => b.statut === 'en_attente').length;
+
+          _demandesToutes = demandes;
+          _demandes = nouvellesDemandes;
+          if (_data) _data.barres = barres;
+
+          if (nouvellesDemandes.length !== avantDemandes || nouveauxAjouts !== avantAjouts) {
             _filtrer();
             _majAlerteAttente();
             _majBannieresDemandes();
           }
         } catch(e) {}
-      }, 30000);
+      }, 10000);
     }
   }
 
@@ -751,7 +753,7 @@ const Stock = (() => {
       if (desig.size      && !desig.has(b.designation))             return false;
       if (chantier.size   && !chantier.has(b.chantier_affectation)) return false;
       if (lieu.size       && !lieu.has(b.lieu_stockage))            return false;
-      if (dispo.size      && !dispo.has(b.disponibilite))           return false;
+      if (dispo.size      && !dispo.has(_statutAffiche(b)))         return false;
       if (classe.size     && !classe.has(b.classe_acier))           return false;
       if (origine.size    && !origine.has(b.chantier_origine))      return false;
       if (fournisseur.size && !fournisseur.has(b.fournisseur))      return false;
@@ -776,7 +778,7 @@ const Stock = (() => {
       if (epaisseur.size && !epaisseur.has(String(b.epaisseur_mm))) return false;
       if (chantier.size  && !chantier.has(b.chantier_origine))     return false;
       if (lieu.size      && !lieu.has(b.lieu_stockage))            return false;
-      if (dispo.size     && !dispo.has(b.disponibilite))           return false;
+      if (dispo.size     && !dispo.has(_statutAffiche(b)))         return false;
       if (texte) {
         const h = [b.epaisseur_mm, b.largeur_mm, b.longueur_mm,
           b.type_tole, b.ref_commande,
@@ -856,7 +858,10 @@ const Stock = (() => {
       case 'poids':       return item.categorie === 'profil' ? _poidsEffectifProfil(item) : (item.poids_unitaire_kg || 0);
       case 'chantier':    return item.chantier_affectation || '';
       case 'lieu':        return item.lieu_stockage    || '';
-      case 'dispo':       return item.disponibilite    || '';
+      case 'dispo': {
+        const ordre = { ajout_en_attente: 0, attribution_demandee: 1, disponible: 2, affecte: 3 };
+        return ordre[_statutAffiche(item)] ?? 9;
+      }
       case 'date':        return item.date_modif || item.date_validation || item.date_ajout || '';
       case 'epaisseur':   return item.epaisseur_mm     || 0;
       case 'dimensions':  return (item.largeur_mm || 0) * 100000 + (item.longueur_mm || 0);
@@ -928,7 +933,7 @@ const Stock = (() => {
         filtre = `<button type="button" class="th-filtre-btn${nD ? ' th-filtre-actif' : ''}" data-filtre="p-desig">${_e(lblD)}</button>`;
       } else if (c.key === 'dispo') {
         const setDp = _filtresP.dispo; const nDp = setDp.size;
-        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
+        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté', attribution_demandee: 'Attrib. demandée', ajout_en_attente: 'Ajout en attente' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${nDp ? ' th-filtre-actif' : ''}" data-filtre="p-dispo">${_e(lblDp)}</button>`;
       } else if (c.key === 'chantier') {
         const setCh = _filtresP.chantier; const nCh = setCh.size;
@@ -1239,7 +1244,7 @@ const Stock = (() => {
         filtre = `<button type="button" class="th-filtre-btn${nE ? ' th-filtre-actif' : ''}" data-filtre="t-epaisseur">${_e(lblE)}</button>`;
       } else if (c.key === 'dispo') {
         const setDp = _filtresT.dispo; const nDp = setDp.size;
-        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
+        const lblDp = nDp === 0 ? '— statut —' : nDp === 1 ? ({ disponible: 'Dispo.', affecte: 'Affecté', attribution_demandee: 'Attrib. demandée', ajout_en_attente: 'Ajout en attente' }[[...setDp][0]] || [...setDp][0]) : `${nDp} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${nDp ? ' th-filtre-actif' : ''}" data-filtre="t-dispo">${_e(lblDp)}</button>`;
       } else if (c.key === 'chantier') {
         const setCh = _filtresT.chantier; const nCh = setCh.size;
@@ -1335,78 +1340,34 @@ const Stock = (() => {
      BADGES ET BOUTONS LIGNE
      ────────────────────────────────────────────────────────────── */
 
+  /**
+   * Statut affiché synthétique d'un élément (barre/tôle), utilisé à la fois
+   * pour le badge et pour le tri par colonne « Statut » — sans ça, une
+   * demande d'attribution en cours restait indissociable de « Disponible »
+   * au tri puisque disponibilite ne change qu'à la validation.
+   */
+  function _statutAffiche(item) {
+    if (item.statut === 'en_attente') return 'ajout_en_attente';
+    if (_demandes.find(d => d.id_barre === item.id)) return 'attribution_demandee';
+    return item.disponibilite === 'disponible' ? 'disponible' : 'affecte';
+  }
+
   function _badgeDispo(item) {
-    if (item.statut === 'en_attente')        return `<span class="badge badge-attente">⏳ En attente</span>`;
-    // Vérifier si une demande d'attribution est en cours sur cet élément
-    const demandeEnCours = _demandes.find(d => d.id_barre === item.id);
-    if (demandeEnCours) {
-      const infos = [
-        `Demandeur : ${demandeEnCours.demandeur || '—'}`,
-        `Destination : ${_labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—'}`,
-        `Date : ${demandeEnCours.date_demande || '—'}`,
-        demandeEnCours.commentaire ? `Remarque : ${demandeEnCours.commentaire}` : null,
-      ].filter(Boolean).join('\n');
-      return `<span class="badge badge-attente" title="${_e(infos)}">⏳ Attribution demandée</span>`;
+    const statut = _statutAffiche(item);
+    if (statut === 'ajout_en_attente') return `<span class="badge badge-attente">⏳ En attente</span>`;
+    if (statut === 'attribution_demandee') {
+      const demandeEnCours = _demandes.find(d => d.id_barre === item.id);
+      const destination = _labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—';
+      return `<span class="badge badge-attente">⏳ Attribution demandée</span>
+        <span class="infos-demande">
+          👤 <b>${_e(demandeEnCours.demandeur || '—')}</b><br>
+          📅 ${_e(demandeEnCours.date_demande || '—')}<br>
+          🏗 ${_e(destination)}
+        </span>`;
     }
-    if (item.disponibilite === 'disponible') return `<span class="badge badge-dispo">Disponible</span>`;
-    return                                          `<span class="badge badge-affecte">Affecté</span>`;
+    if (statut === 'disponible') return `<span class="badge badge-dispo">Disponible</span>`;
+    return                              `<span class="badge badge-affecte">Affecté</span>`;
   }
-
-  function _actionsLigneProfil(b, modif, admin) {
-    let h = '';
-
-    if (b.statut === 'en_attente' && admin) {
-      // Admin : boutons valider / refuser sur ajout en attente
-      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(b.id)}')" title="Valider">✔</button>`;
-      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(b.id)}')" title="Refuser">✘</button>`;
-    } else {
-      // Vérifier si une demande d'attribution est en attente sur cette barre
-      const demandeEnCours = _demandes.find(d => d.id_barre === b.id);
-      if (demandeEnCours && admin) {
-        // Admin : boutons valider / refuser sur la demande (id DEM-XXXX)
-        h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(demandeEnCours.id)}')" title="Valider la demande">✔</button>`;
-        h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
-      } else if (modif) {
-        // Gestion / Admin : modifier
-        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${_e(b.id)}')" title="Modifier">Modifier</button>`;
-        // Utiliser : barre validée avec longueur > 0
-        if (b.statut === 'valide' && b.longueur_m > 0) {
-          h += ` <button class="btn-ligne btn-utiliser" onclick="Stock.ouvrirUtiliserBarre('${_e(b.id)}')" title="Utiliser">Utiliser</button>`;
-        }
-      }
-    }
-
-    // Demander : tous les profils (si disponible et pas de demande en cours)
-    const demandeActifP = _demandes.find(d => d.id_barre === b.id);
-    if (b.statut !== 'en_attente' && !demandeActifP) {
-      const dis = b.disponibilite !== 'disponible' ? ' disabled' : '';
-      h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirDemande('${_e(b.id)}')" title="Demander l'attribution">Demander</button>`;
-    }
-
-    return h;
-  }
-
-  function _actionsLigneTole(t, modif, admin) {
-    let h = '';
-
-    if (t.statut === 'en_attente' && admin) {
-      h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(t.id)}')" title="Valider">✔</button>`;
-      h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(t.id)}')" title="Refuser">✘</button>`;
-    } else {
-      const demandeEnCours = _demandes.find(d => d.id_barre === t.id);
-      if (demandeEnCours && admin) {
-        h += ` <button class="btn-ligne btn-valider" onclick="Stock.validerElement('${_e(demandeEnCours.id)}')" title="Valider la demande">✔</button>`;
-        h += ` <button class="btn-ligne btn-refuser" onclick="Stock.refuserElement('${_e(demandeEnCours.id)}')" title="Refuser la demande">✘</button>`;
-      } else if (modif) {
-        h += ` <button class="btn-ligne btn-modifier" onclick="Stock.ouvrirModification('${_e(t.id)}')" title="Modifier">Modifier</button>`;
-        const dis = t.quantite <= 0 ? ' disabled' : '';
-        h += ` <button class="btn-ligne btn-demander"${dis} onclick="Stock.ouvrirSortieTole('${_e(t.id)}')" title="Sortie chantier">Sortie</button>`;
-      }
-    }
-
-    return h;
-  }
-
 
   /* ──────────────────────────────────────────────────────────────
      PEUPLEMENT DES FILTRES
@@ -3128,7 +3089,12 @@ ${hasT ? `
           .map(v => ({ value: v, label: v }));
       }
       case 'p-dispo': case 't-dispo':
-        return [{ value: 'disponible', label: 'Disponible' }, { value: 'affecte', label: 'Affecté' }];
+        return [
+          { value: 'disponible',           label: 'Disponible' },
+          { value: 'affecte',              label: 'Affecté' },
+          { value: 'attribution_demandee', label: 'Attribution demandée' },
+          { value: 'ajout_en_attente',     label: 'Ajout en attente' },
+        ];
       case 'p-chantier':
         return uniq(profils.filter(b => b.chantier_affectation).map(b => b.chantier_affectation))
           .map(v => ({ value: v, label: _labelChantier(v) }));
@@ -3268,15 +3234,105 @@ ${hasT ? `
 
   function _majBannieresDemandes() {
     const z = document.getElementById('stock-alerte-demandes');
-    if (!z || !Auth.hasRight('can_validate')) { if (z) z.style.display = 'none'; return; }
-    const nb = _demandes.length;
-    if (nb === 0) {
+    if (z) {
+      const nbAjoutsEnAttente = (_data?.barres || []).filter(b => b.statut === 'en_attente').length;
+      const nb = _demandes.length + nbAjoutsEnAttente;
+      if (!Auth.hasRight('can_validate') || nb === 0) {
+        z.style.display = 'none';
+      } else {
+        z.style.display = 'flex';
+        const span = z.querySelector('.alerte-nb-demandes');
+        if (span) span.textContent = nb;
+      }
+    }
+    _majBanniereMesDemandes();
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     MES NOTIFICATIONS — mes demandes personnelles :
+     - en_attente : toujours affichées (rien à "lire", on suit juste
+       leur statut, elles disparaissent d'elles-mêmes une fois traitées)
+     - valide/refuse : affichées tant que non "vues" (mémorisé en
+       local, sans passer par l'email pour ne pas surcharger la boîte)
+     ────────────────────────────────────────────────────────────── */
+
+  const CLE_NOTIFS_VUES = 'lbf_notifs_demandes_vues';
+
+  function _idsNotifsVus() {
+    try { return JSON.parse(localStorage.getItem(CLE_NOTIFS_VUES) || '[]'); }
+    catch { return []; }
+  }
+
+  function _marquerNotifsVues(ids) {
+    const vus = new Set(_idsNotifsVus());
+    ids.forEach(id => vus.add(id));
+    try { localStorage.setItem(CLE_NOTIFS_VUES, JSON.stringify([...vus])); } catch {}
+  }
+
+  function _mesDemandesActives() {
+    const session = Auth.getSession();
+    if (!session || session.anonyme) return [];
+    const vus = _idsNotifsVus();
+    return _demandesToutes.filter(d =>
+      d.demande_par === session.identifiant &&
+      (d.statut === 'en_attente' || ((d.statut === 'valide' || d.statut === 'refuse') && !vus.includes(d.id)))
+    );
+  }
+
+  function _majBanniereMesDemandes() {
+    const z = document.getElementById('stock-alerte-mes-demandes');
+    if (!z) return;
+    const mesNotifs = _mesDemandesActives();
+    if (mesNotifs.length === 0) {
       z.style.display = 'none';
     } else {
       z.style.display = 'flex';
-      const span = z.querySelector('.alerte-nb-demandes');
-      if (span) span.textContent = nb;
+      const span = z.querySelector('.alerte-nb-mes-demandes');
+      if (span) span.textContent = mesNotifs.length;
     }
+  }
+
+  function _ouvrirMesDemandes() {
+    _rendreMesDemandes();
+    _ouvrirModale('m-mes-demandes');
+  }
+
+  function _rendreMesDemandes() {
+    const zone = document.getElementById('mdem-liste');
+    if (!zone) return;
+    const notifs = _mesDemandesActives();
+    if (!notifs.length) {
+      zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande à afficher.</div>';
+      return;
+    }
+    zone.innerHTML = notifs.map(d => {
+      const traitee = d.statut === 'valide' || d.statut === 'refuse';
+      let badge;
+      if (d.statut === 'en_attente') badge = '<span class="badge badge-attente">⏳ En attente</span>';
+      else if (d.statut === 'valide') badge = '<span class="statut-actif">✔ Acceptée</span>';
+      else badge = '<span style="color:var(--rouge);font-weight:bold">✘ Refusée</span>';
+      return `<div style="padding:10px 4px;border-bottom:1px solid #eee">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <strong>${_e(d.id)}</strong> ${badge}
+        </div>
+        <div style="font-size:13px;color:#555">Chantier : ${_e(_labelChantier(d.chantier_demande) || d.chantier_demande || '—')}</div>
+        ${d.statut === 'refuse' && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
+        <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || d.date_demande || '')}</div>
+        ${traitee ? `<div style="text-align:right;margin-top:4px">
+          <button class="btn-ligne" style="background:#e8e8e8;color:var(--noir)" onclick="Stock.marquerDemandeLue('${_e(d.id)}')">Marquer comme lu</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function marquerDemandeLue(id) {
+    _marquerNotifsVues([id]);
+    _rendreMesDemandes();
+    _majBanniereMesDemandes();
+  }
+
+  function fermerMesDemandes() {
+    _fermerModale('m-mes-demandes');
   }
 
   function _majBanniereRecents() {
@@ -3486,11 +3542,15 @@ ${hasT ? `
 
     // Bannière demandes : clic pour basculer sur Profilés filtré sur les en_attente
     document.getElementById('stock-alerte-demandes')?.addEventListener('click', () => {
+      _activerSectionStock();
       _basculerOnglet('profils', true);
       _filtreEnAttente = true;
       _majBadgeAttente();
       _filtrer();
     });
+
+    // Bannière personnelle : mes demandes traitées
+    document.getElementById('stock-alerte-mes-demandes')?.addEventListener('click', _ouvrirMesDemandes);
 
     // Liens de navigation depuis la synthèse (event delegation — toolbar + contenu)
     const zsyn = document.getElementById('zone-synthese');
@@ -4237,7 +4297,6 @@ ${hasT ? `
     _attacherAdminPlan();
     _attacherAdminChantiers();
     _attacherAdminFournisseurs();
-    _attacherAdminDemandeurs();
     _attacherNavAdmin();
 
     // ── Modale modification — dispo ↔ chantier ────────────────────
@@ -4547,11 +4606,9 @@ ${hasT ? `
           classe_acier: classe || null,
           ref_commande: refCmd,
           fournisseur: fournisseur,
-          statut: 'valide',
+          ..._statutNouvelAjout(session),
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
-          valide_par: session?.identifiant || null,
-          date_validation: _dateAujourdhui(),
           commentaire,
         };
         const enLigne = await _persisterElement(barre);
@@ -4633,11 +4690,9 @@ ${hasT ? `
           classe_acier: classe || null,
           ref_commande: refCmd || null,
           fournisseur: fournisseur || null,
-          statut: 'valide',
+          ..._statutNouvelAjout(session),
           date_ajout: _dateAujourdhui(),
           ajoute_par: session?.identifiant || 'inconnu',
-          valide_par: session?.identifiant || null,
-          date_validation: _dateAujourdhui(),
           commentaire: '',
         };
 
@@ -5188,11 +5243,9 @@ ${hasT ? `
       lieu_stockage: lieu,
       disponibilite: dispo,
       chantier_affectation: null,
-      statut: 'valide',
+      ..._statutNouvelAjout(session),
       date_ajout: _dateAujourdhui(),
       ajoute_par: session?.identifiant || 'inconnu',
-      valide_par: session?.identifiant || null,
-      date_validation: _dateAujourdhui(),
       commentaire
     };
 
@@ -6241,6 +6294,21 @@ ${hasT ? `
       btnSortie.onclick = () => { _fermerModale('m-detail-tole'); _ouvrirSortieTole(id); };
     }
 
+    // Nouvel ajout en attente OU demande d'attribution en cours : Valider / Refuser (admin)
+    const ajoutEnAttenteT = t.statut === 'en_attente';
+    const idAValiderT = ajoutEnAttenteT ? t.id : demandeEnCoursT?.id;
+    const adminT = Auth.hasRight('can_validate');
+    const btnValiderT = m.querySelector('#dtole-btn-valider');
+    if (btnValiderT) {
+      btnValiderT.style.display = (!opts.readOnly && adminT && idAValiderT) ? '' : 'none';
+      btnValiderT.onclick = () => { _fermerModale('m-detail-tole'); validerElement(idAValiderT); };
+    }
+    const btnRefuserT = m.querySelector('#dtole-btn-refuser');
+    if (btnRefuserT) {
+      btnRefuserT.style.display = (!opts.readOnly && adminT && idAValiderT) ? '' : 'none';
+      btnRefuserT.onclick = () => { _fermerModale('m-detail-tole'); refuserElement(idAValiderT); };
+    }
+
     // Champs conditionnels en mode lecture seule (depuis bilan)
     if (opts.readOnly) {
       if (t.statut === 'archivee') {
@@ -6385,12 +6453,26 @@ ${hasT ? `
       btnUtiliser.style.display = canUtiliser ? '' : 'none';
       btnUtiliser.onclick = () => _entrerModeUtiliserFicheProfil(id, m);
     }
+    // Nouvel ajout en attente OU demande d'attribution en cours : Valider / Refuser (admin)
+    const demandeActif  = _demandes.find(d => d.id_barre === b.id);
+    const ajoutEnAttente = b.statut === 'en_attente';
+    const idAValider = ajoutEnAttente ? b.id : demandeActif?.id;
+    const admin = Auth.hasRight('can_validate');
     const btnValider = m.querySelector('#dprofil-btn-valider');
-    if (btnValider) btnValider.style.display = 'none';
+    if (btnValider) {
+      btnValider.style.display = (!opts.readOnly && admin && idAValider) ? '' : 'none';
+      btnValider.onclick = () => { _fermerModale('m-detail-profil'); validerElement(idAValider); };
+    }
+    const btnRefuser = m.querySelector('#dprofil-btn-refuser');
+    if (btnRefuser) {
+      btnRefuser.style.display = (!opts.readOnly && admin && idAValider) ? '' : 'none';
+      btnRefuser.onclick = () => { _fermerModale('m-detail-profil'); refuserElement(idAValider); };
+    }
     const btnDemander = m.querySelector('#dprofil-btn-demander');
     if (btnDemander) {
-      const demandeActif = _demandes.find(d => d.id_barre === b.id);
-      const canDemander = !opts.readOnly && !canModif && b.statut !== 'en_attente' && !demandeActif;
+      const sessionDp = Auth.getSession();
+      const canDemander = !opts.readOnly && !canModif && b.statut !== 'en_attente' && !demandeActif
+        && sessionDp && !sessionDp.anonyme;
       btnDemander.style.display = canDemander ? '' : 'none';
       btnDemander.disabled = b.disponibilite !== 'disponible';
       btnDemander.onclick = () => { _fermerModale('m-detail-profil'); ouvrirDemande(id); };
@@ -7092,28 +7174,13 @@ ${hasT ? `
     // Rafraîchir la liste des demandes en mémoire
     try {
       const demandes = await window.SB.lire('demandes');
+      _demandesToutes = demandes;
       _demandes = demandes.filter(d => d.statut === 'en_attente');
     } catch(e) {
-      _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
+      _demandesToutes = _chargerDemandes().demandes;
+      _demandes = _demandesToutes.filter(d => d.statut === 'en_attente');
     }
     _majBannieresDemandes();
-
-    // Sauvegarder le nouveau demandeur s'il n'était pas encore dans la liste
-    if (!dem.demandeur_id && dem.demandeur_nom) {
-      try {
-        const res = await window.SB.inserer('demandeurs', {
-          nom:    dem.demandeur_nom,
-          prenom: dem.demandeur_prenom || null,
-          email:  dem.demandeur_email  || null,
-          actif:  true
-        });
-        const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-        _demandeurs = rows.filter(d => d.actif);
-      } catch(e) { console.warn('[Stock] Impossible de sauvegarder le demandeur :', e); }
-    }
-
-    // Envoyer email de confirmation
-    await _envoyerMailConfirmation(dem, 'accepte');
 
     _fermerModale('m-valider-demande');
     _filtrer();
@@ -7153,12 +7220,13 @@ ${hasT ? `
           try { localStorage.setItem(CLE_DEMANDES, JSON.stringify(store)); } catch {}
         }
       }
-      if (dem) await _envoyerMailConfirmation(dem, 'refuse', motif);
       try {
         const demandes = await window.SB.lire('demandes');
+        _demandesToutes = demandes;
         _demandes = demandes.filter(d => d.statut === 'en_attente');
       } catch(e) {
-        _demandes = _chargerDemandes().demandes.filter(d => d.statut === 'en_attente');
+        _demandesToutes = _chargerDemandes().demandes;
+        _demandes = _demandesToutes.filter(d => d.statut === 'en_attente');
       }
       _majBannieresDemandes();
       _fermerModale('m-confirmation');
@@ -7924,91 +7992,63 @@ ${hasT ? `
       const affaire = inpAff.value.trim() || null;
       const ville   = inpVille.value.trim() || null;
       if (!nom) return;
-      const res = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
-      if (res?.error) { alert('Erreur création chantier : ' + res.error.message); return; }
-      const rows = await window.SB.lire('chantiers', { order: 'nom' });
-      _chantiers = rows.filter(c => c.actif);
-      _majDatalistChantiers();
-      _monterPickerChantier(wrap, selectId, nom);
+      try {
+        await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
+        const rows = await window.SB.lire('chantiers', { order: 'nom' });
+        _chantiers = rows.filter(c => c.actif);
+        _majDatalistChantiers();
+        _monterPickerChantier(wrap, selectId, nom);
+      } catch (err) {
+        alert('Erreur création chantier : ' + (err.message || err));
+      }
     });
   }
 
-  function _monterPickerDemandeur(wrap, demandeurId = '') {
+  /**
+   * Affiche l'identité du demandeur d'après le compte connecté. Les demandes
+   * d'attribution ne sont plus ouvertes au visiteur anonyme : la liste des
+   * demandeurs référentiels a été supprimée, il faut un compte réel.
+   */
+  function _monterPickerDemandeur(wrap) {
     if (!wrap) return;
-    const opts = `<option value="">— Choisir un demandeur —</option>` +
-      _demandeurs.map(d => {
-        const label = [d.prenom, d.nom].filter(Boolean).join(' ') + (d.email ? ` (${d.email})` : '');
-        return `<option value="${_e(d.id)}"${d.id === demandeurId ? ' selected' : ''}>${_e(label)}</option>`;
-      }).join('') +
-      `<option value="__nouveau__">— Nouveau demandeur —</option>`;
 
-    wrap.innerHTML = `
-      <select id="dem-demandeur-sel" style="width:100%">${opts}</select>
-      <div id="dem-demandeur-email-affiche" style="margin-top:4px;font-size:12px;color:#666;min-height:18px"></div>
-      <div id="dem-nouveau-form" style="display:none;margin-top:8px;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd">
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <input type="text" id="dem-new-prenom" placeholder="Prénom" style="flex:1;min-width:0">
-          <input type="text" id="dem-new-nom" placeholder="Nom *" style="flex:1;min-width:0">
-        </div>
-        <input type="email" id="dem-new-email" placeholder="Email (confirmation de demande)" style="width:100%;box-sizing:border-box">
-      </div>`;
-
-    const sel = wrap.querySelector('#dem-demandeur-sel');
-    const emailAffiche = wrap.querySelector('#dem-demandeur-email-affiche');
-    const formNouv = wrap.querySelector('#dem-nouveau-form');
-
-    function majEmail() {
-      const v = sel.value;
-      if (v === '__nouveau__') {
-        formNouv.style.display = '';
-        emailAffiche.textContent = '';
-      } else if (v) {
-        formNouv.style.display = 'none';
-        const d = _demandeurs.find(x => x.id === v);
-        emailAffiche.innerHTML = d?.email ? `📧 ${_e(d.email)}` : '';
-      } else {
-        formNouv.style.display = 'none';
-        emailAffiche.textContent = '';
-      }
+    const session = Auth.getSession();
+    if (session && !session.anonyme) {
+      const [prenom, ...resteNom] = (session.nomComplet || '').split(' ');
+      const nom = resteNom.join(' ') || session.nomComplet || '';
+      wrap.dataset.compte = '1';
+      wrap.dataset.compteEmail  = session.identifiant || '';
+      wrap.dataset.comptePrenom = prenom || '';
+      wrap.dataset.compteNom    = nom || '';
+      wrap.innerHTML = `
+        <div style="padding:8px 10px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd;font-size:13px">
+          👤 <strong>${_e(session.nomComplet || session.identifiant)}</strong>
+          ${session.identifiant ? `<span style="color:#666"> — ${_e(session.identifiant)}</span>` : ''}
+        </div>`;
+      return;
     }
-    sel.addEventListener('change', majEmail);
-    majEmail();
+
+    delete wrap.dataset.compte;
+    wrap.innerHTML = `
+      <div style="padding:8px 10px;background:#fde8e8;border-radius:6px;border:1px solid var(--rouge);font-size:13px;color:var(--rouge)">
+        ⚠ Un compte est nécessaire pour soumettre une demande d'attribution. Connectez-vous pour continuer.
+      </div>`;
   }
 
   function _lireDemandeurPicker(m) {
-    const sel = m?.querySelector('#dem-demandeur-sel');
-    if (!sel) return null;
-    const v = sel.value;
-    if (!v) return null;
-    if (v === '__nouveau__') {
-      const prenom = m.querySelector('#dem-new-prenom')?.value?.trim() || '';
-      const nom    = m.querySelector('#dem-new-nom')?.value?.trim() || '';
-      const email  = m.querySelector('#dem-new-email')?.value?.trim() || '';
-      if (!nom) return null;
-      return { id: null, nom, prenom, email, isNew: true };
+    const wrap = m?.querySelector('#dem-demandeur-picker');
+    if (wrap?.dataset.compte === '1') {
+      return {
+        id: null,
+        nom:    wrap.dataset.compteNom    || '',
+        prenom: wrap.dataset.comptePrenom || '',
+        email:  wrap.dataset.compteEmail  || '',
+        isNew:  false,
+      };
     }
-    const d = _demandeurs.find(x => x.id === v);
-    return d ? { ...d, isNew: false } : null;
+    return null;
   }
 
-  async function _envoyerMailConfirmation(dem, statut, motif = '') {
-    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID) return;
-    const email = dem.demandeur_email;
-    if (!email) return;
-    const tplId = statut === 'accepte' ? EMAILJS_TPL_ACCEPTATION : EMAILJS_TPL_REFUS;
-    if (!tplId) return;
-    try {
-      await window.emailjs.send(EMAILJS_SERVICE_ID, tplId, {
-        to_email:   email,
-        to_name:    dem.demandeur,
-        demande_id: dem.id,
-        chantier:   _labelChantier(dem.chantier_demande) || dem.chantier_demande,
-        motif:      motif || '',
-      }, EMAILJS_PUBLIC_KEY);
-    } catch(e) {
-      console.warn('[Stock] Envoi email échoué :', e);
-    }
-  }
 
   function _labelChantier(nom) {
     if (!nom) return '';
@@ -8179,6 +8219,19 @@ ${hasT ? `
   /** Retourne la date du jour au format ISO (YYYY-MM-DD) */
   function _dateAujourdhui() {
     return new Date().toISOString();
+  }
+
+  /**
+   * Statut et infos de validation initiaux pour un NOUVEL ajout au stock.
+   * Un compte "gestion" soumet pour validation (en_attente) ; un compte
+   * "administration" est auto-validé. Ne concerne que les ajouts — les
+   * modifications, sorties/utilisations et chutes restent immédiates.
+   */
+  function _statutNouvelAjout(session) {
+    if (session?.profil === 'gestion') {
+      return { statut: 'en_attente', valide_par: null, date_validation: null };
+    }
+    return { statut: 'valide', valide_par: session?.identifiant || null, date_validation: _dateAujourdhui() };
   }
 
 
@@ -9129,7 +9182,6 @@ ${hasT ? `
     { id: 'racks',                 label: 'Zones de stockage',        pk: 'id',  chkBkp: 'chk-bkp-racks',        chkRaz: 'chk-raz-racks' },
     { id: 'chantiers',             label: 'Chantiers',                pk: 'id',  chkBkp: 'chk-bkp-chantiers',    chkRaz: 'chk-raz-chantiers' },
     { id: 'fournisseurs',          label: 'Fournisseurs',             pk: 'id',  chkBkp: 'chk-bkp-fournisseurs', chkRaz: 'chk-raz-fournisseurs' },
-    { id: 'demandeurs',            label: 'Demandeurs',               pk: 'id',  chkBkp: 'chk-bkp-demandeurs',   chkRaz: 'chk-raz-demandeurs' },
     { id: 'config',                label: 'Configuration',            pk: 'key', chkBkp: 'chk-bkp-config',       chkRaz: 'chk-raz-config' },
   ];
 
@@ -9307,7 +9359,6 @@ ${hasT ? `
     if (onglet === 'stockage')     { _rendreRacks(); _rendreAdminPlan(); }
     if (onglet === 'chantiers')    _rendreChantiers();
     if (onglet === 'fournisseurs') _rendreFournisseurs();
-    if (onglet === 'demandeurs')   _rendreDemandeurs();
     if (onglet === 'comptes' && typeof chargerUsers === 'function') chargerUsers();
     if (onglet === 'sauvegarde') {
       const btnExp = document.getElementById('btn-backup-export');
@@ -9997,128 +10048,6 @@ ${hasT ? `
     });
   }
 
-  function _pseudoDemandeur(d) {
-    const init = d.prenom ? d.prenom.trim()[0].toUpperCase() + '.' : '';
-    return init ? `${init} ${d.nom}` : d.nom;
-  }
-
-  function _rendreDemandeurs() {
-    const zone = document.getElementById('admin-demandeurs-liste');
-    if (!zone) return;
-    if (!_demandeurs.length) { zone.innerHTML = '<div class="admin-ref-vide">Aucun demandeur enregistré</div>'; return; }
-    const tries = [..._demandeurs].sort((a, b) =>
-      (a.prenom || '').localeCompare(b.prenom || '', 'fr', { sensitivity: 'base' })
-    );
-    zone.innerHTML = `
-      <table class="admin-rack-table">
-        <thead><tr><th>Prénom</th><th>Nom</th><th>Pseudo</th><th>Email</th><th></th></tr></thead>
-        <tbody>
-          ${tries.map(d => `<tr data-dem-row="${_e(d.id)}">
-            <td>${_e(d.prenom || '—')}</td>
-            <td><strong>${_e(d.nom)}</strong></td>
-            <td><span class="dem-pseudo">${_e(_pseudoDemandeur(d))}</span></td>
-            <td>${d.email ? `<a href="mailto:${_e(d.email)}">${_e(d.email)}</a>` : '—'}</td>
-            <td class="admin-ch-actions">
-              <button class="admin-ref-edit" data-dem-id="${_e(d.id)}" title="Modifier">✎</button>
-              <button class="admin-ref-del" data-dem-id="${_e(d.id)}" data-nom="${_e(d.nom)}" title="Supprimer">✕</button>
-            </td>
-          </tr>
-          <tr class="admin-ch-edit-row" data-dem-edit="${_e(d.id)}" style="display:none">
-            <td colspan="5">
-              <div class="admin-ch-edit-form">
-                <input class="admin-input-sm" data-dem-field="prenom" placeholder="Prénom" value="${_e(d.prenom || '')}">
-                <input class="admin-input-sm" data-dem-field="nom" placeholder="Nom" value="${_e(d.nom || '')}">
-                <input class="admin-input-sm" data-dem-field="email" type="email" placeholder="Email" value="${_e(d.email || '')}" style="flex:2">
-                <button class="btn-sm btn-valider" data-dem-save="${_e(d.id)}">Enregistrer</button>
-                <button class="btn-sm btn-annuler" data-dem-cancel="${_e(d.id)}">Annuler</button>
-              </div>
-            </td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
-  }
-
-  async function _adminModifierDemandeur(id) {
-    const editRow = document.querySelector(`[data-dem-edit="${id}"]`);
-    if (!editRow) return;
-    const prenom = editRow.querySelector('[data-dem-field="prenom"]')?.value?.trim();
-    const nom    = editRow.querySelector('[data-dem-field="nom"]')?.value?.trim();
-    const email  = editRow.querySelector('[data-dem-field="email"]')?.value?.trim();
-    if (!nom) { _notif('Le nom est requis', 'alerte'); return; }
-    try {
-      await window.SB.mettreAJour('demandeurs', id, { nom, prenom: prenom || null, email: email || null });
-      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-      _demandeurs = rows.filter(d => d.actif);
-      _rendreDemandeurs();
-      _notif('Demandeur modifié', 'succes');
-    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
-  }
-
-  async function _adminAjouterDemandeur() {
-    const m      = document.getElementById('admin-panel-demandeurs');
-    const prenom = m?.querySelector('#admin-dem-prenom')?.value?.trim();
-    const nom    = m?.querySelector('#admin-dem-nom')?.value?.trim();
-    const email  = m?.querySelector('#admin-dem-email')?.value?.trim();
-    if (!nom) return;
-    try {
-      await window.SB.inserer('demandeurs', { nom, prenom: prenom || null, email: email || null, actif: true });
-      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-      _demandeurs = rows.filter(d => d.actif);
-      _rendreDemandeurs();
-      if (m) { m.querySelector('#admin-dem-prenom').value = ''; m.querySelector('#admin-dem-nom').value = ''; m.querySelector('#admin-dem-email').value = ''; }
-      _notif('Demandeur ajouté', 'succes');
-    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
-  }
-
-  async function _adminSupprimerDemandeur(id, nom) {
-    try {
-      await window.SB.supprimer('demandeurs', id);
-      const rows = await window.SB.lire('demandeurs', { order: 'nom' });
-      _demandeurs = rows.filter(d => d.actif);
-      _rendreDemandeurs();
-      _notif(`"${nom}" supprimé`, 'succes');
-    } catch(e) { _notif('Erreur : ' + e.message, 'alerte'); }
-  }
-
-  function _attacherAdminDemandeurs() {
-    const m = document.getElementById('admin-panel-demandeurs');
-    if (!m) return;
-    m.addEventListener('click', e => {
-      const del = e.target.closest('.admin-ref-del[data-dem-id]');
-      if (del) { _adminSupprimerDemandeur(del.dataset.demId, del.dataset.nom); return; }
-
-      const edit = e.target.closest('.admin-ref-edit[data-dem-id]');
-      if (edit) {
-        const id = edit.dataset.demId;
-        const editRow = m.querySelector(`[data-dem-edit="${id}"]`);
-        const mainRow = m.querySelector(`[data-dem-row="${id}"]`);
-        if (editRow && mainRow) {
-          const open = editRow.style.display !== 'none';
-          editRow.style.display = open ? 'none' : '';
-          mainRow.style.opacity = open ? '' : '0.4';
-        }
-        return;
-      }
-
-      const save = e.target.closest('[data-dem-save]');
-      if (save) { _adminModifierDemandeur(save.dataset.demSave); return; }
-
-      const cancel = e.target.closest('[data-dem-cancel]');
-      if (cancel) {
-        const id = cancel.dataset.demCancel;
-        const editRow = m.querySelector(`[data-dem-edit="${id}"]`);
-        const mainRow = m.querySelector(`[data-dem-row="${id}"]`);
-        if (editRow) editRow.style.display = 'none';
-        if (mainRow) mainRow.style.opacity = '';
-        return;
-      }
-    });
-    m.querySelector('#admin-btn-demandeur')?.addEventListener('click', _adminAjouterDemandeur);
-    m.querySelector('#admin-dem-nom')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') _adminAjouterDemandeur();
-    });
-  }
-
   /* ──────────────────────────────────────────────────────────────
      API PUBLIQUE
      ────────────────────────────────────────────────────────────── */
@@ -10133,6 +10062,8 @@ ${hasT ? `
     ouvrirUtiliserBarre:   _ouvrirUtiliserBarre,
     validerElement,
     refuserElement,
+    fermerMesDemandes,
+    marquerDemandeLue,
     getSelection,
     ouvrirHistoriqueBarre,
     ouvrirHistoriqueTole,

@@ -495,6 +495,11 @@
     .badge-dispo   { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert);  }
     .badge-affecte { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
     .badge-attente { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+    .infos-demande {
+      display: block; margin-top: 3px; font-size: 11px; color: #8a6d1f;
+      white-space: normal; line-height: 1.4;
+    }
+    .infos-demande b { color: inherit; }
 
     .chip-chantier {
       display: inline-block;
@@ -781,16 +786,32 @@
     .dem-pseudo { font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; color: #444; }
 
     /* ── Table comptes inline ────────────────────────────────────── */
-    .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow: hidden; }
-    .cpt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cpt-table-wrap { background: #fff; border: 1px solid var(--gris-clair); border-radius: 3px; overflow-x: auto; }
+    .cpt-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+    .cpt-table col.cpt-col-email    { width: 28%; }
+    .cpt-table col.cpt-col-prenom   { width: 13%; }
+    .cpt-table col.cpt-col-nom      { width: 14%; }
+    .cpt-table col.cpt-col-profil   { width: 15%; }
+    .cpt-table col.cpt-col-statut   { width: 12%; }
+    .cpt-table col.cpt-col-actions  { width: 18%; }
     .cpt-table thead th {
       background: var(--noir); color: white; font-family: Impact, sans-serif; font-size: 11px;
-      letter-spacing: 1px; text-transform: uppercase; padding: 9px 12px; text-align: left;
+      letter-spacing: 1px; text-transform: uppercase; padding: 9px 8px; text-align: left; white-space: nowrap;
     }
     .cpt-table tbody tr { border-bottom: 1px solid #eee; }
     .cpt-table tbody tr:last-child { border-bottom: none; }
     .cpt-table tbody tr:hover { background: #fafafa; }
-    .cpt-table td { padding: 9px 12px; vertical-align: middle; }
+    .cpt-table td { padding: 6px 8px; vertical-align: middle; }
+    .cpt-inline-input {
+      width: 100%; box-sizing: border-box;
+      border: 1px solid transparent; border-radius: 3px;
+      padding: 4px 5px; font-size: 13px; font-family: inherit;
+      background: transparent; color: inherit;
+    }
+    .cpt-inline-input:hover:not(:disabled)  { border-color: #ddd; background: #fff; }
+    .cpt-inline-input:focus:not(:disabled)  { border-color: var(--vert); background: #fff; outline: none; }
+    .cpt-inline-input:disabled { color: #999; cursor: not-allowed; }
+    select.cpt-inline-input:not(:disabled) { cursor: pointer; }
     .profil-label {
       display: inline-block; padding: 2px 8px; border-radius: 2px;
       font-family: Impact, sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
@@ -798,6 +819,26 @@
     .profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
     .profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
     .profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+
+    select.cpt-inline-input.cpt-profil {
+      font-family: Impact, sans-serif; font-size: 9px; letter-spacing: .5px; text-transform: uppercase;
+      font-weight: normal; border-radius: 2px; padding: 3px 4px; text-align: center;
+    }
+    select.cpt-inline-input.cpt-profil.profil-consultation   { background: #fde8e8; color: var(--rouge); border: 1px solid var(--rouge); }
+    select.cpt-inline-input.cpt-profil.profil-gestion        { background: #e6f4ea; color: var(--vert);  border: 1px solid var(--vert); }
+    select.cpt-inline-input.cpt-profil.profil-administration { background: var(--or-bg); color: var(--or); border: 1px solid var(--or-bord); }
+    /* La liste déroulante (options) reste en couleurs standard, seul le select fermé est en badge */
+    select.cpt-inline-input.cpt-profil option {
+      background: #fff; color: var(--noir); font-family: Tahoma; text-transform: none; letter-spacing: normal;
+    }
+
+    .cpt-table td:last-child .btn-ligne { display: block; width: 100%; margin: 0 0 4px; text-align: center; box-sizing: border-box; }
+    .cpt-table td:last-child .btn-ligne:last-child { margin-bottom: 0; }
+
+    .cpt-table td:first-child strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cpt-table thead th[data-tri] { cursor: pointer; user-select: none; }
+    .cpt-table thead th[data-tri]:hover { color: var(--or); }
+    .tri-fleche { font-size: 9px; opacity: .8; }
     .statut-actif   { color: var(--vert); font-weight: bold; }
     .statut-inactif { color: #aaa; }
     .bl-modifier  { background: var(--vert);  color: white; }
@@ -1112,6 +1153,7 @@
     .col-p-poids       { width: 68px;  text-align: center; }
     .col-p-classe      { width: 62px;  text-align: center; }
     .col-p-dispo       { width: 108px; }
+    .col-p-dispo:has(.infos-demande) { width: 180px; white-space: normal; overflow: visible; vertical-align: top; }
     .col-p-date        { width: 82px;  }
     .col-p-chantier    { width: 112px; }
     .col-p-lieu        { width: 95px;  }
@@ -1161,6 +1203,7 @@
     .col-t-date       { width: 82px;  }
     .col-t-chantier   { width: 118px; }
     .col-t-dispo      { width: 108px; }
+    .col-t-dispo:has(.infos-demande) { width: 180px; white-space: normal; overflow: visible; vertical-align: top; }
     .col-t-ref_cmd    { width: 110px; }
     .col-t-actions    { width: 108px; }
 
@@ -1881,7 +1924,7 @@
       <span>📦</span> Stock
     </a>
     <a class="nav-item" href="bibliotheque.html">
-      <span>📚</span> Bibliothèque
+      <span>🛠</span> Outils
     </a>
     <a class="nav-item" id="nav-admin" href="#" data-require="can_validate">
       <span>⚙</span> Administration
@@ -1897,10 +1940,16 @@
     <span class="alerte-attente-lien">→ Voir</span>
   </div>
 
-  <!-- Bannière admin : demandes d'attribution en attente -->
-  <div id="stock-alerte-demandes" class="alerte-attente alerte-demandes" role="alert" title="Voir les demandes en attente" style="display:none">
-    🔔&nbsp; <span class="alerte-nb alerte-nb-demandes">0</span>&nbsp; demande(s) d'attribution en attente
+  <!-- Bannière admin : ajouts + demandes d'attribution en attente de validation -->
+  <div id="stock-alerte-demandes" class="alerte-attente alerte-demandes" role="alert" title="Voir les éléments en attente de validation" style="display:none">
+    🔔&nbsp; <span class="alerte-nb alerte-nb-demandes">0</span>&nbsp; élément(s) en attente de validation
     <span class="alerte-attente-lien">→ Traiter</span>
+  </div>
+
+  <!-- Bannière personnelle : mes demandes en cours (en attente + traitées non lues) -->
+  <div id="stock-alerte-mes-demandes" class="alerte-attente alerte-demandes" role="alert" title="Voir mes demandes en cours" style="display:none">
+    🔔&nbsp; <span class="alerte-nb alerte-nb-mes-demandes">0</span>&nbsp; de mes demande(s) en cours
+    <span class="alerte-attente-lien">→ Voir</span>
   </div>
 
   <!-- ══ SECTION STOCK ════════════════════════════════════════════ -->
@@ -2039,7 +2088,6 @@
       <button class="sous-onglet actif" data-admin-onglet="stockage">📦 Stockage</button>
       <button class="sous-onglet"       data-admin-onglet="chantiers">🏗 Chantiers</button>
       <button class="sous-onglet"       data-admin-onglet="fournisseurs">🏭 Fournisseurs</button>
-      <button class="sous-onglet"       data-admin-onglet="demandeurs">📋 Demandeurs</button>
       <button class="sous-onglet"       data-admin-onglet="comptes">👤 Comptes</button>
       <button class="sous-onglet"       data-admin-onglet="recents">🕐 Récents</button>
       <button class="sous-onglet"       data-admin-onglet="sauvegarde">💾 Sauvegarde</button>
@@ -2138,31 +2186,6 @@
         </div>
       </div>
 
-      <!-- Demandeurs -->
-      <div id="admin-panel-demandeurs" class="admin-panel" style="display:none">
-        <h3 class="admin-panel-titre">Demandeurs</h3>
-        <div id="admin-demandeurs-liste" class="admin-ref-liste" style="max-height:380px"></div>
-        <div class="admin-ref-section-titre" style="margin-top:20px">Ajouter un demandeur</div>
-        <div class="admin-rack-form admin-dem-form">
-          <div>
-            <label for="admin-dem-prenom">Prénom</label>
-            <input id="admin-dem-prenom" type="text" placeholder="ex. Jean" class="admin-ref-inp">
-          </div>
-          <div>
-            <label for="admin-dem-nom">Nom</label>
-            <input id="admin-dem-nom" type="text" placeholder="ex. Dupont" class="admin-ref-inp">
-          </div>
-          <div>
-            <label for="admin-dem-email">Email</label>
-            <input id="admin-dem-email" type="email" placeholder="ex. j.dupont@lbf.fr" class="admin-ref-inp">
-          </div>
-          <div>
-            <label style="visibility:hidden">_</label>
-            <button id="admin-btn-demandeur" class="btn-modale btn-modale-vert">+ Ajouter</button>
-          </div>
-        </div>
-      </div>
-
       <!-- Comptes -->
       <div id="admin-panel-comptes" class="admin-panel" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -2171,13 +2194,22 @@
         </div>
         <div class="cpt-table-wrap">
           <table class="cpt-table">
+            <colgroup>
+              <col class="cpt-col-email"><col class="cpt-col-prenom"><col class="cpt-col-nom">
+              <col class="cpt-col-profil"><col class="cpt-col-statut"><col class="cpt-col-actions">
+            </colgroup>
             <thead>
               <tr>
-                <th>Identifiant</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Profil</th><th>Statut</th><th>Actions</th>
+                <th data-tri="email">Email <span class="tri-fleche"></span></th>
+                <th data-tri="prenom">Prénom <span class="tri-fleche"></span></th>
+                <th data-tri="nom">Nom <span class="tri-fleche"></span></th>
+                <th data-tri="profil">Profil <span class="tri-fleche"></span></th>
+                <th data-tri="actif">Statut <span class="tri-fleche"></span></th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="comptes-tbody">
-              <tr><td colspan="7" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
+              <tr><td colspan="6" class="vide" style="padding:20px;text-align:center;color:#aaa">Chargement…</td></tr>
             </tbody>
           </table>
         </div>
@@ -2217,7 +2249,6 @@
             <label class="backup-chk-item"><input type="checkbox" id="chk-bkp-racks" checked> Zones de stockage</label>
             <label class="backup-chk-item"><input type="checkbox" id="chk-bkp-chantiers" checked> Chantiers</label>
             <label class="backup-chk-item"><input type="checkbox" id="chk-bkp-fournisseurs" checked> Fournisseurs</label>
-            <label class="backup-chk-item"><input type="checkbox" id="chk-bkp-demandeurs" checked> Demandeurs</label>
             <label class="backup-chk-item"><input type="checkbox" id="chk-bkp-config" checked> Configuration</label>
           </div>
           <button id="btn-backup-export" class="btn-action btn-rouge">⬇ Télécharger la sauvegarde</button>
@@ -2252,7 +2283,6 @@
             <label class="backup-chk-item"><input type="checkbox" id="chk-raz-racks"> Zones de stockage</label>
             <label class="backup-chk-item"><input type="checkbox" id="chk-raz-chantiers"> Chantiers</label>
             <label class="backup-chk-item"><input type="checkbox" id="chk-raz-fournisseurs"> Fournisseurs</label>
-            <label class="backup-chk-item"><input type="checkbox" id="chk-raz-demandeurs"> Demandeurs</label>
             <label class="backup-chk-item"><input type="checkbox" id="chk-raz-config"> Configuration</label>
           </div>
           <button id="btn-reset-stock" class="btn-action btn-rouge">⚠ Supprimer la sélection</button>
@@ -2816,6 +2846,8 @@
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-detail-tole').classList.remove('open')">Fermer</button>
         <button id="dtole-btn-modifier" class="btn-modale btn-modale-vert" style="display:none">Modifier</button>
         <button id="dtole-btn-sortie"   class="btn-modale btn-modale-rouge" style="display:none">Sortie chantier</button>
+        <button id="dtole-btn-refuser"  class="btn-modale btn-modale-gris"    style="display:none">✘ Refuser</button>
+        <button id="dtole-btn-valider"  class="btn-modale btn-modale-valider" style="display:none">✔ Valider</button>
       </div>
     </div>
   </div>
@@ -2962,7 +2994,8 @@
         <button id="dprofil-btn-demander"    class="btn-modale btn-modale-bleu"    style="display:none">Demander</button>
         <button id="dprofil-btn-annuler"     class="btn-modale btn-modale-gris"    style="display:none">Annuler</button>
         <button id="dprofil-btn-enregistrer" class="btn-modale btn-modale-vert"    style="display:none">Enregistrer</button>
-        <button id="dprofil-btn-valider"     class="btn-modale btn-modale-valider" style="display:none">Valider</button>
+        <button id="dprofil-btn-refuser"     class="btn-modale btn-modale-gris"    style="display:none">✘ Refuser</button>
+        <button id="dprofil-btn-valider"     class="btn-modale btn-modale-valider" style="display:none">✔ Valider</button>
       </div>
     </div>
   </div>
@@ -3097,6 +3130,20 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════
+       MODALE — MES DEMANDES TRAITÉES (acceptées / refusées)
+       Déclenchée par la bannière #stock-alerte-mes-demandes
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-mes-demandes" class="modale-bg" role="dialog" aria-modal="true" aria-label="Mes demandes en cours">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Mes demandes en cours</div>
+      <div id="mdem-liste" style="max-height:420px;overflow-y:auto"></div>
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-rouge" onclick="Stock.fermerMesDemandes()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
        MODALE — CONFIRMATION SUPPRESSION
        ══════════════════════════════════════════════════════════════ -->
   <div id="m-supprimer" class="modale-bg" role="dialog" aria-modal="true" aria-label="Confirmer l'action">
@@ -3218,8 +3265,8 @@
       <div class="modale-titre" id="m-compte-titre">Nouveau compte</div>
       <div class="note-info" id="m-compte-info" style="display:none"></div>
       <div class="champ">
-        <label for="mc-identifiant">Identifiant *</label>
-        <input type="text" id="mc-identifiant" placeholder="ex : p.dupont" autocapitalize="none" spellcheck="false">
+        <label for="mc-email">Email *</label>
+        <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr" autocapitalize="none" spellcheck="false">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="champ">
@@ -3232,36 +3279,11 @@
         </div>
       </div>
       <div class="champ">
-        <label for="mc-email">Email</label>
-        <input type="email" id="mc-email" placeholder="ex : p.dupont@entreprise.fr">
-      </div>
-      <div class="champ">
         <label for="mc-profil">Profil *</label>
         <select id="mc-profil">
           <option value="consultation">Consultation — lecture seule</option>
           <option value="gestion">Gestion — ajouts soumis à validation</option>
           <option value="administration">Administration — accès complet</option>
-        </select>
-      </div>
-      <div class="champ" id="mc-mdp-zone">
-        <label for="mc-mdp">Mot de passe *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mc-mdp" placeholder="Mot de passe">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp','mc-oeil')" id="mc-oeil">👁</button>
-        </div>
-      </div>
-      <div class="champ" id="mc-mdp2-zone">
-        <label for="mc-mdp2">Confirmer le mot de passe *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mc-mdp2" placeholder="Confirmation">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mc-mdp2','mc-oeil2')" id="mc-oeil2">👁</button>
-        </div>
-      </div>
-      <div class="champ">
-        <label for="mc-actif">Statut</label>
-        <select id="mc-actif">
-          <option value="true">Actif</option>
-          <option value="false">Désactivé</option>
         </select>
       </div>
       <div class="msg-erreur-modale" id="mc-erreur"></div>
@@ -3274,37 +3296,29 @@
 
   <div id="m-mdp" class="modale-bg" onclick="bgClose(event,'m-mdp')">
     <div class="modale" onclick="event.stopPropagation()">
-      <div class="modale-titre">Changer le mot de passe</div>
-      <p style="font-size:13px;color:#555;margin-bottom:14px">Compte : <strong id="mdp-nom-compte"></strong></p>
-      <div class="champ">
-        <label for="mdp-nouveau">Nouveau mot de passe *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mdp-nouveau" placeholder="Nouveau mot de passe">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-nouveau','mdp-oeil1')" id="mdp-oeil1">👁</button>
-        </div>
+      <div class="modale-titre">Réinitialiser le mot de passe</div>
+      <div class="note-info">
+        Un email de réinitialisation sera envoyé à l'utilisateur, qui choisira
+        lui-même son nouveau mot de passe.
       </div>
-      <div class="champ">
-        <label for="mdp-confirme">Confirmer *</label>
-        <div class="champ-mdp-wrap">
-          <input type="password" id="mdp-confirme" placeholder="Confirmation">
-          <button type="button" class="btn-oeil" onclick="toggleMdp('mdp-confirme','mdp-oeil2')" id="mdp-oeil2">👁</button>
-        </div>
-      </div>
+      <p style="font-size:13px;color:#555;margin-bottom:14px">
+        Envoyer le lien à <strong id="mdp-nom-compte"></strong> (<span id="mdp-email-compte"></span>) ?
+      </p>
       <div class="msg-erreur-modale" id="mdp-erreur"></div>
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="fermerM('m-mdp')">Annuler</button>
-        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderMdp()">Enregistrer</button>
+        <button class="btn-modale btn-modale-rouge" onclick="sauvegarderMdp()">Envoyer le lien</button>
       </div>
     </div>
   </div>
 
-  <div id="m-supprimer" class="modale-bg" onclick="bgClose(event,'m-supprimer')">
+  <div id="m-supprimer-compte" class="modale-bg" onclick="bgClose(event,'m-supprimer-compte')">
     <div class="modale" onclick="event.stopPropagation()">
       <div class="modale-titre">Supprimer le compte</div>
       <div class="note-danger">⚠ Cette action est irréversible.</div>
       <p style="font-size:13px;color:#555;margin-bottom:16px">Supprimer le compte <strong id="sup-nom-compte"></strong> ?</p>
       <div class="modale-footer">
-        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-supprimer')">Annuler</button>
+        <button class="btn-modale btn-modale-gris" onclick="fermerM('m-supprimer-compte')">Annuler</button>
         <button class="btn-modale btn-modale-rouge" onclick="confirmerSuppression()">Supprimer</button>
       </div>
     </div>
@@ -3393,13 +3407,13 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../js/supabase.js?v=20260422"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260430"></script>
+  <script src="../js/stock.js?v=20260703j"></script>
 
 </body>
 </html>
