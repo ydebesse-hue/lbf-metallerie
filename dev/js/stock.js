@@ -4056,10 +4056,13 @@ ${hasT ? `
         });
       });
 
-      // Bouton "+ Ajouter une barre" (inventaire)
+      // Bouton "+ Ajouter une barre" (inventaire) — reprend la section de la dernière ligne
       const btnAjLigneInv = mAP.querySelector('#ap-inv-ajouter-ligne');
       if (btnAjLigneInv) btnAjLigneInv.addEventListener('click', () => {
-        _ajouterLigneInventaire(mAP.querySelector('#ap-inv-list'));
+        const list = mAP.querySelector('#ap-inv-list');
+        const lignesExistantes = list?.querySelectorAll('.inv-ligne');
+        const derniereLigne = lignesExistantes?.length ? lignesExistantes[lignesExistantes.length - 1] : null;
+        _ajouterLigneInventaire(list, derniereLigne);
       });
 
       // Délégation sur les lignes inventaire
@@ -4580,6 +4583,7 @@ ${hasT ? `
       const type       = l.querySelector('.inv-type')?.value?.trim();
       const desig      = l.querySelector('.inv-desig')?.value?.trim();
       const longueur   = parseFloat(l.querySelector('.inv-long')?.value);
+      const qte         = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
       const classe      = l.querySelector('.inv-classe')?.value?.trim() || '';
       const fournisseur = l.querySelector('.inv-fournisseur')?.value?.trim() || null;
       const origine     = l.querySelector('.inv-origine')?.value?.trim() || null;
@@ -4588,34 +4592,35 @@ ${hasT ? `
       const dims       = _getDims(type, desig);
       const poidsml    = dims?.pml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
-      const nouvelleId = l.dataset.idPrevu || _genererIdBarre();
-      dernierId = nouvelleId;
 
-      const barre = {
-          id: nouvelleId,
-          categorie: 'profil',
-          section_type: type,
-          designation: desig,
-          longueur_m: longueur,
-          poids_ml: poidsml,
-          poids_barre_kg: poidsBarre,
-          chantier_origine: origine,
-          lieu_stockage: lieu,
-          disponibilite: 'disponible',
-          chantier_affectation: null,
-          classe_acier: classe || null,
-          ref_commande: refCmd,
-          fournisseur: fournisseur,
-          ..._statutNouvelAjout(session),
-          date_ajout: _dateAujourdhui(),
-          ajoute_par: session?.identifiant || 'inconnu',
-          commentaire,
-        };
-        const enLigne = await _persisterElement(barre);
-        if (!enLigne) toutEnLigne = false;
-        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, lieu || null);
-        totalCreees++;
-      dernierId = nouvelleId;
+      for (let i = 0; i < qte; i++) {
+        const nouvelleId = (i === 0 && l.dataset.idPrevu) ? l.dataset.idPrevu : _genererIdBarre();
+        const barre = {
+            id: nouvelleId,
+            categorie: 'profil',
+            section_type: type,
+            designation: desig,
+            longueur_m: longueur,
+            poids_ml: poidsml,
+            poids_barre_kg: poidsBarre,
+            chantier_origine: origine,
+            lieu_stockage: lieu,
+            disponibilite: 'disponible',
+            chantier_affectation: null,
+            classe_acier: classe || null,
+            ref_commande: refCmd,
+            fournisseur: fournisseur,
+            ..._statutNouvelAjout(session),
+            date_ajout: _dateAujourdhui(),
+            ajoute_par: session?.identifiant || 'inconnu',
+            commentaire,
+          };
+          const enLigne = await _persisterElement(barre);
+          if (!enLigne) toutEnLigne = false;
+          await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, lieu || null);
+          totalCreees++;
+          dernierId = nouvelleId;
+      }
     }
 
 
@@ -4871,12 +4876,12 @@ ${hasT ? `
      INVENTAIRE — LIGNE PAR LIGNE
      ────────────────────────────────────────────────────────────── */
 
-  function _ajouterLigneInventaire(list) {
+  function _ajouterLigneInventaire(list, modele) {
     if (!list) return;
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
 
-    // ── Ligne 1 : Type | Désig | 🔍 | Longueur | ✕ ──
+    // ── Ligne 1 : Type | Désig | 🔍 | Longueur | Qté | ✕ ──
     const row1 = document.createElement('div');
     row1.className = 'inv-row-1';
 
@@ -4898,6 +4903,10 @@ ${hasT ? `
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
     inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
 
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'inv-qte inv-ctrl';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1'; inpQte.title = 'Nombre de barres identiques';
+
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
     btnDel.textContent = '✕';
@@ -4906,7 +4915,21 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneInventaire(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+    [selType, selDesig, btnSchema, inpLong, inpQte, btnDel].forEach(el => row1.appendChild(el));
+
+    // Reprend la section (type + désignation) de la ligne modèle, si fournie
+    if (modele) {
+      const typeModele  = modele.querySelector('.inv-type')?.value;
+      const desigModele = modele.querySelector('.inv-desig')?.value;
+      if (typeModele) {
+        selType.value = typeModele;
+        _apMajDesigLigneInv(ligne);
+        if (desigModele) {
+          selDesig.value = desigModele;
+          _majPoidsLigneInv(ligne);
+        }
+      }
+    }
 
     // ── Ligne 2 : ID prévu | Commentaire ──
     const row2 = document.createElement('div');
