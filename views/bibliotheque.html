@@ -949,6 +949,36 @@ header {
 }
 
 /* ══════════════════════════════════════════════
+   MÉMO GALVA
+══════════════════════════════════════════════ */
+.galva-alerte {
+  background: #fdecea; border: 1px solid var(--rouge); border-radius: 4px;
+  padding: 10px 14px; font-size: 13px; font-weight: bold; color: var(--rouge);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.galva-regles { list-style: none; margin: 0 0 6px; padding: 0; }
+.galva-regles li {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 13px; padding: 5px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.galva-regles li:last-child { border-bottom: none; }
+.galva-regles .ok  { color: var(--vert); font-weight: bold; flex-shrink: 0; }
+.galva-regles .non { color: var(--rouge); font-weight: bold; flex-shrink: 0; }
+.galva-schema {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start;
+  justify-content: center; margin: 10px 0 16px; text-align: center;
+}
+.galva-schema figure { margin: 0; max-width: 160px; }
+.galva-schema figcaption { font-size: 11px; color: #777; margin-top: 4px; }
+.galva-souscas { margin-bottom: 18px; }
+.galva-souscas h4 {
+  font-family: Impact, sans-serif; font-size: 12px; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--noir); margin-bottom: 6px;
+}
+.galva-souscas ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.galva-souscas li { margin-bottom: 4px; }
+
+/* ══════════════════════════════════════════════
    RESPONSIVE MOBILE
 ══════════════════════════════════════════════ */
 @media (max-width: 640px) {
@@ -1011,6 +1041,7 @@ header {
   <button class="sub-tab active" onclick="switchOnglet('profils',this)">Bibliothèque profilés</button>
   <button class="sub-tab" onclick="switchOnglet('comparateur',this)">Comparateur profilés</button>
   <button class="sub-tab" onclick="switchOnglet('calcul-toles',this)">Calcul tôles</button>
+  <button class="sub-tab" onclick="switchOnglet('memo-galva',this)">Mémo galva</button>
 </div>
 
 <!-- ══════════════════════
@@ -1169,6 +1200,142 @@ header {
       <table class="calc-table" id="comp-table"></table>
     </div>
   </div>
+</div>
+
+<!-- ══════════════════════
+     PANNEAU — MÉMO GALVA
+══════════════════════ -->
+<div id="panel-memo-galva" class="calc-wrap" style="display:none">
+
+  <div class="calc-bloc">
+    <h3>Principe de la galvanisation à chaud</h3>
+    <p class="calc-aide">Trempage des pièces en acier dans un bain de zinc en fusion à 450 °C. La densité de l'acier (7,85) est proche de celle du zinc (7,15) : le zinc a du mal à remplir les pièces creuses, d'où l'importance des trous d'évent.</p>
+
+    <div class="galva-alerte">⚠️ Un litre d'eau emprisonné peut engendrer une explosion de plusieurs tonnes de zinc en fusion !</div>
+
+    <div class="galva-schema">
+      <figure>
+        <svg width="140" height="120" viewBox="0 0 140 120">
+          <rect x="10" y="60" width="120" height="50" fill="#dbe6ee" stroke="#556" stroke-width="1.5"/>
+          <line x1="35" y1="20" x2="75" y2="95" stroke="#333" stroke-width="6" stroke-linecap="round"/>
+          <line x1="35" y1="95" x2="75" y2="20" stroke="#333" stroke-width="6" stroke-linecap="round" opacity="0"/>
+          <path d="M60 30 q8 -14 16 0" stroke="#888" stroke-width="1.5" fill="none"/>
+          <text x="70" y="15" font-size="9" fill="#666" text-anchor="middle">air évacué</text>
+          <polygon points="35,95 30,90 40,90" fill="var(--rouge)"/>
+          <text x="35" y="108" font-size="9" fill="#666" text-anchor="middle">zinc entre</text>
+        </svg>
+        <figcaption>Immersion inclinée : le zinc entre par le bas, l'air s'évacue par le haut</figcaption>
+      </figure>
+      <figure>
+        <svg width="140" height="120" viewBox="0 0 140 120">
+          <rect x="10" y="60" width="120" height="50" fill="#dbe6ee" stroke="#556" stroke-width="1.5"/>
+          <line x1="35" y1="20" x2="75" y2="95" stroke="#333" stroke-width="6" stroke-linecap="round"/>
+          <path d="M40 85 q8 14 16 0" stroke="var(--rouge)" stroke-width="1.5" fill="none"/>
+          <text x="45" y="112" font-size="9" fill="#666" text-anchor="middle">zinc ressort</text>
+          <polygon points="75,20 70,28 80,28" fill="#888"/>
+          <text x="90" y="18" font-size="9" fill="#666" text-anchor="middle">air rentre</text>
+        </svg>
+        <figcaption>Émersion dans le même sens : le zinc ressort par le bas, l'air rentre par le haut</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="calc-bloc">
+    <h3>Règles d'or de conception</h3>
+    <p class="calc-aide">Points à vérifier systématiquement avant d'envoyer une pièce à la galvanisation.</p>
+    <ul class="galva-regles">
+      <li><span class="ok">✓</span> Prévoir au moins deux trous en opposition par tronçon creux (un en haut, un en bas) pour l'immersion et l'émersion</li>
+      <li><span class="ok">✓</span> Percer au plus près des bords/angles — leur surface doit représenter environ 25 à 30 % de la section interne</li>
+      <li><span class="non">✗</span> Ne pas percer trop loin du bord : cela crée une poche de zinc qui reste piégée</li>
+      <li><span class="non">✗</span> Ne jamais laisser une pièce fermée sans évent — l'oubli d'un perçage peut provoquer une explosion</li>
+      <li><span class="non">✗</span> Éviter les intervalles &lt; 3 mm et les cordons de soudure discontinus (le zinc ne peut pas y entrer, la rouille s'y installera)</li>
+      <li><span class="ok">✓</span> Ébavurer/meuler les angles vifs et les stries d'oxycoupage (risque d'écaillage sinon)</li>
+      <li><span class="non">✗</span> Pas de peinture, graisse, autocollant, marquage indélébile ou résidu de colle sur les zones à galvaniser</li>
+      <li><span class="ok">✓</span> Grenailler les pièces vernies (brides notamment) avant envoi</li>
+      <li><span class="non">✗</span> Ne pas associer dans une même structure soudée des profilés d'inertie très différente (risque de déformation/rupture des soudures au refroidissement)</li>
+    </ul>
+  </div>
+
+  <div class="calc-bloc">
+    <h3>Tableau de référence — perçages des profils creux</h3>
+    <p class="calc-aide">Diamètre minimum du/des trou(s) d'évent selon la taille du profilé creux (source France Galva / Coatinc). « nc » = non concerné (trop petit pour ce nombre de trous). Positionner les trous en opposition (un en haut, un en bas de chaque extrémité).</p>
+    <div style="overflow-x:auto">
+      <table class="calc-table">
+        <thead>
+          <tr>
+            <th style="text-align:left">Rond ⌀ (mm)</th>
+            <th style="text-align:left">Carré (mm)</th>
+            <th style="text-align:left">Rectangulaire (mm)</th>
+            <th>1 trou (⌀ mm)</th>
+            <th>2 trous (⌀ mm)</th>
+            <th>4 trous (⌀ mm)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>15</td><td>15</td><td>20 x 10</td><td>8</td><td>nc</td><td>nc</td></tr>
+          <tr><td>20</td><td>20</td><td>30 x 15</td><td>10</td><td>nc</td><td>nc</td></tr>
+          <tr><td>30</td><td>30</td><td>40 x 20</td><td>12</td><td>10</td><td>nc</td></tr>
+          <tr><td>40</td><td>40</td><td>50 x 30</td><td>14</td><td>12</td><td>nc</td></tr>
+          <tr><td>50</td><td>50</td><td>60 x 40</td><td>16</td><td>12</td><td>10</td></tr>
+          <tr><td>60</td><td>60</td><td>80 x 40</td><td>20</td><td>12</td><td>10</td></tr>
+          <tr><td>80</td><td>80</td><td>100 x 60</td><td>20</td><td>16</td><td>12</td></tr>
+          <tr><td>100</td><td>100</td><td>120 x 80</td><td>25</td><td>20</td><td>12</td></tr>
+          <tr><td>120</td><td>120</td><td>160 x 80</td><td>30</td><td>25</td><td>20</td></tr>
+          <tr><td>160</td><td>160</td><td>200 x 120</td><td>40</td><td>25</td><td>20</td></tr>
+          <tr><td>200</td><td>200</td><td>260 x 140</td><td>50</td><td>30</td><td>25</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="calc-bloc">
+    <h3>Cas particuliers</h3>
+
+    <div class="galva-souscas">
+      <h4>Profilés I / H (IPE, HEA…)</h4>
+      <ul>
+        <li>Percer les platines au plus près de l'âme.</li>
+        <li>Éventer les surfaces en contact (ex : aile d'une cornière soudée contre l'âme d'un IPE) — même un faible volume d'air peut monter en pression et causer des dégâts.</li>
+        <li>Gruger les angles des goussets pour éviter les retenues de zinc.</li>
+      </ul>
+    </div>
+
+    <div class="galva-souscas">
+      <h4>PRS (poteaux / traverses reconstitués soudés)</h4>
+      <ul>
+        <li>Épaisseur d'âme &gt; 4 mm obligatoire, soudure sur les deux faces.</li>
+        <li>Les trous d'évent peuvent être faits par grugeage de l'âme (mini 15 mm), ce qui évite de percer la platine.</li>
+      </ul>
+    </div>
+
+    <div class="galva-souscas">
+      <h4>Treillis, poutres caisson, structures complexes</h4>
+      <ul>
+        <li>Concevoir la structure pour que le zinc ne puisse jamais être piégé dans un angle.</li>
+        <li>Gruger les angles des renforts internes et déboucher la platine pour faciliter l'écoulement.</li>
+        <li>Pour une poutre caisson, le volume à vider est important : prévoir un perçage en conséquence et vérifiable par le galvanisateur.</li>
+      </ul>
+    </div>
+
+    <div class="galva-souscas">
+      <h4>Platines de pied de poteau</h4>
+      <ul>
+        <li>Prévoir systématiquement les trous d'évent dès la conception.</li>
+        <li>Un oubli oblige le galvanisateur à percer sur pièce finie — coût important, et la pièce peut être refusée si les évents ne sont pas contrôlables.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="calc-bloc">
+    <h3>Après galvanisation</h3>
+    <ul class="galva-regles">
+      <li><span class="ok">✓</span> Assemblage : privilégier le boulonnage avec des boulons galvanisés (des boulons classiques s'oxydent vite — risque de cisaillement)</li>
+      <li><span class="non">✗</span> Soudage après galva déconseillé : le zinc s'évapore avant la fusion de l'acier, la zone soudée se retrouve sans protection</li>
+      <li><span class="ok">✓</span> Réparation d'une zone sans zinc : peinture riche en zinc (solution la plus simple et la moins chère), sinon métallisation ou brasure à bas point de fusion</li>
+    </ul>
+    <p class="calc-aide" style="margin-top:10px">Référence norme : NF EN ISO 1461. En cas de doute sur une pièce, contacter le galvanisateur avant fabrication.</p>
+  </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -1334,6 +1501,7 @@ function switchOnglet(onglet, btn) {
     profils:      document.getElementById('panel-profils'),
     'calcul-toles': document.getElementById('panel-calcul-toles'),
     comparateur:  document.getElementById('panel-comparateur'),
+    'memo-galva': document.getElementById('panel-memo-galva'),
   };
   Object.entries(panels).forEach(([key, el]) => {
     if (el) el.style.display = key === onglet ? '' : 'none';
@@ -1345,6 +1513,8 @@ function switchOnglet(onglet, btn) {
   } else if (onglet === 'comparateur') {
     document.title = 'Comparateur profilés — LBF';
     compInit();
+  } else if (onglet === 'memo-galva') {
+    document.title = 'Mémo galva — LBF';
   } else {
     document.title = 'Bibliothèque profilés — LBF';
     biblioRendreGrille();
