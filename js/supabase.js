@@ -11,8 +11,8 @@
 //  CONFIGURATION
 // ═══════════════════════════════════════════════════════
 
-const SUPABASE_URL  = 'https://znewlnioznrwqhigfcla.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZXdsbmlvem5yd3FoaWdmY2xhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5Nzc3MjcsImV4cCI6MjA5ODU1MzcyN30.vrRDJG3BqSNp0i7nxbdUqHl0WHfQeaz4vv-15MM2MFQ';
+const SUPABASE_URL  = 'https://guhktnlmilhcmgeecdxn.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1aGt0bmxtaWxoY21nZWVjZHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDc0MTIsImV4cCI6MjA5ODQyMzQxMn0.Gvu5Hv4BlvddYbvlSHEmP8Z5dxQmoSQ9GxvsitrQUdc';
 
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession: true, autoRefreshToken: true },
