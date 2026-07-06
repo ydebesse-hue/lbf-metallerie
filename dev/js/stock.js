@@ -4580,9 +4580,9 @@ ${hasT ? `
     }
 
     const session = Auth.getSession();
-    let totalCreees = 0;
-    let dernierId   = null;
     let toutEnLigne = true;
+    const resumeLignes = [];
+    const fournisseursPris = new Set();
 
     for (const l of lignes) {
       const type       = l.querySelector('.inv-type')?.value?.trim();
@@ -4598,6 +4598,8 @@ ${hasT ? `
       const poidsml    = dims?.pml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
 
+      if (fournisseur) fournisseursPris.add(fournisseur);
+      const idsLigne = [];
       for (let i = 0; i < qte; i++) {
         const nouvelleId = (i === 0 && l.dataset.idPrevu) ? l.dataset.idPrevu : _genererIdBarre();
         const barre = {
@@ -4623,21 +4625,27 @@ ${hasT ? `
           const enLigne = await _persisterElement(barre);
           if (!enLigne) toutEnLigne = false;
           await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, lieu || null);
-          totalCreees++;
-          dernierId = nouvelleId;
+          idsLigne.push(nouvelleId);
       }
+      resumeLignes.push({ type, desig, classe, longueur, qte, ids: idsLigne });
     }
-
 
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
     _majBanniereRecents();
 
-    const msg = totalCreees === 1
-      ? `Profilé ajouté (${dernierId})`
-      : `${totalCreees} profilés ajoutés`;
-    _notif(msg + (toutEnLigne ? '' : ' — ⚠ mode hors ligne'), toutEnLigne ? 'succes' : 'alerte');
+    if (!toutEnLigne) _notif('⚠ Sauvegarde en mode hors ligne — données non synchronisées', 'alerte');
+
+    const enteteParts = [];
+    if (lieu) enteteParts.push(`Rangement : <strong>${_e(lieu)}</strong>`);
+    if (fournisseursPris.size) enteteParts.push(`Fournisseur : <strong>${_e([...fournisseursPris].join(', '))}</strong>`);
+    _afficherResumeReception(resumeLignes, {
+      titre: 'Ajout en stock enregistré',
+      enteteParts,
+      filtreChamp: 'lieu',
+      filtreValeur: lieu || null,
+    });
   }
 
   /**
@@ -4724,26 +4732,39 @@ ${hasT ? `
 
     // Afficher le résumé interactif
     const chantiersPris = [...new Set(resumeLignes.map(l => l.chantier).filter(Boolean))];
-    _afficherResumeReception(resumeLignes, chantiersPris.join(', '), refCmd, fournisseur);
+    const chantier = chantiersPris.join(', ');
+    const enteteParts = [];
+    if (chantier)    enteteParts.push(`Chantier : <strong>${_e(chantier)}</strong>`);
+    if (refCmd)      enteteParts.push(`Réf. : <strong>${_e(refCmd)}</strong>`);
+    if (fournisseur) enteteParts.push(`Fournisseur : <strong>${_e(fournisseur)}</strong>`);
+    _afficherResumeReception(resumeLignes, {
+      titre: 'Réception enregistrée',
+      enteteParts,
+      filtreChamp: 'chantier',
+      filtreValeur: chantiersPris.length === 1 ? chantiersPris[0] : null,
+    });
   }
 
   /**
-   * Affiche le modal de résumé après une réception de commande.
-   * Permet à l'opérateur de noter les IDs et de filtrer directement.
+   * Affiche le modal de résumé après un ajout de barres (réception de commande
+   * ou ajout direct en inventaire). Permet à l'opérateur de noter les IDs et
+   * de filtrer directement dans le stock.
+   * @param {Array} resumeLignes — [{ type, desig, classe, longueur, qte, ids }]
+   * @param {Object} opts — { titre, enteteParts: [string], filtreChamp: 'chantier'|'lieu', filtreValeur }
    */
-  function _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur) {
+  function _afficherResumeReception(resumeLignes, opts = {}) {
+    const { titre = 'Réception enregistrée', enteteParts = [], filtreChamp, filtreValeur } = opts;
     const m = document.getElementById('m-reception-resume');
     if (!m) return;
 
+    const titreEl = m.querySelector('.modale-titre');
+    if (titreEl) titreEl.textContent = titre;
+
     // En-tête récapitulatif
     const entete = m.querySelector('#resume-entete');
-    const parts = [];
-    if (chantier)    parts.push(`Chantier : <strong>${_e(chantier)}</strong>`);
-    if (refCmd)      parts.push(`Réf. : <strong>${_e(refCmd)}</strong>`);
-    if (fournisseur) parts.push(`Fournisseur : <strong>${_e(fournisseur)}</strong>`);
-    entete.innerHTML = parts.length
-      ? parts.join(' &nbsp;·&nbsp; ')
-      : '<em>Réception sans chantier défini</em>';
+    entete.innerHTML = enteteParts.length
+      ? enteteParts.join(' &nbsp;·&nbsp; ')
+      : '<em>Aucune information complémentaire</em>';
 
     // Tableau des lignes
     const tbody = m.querySelector('#resume-tbody');
@@ -4765,12 +4786,12 @@ ${hasT ? `
     // Bouton "Voir dans le stock"
     const btnFiltrer = m.querySelector('#btn-resume-filtrer');
     if (btnFiltrer) {
-      if (chantier) {
+      if (filtreChamp && filtreValeur && _filtresP[filtreChamp]) {
         btnFiltrer.style.display = '';
         btnFiltrer.onclick = () => {
           _fermerModale('m-reception-resume');
           _basculerOnglet('profils');
-          _filtresP.chantier.clear(); _filtresP.chantier.add(chantier);
+          _filtresP[filtreChamp].clear(); _filtresP[filtreChamp].add(filtreValeur);
           _filtrer();
         };
       } else {
@@ -4906,7 +4927,7 @@ ${hasT ? `
 
     const inpLong = document.createElement('input');
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
-    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
+    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.1'; inpLong.min = '0.1';
 
     const inpQte = document.createElement('input');
     inpQte.type = 'number'; inpQte.className = 'inv-qte inv-ctrl';
@@ -5013,7 +5034,7 @@ ${hasT ? `
 
     const inpLong = document.createElement('input');
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
-    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
+    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.1'; inpLong.min = '0.1';
 
     const inpQte = document.createElement('input');
     inpQte.type = 'number'; inpQte.className = 'cmd-qte inv-ctrl';
