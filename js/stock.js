@@ -4886,7 +4886,7 @@ ${hasT ? `
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
 
-    // ── Ligne 1 : Type | Désig | 🔍 | Longueur | Qté | ✕ ──
+    // ── Ligne 1 : Type | Désig | 🔍 | Longueur | Qté | Poids unitaire | ✕ ──
     const row1 = document.createElement('div');
     row1.className = 'inv-row-1';
 
@@ -4912,6 +4912,9 @@ ${hasT ? `
     inpQte.type = 'number'; inpQte.className = 'inv-qte inv-ctrl';
     inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1'; inpQte.title = 'Nombre de barres identiques';
 
+    const spanPoids = document.createElement('span');
+    spanPoids.className = 'inv-poids-cell';
+
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
     btnDel.textContent = '✕';
@@ -4920,24 +4923,14 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneInventaire(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, inpQte, btnDel].forEach(el => row1.appendChild(el));
+    [selType, selDesig, btnSchema, inpLong, inpQte, spanPoids, btnDel].forEach(el => row1.appendChild(el));
 
-    // ── Ligne 2 : ID prévu | Commentaire ──
+    // ── Ligne 2 : N° prévu | Classe | Commentaire | Origine ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
 
     const spanId = document.createElement('span');
     spanId.className = 'inv-id-cell';
-
-    const inpComm = document.createElement('input');
-    inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
-    inpComm.placeholder = 'Commentaire…';
-
-    [spanId, inpComm].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 : Classe | Origine | Fournisseur | Réf. | Poids ──
-    const row3 = document.createElement('div');
-    row3.className = 'inv-row-3';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'inv-classe inv-ctrl';
@@ -4947,6 +4940,21 @@ ${hasT ? `
       selClasse.appendChild(o);
     });
 
+    const inpComm = document.createElement('input');
+    inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
+    inpComm.placeholder = 'Commentaire…';
+
+    const selOrigine = document.createElement('select');
+    selOrigine.className = 'inv-origine inv-ctrl';
+    _peuplerSelectAffectation(selOrigine, '');
+    selOrigine.options[0].text = '— Origine —';
+
+    [spanId, selClasse, inpComm, selOrigine].forEach(el => row2.appendChild(el));
+
+    // ── Ligne 3 : Fournisseur | Réf. BL ──
+    const row3 = document.createElement('div');
+    row3.className = 'inv-row-3';
+
     const selFourn = document.createElement('select');
     selFourn.className = 'inv-fournisseur inv-ctrl';
     const fopts = `<option value="">— Fournisseur —</option>` +
@@ -4954,19 +4962,11 @@ ${hasT ? `
         .map(f => `<option value="${_e(f.nom)}">${_e(f.nom)}</option>`).join('');
     selFourn.innerHTML = fopts;
 
-    const selOrigine = document.createElement('select');
-    selOrigine.className = 'inv-origine inv-ctrl';
-    _peuplerSelectAffectation(selOrigine, '');
-    selOrigine.options[0].text = '— Origine —';
-
     const inpRef = document.createElement('input');
     inpRef.type = 'text'; inpRef.className = 'inv-ref inv-ctrl';
     inpRef.placeholder = 'Réf. BL / commande';
 
-    const spanPoids = document.createElement('span');
-    spanPoids.className = 'inv-poids-cell';
-
-    [selClasse, selOrigine, selFourn, inpRef, spanPoids].forEach(el => row3.appendChild(el));
+    [selFourn, inpRef].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
@@ -5015,6 +5015,9 @@ ${hasT ? `
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
     inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
 
+    const spanPoids = document.createElement('span');
+    spanPoids.className = 'inv-poids-cell';
+
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
     btnDel.textContent = '✕';
@@ -5023,7 +5026,7 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneCommandeCard(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+    [selType, selDesig, btnSchema, inpLong, spanPoids, btnDel].forEach(el => row1.appendChild(el));
 
     // ── Ligne 2 : Lieu de stockage | Qté ──
     const row2 = document.createElement('div');
