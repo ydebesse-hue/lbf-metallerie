@@ -4056,10 +4056,13 @@ ${hasT ? `
         });
       });
 
-      // Bouton "+ Ajouter une barre" (inventaire)
+      // Bouton "+ Ajouter une barre" (inventaire) — reprend la section de la dernière ligne
       const btnAjLigneInv = mAP.querySelector('#ap-inv-ajouter-ligne');
       if (btnAjLigneInv) btnAjLigneInv.addEventListener('click', () => {
-        _ajouterLigneInventaire(mAP.querySelector('#ap-inv-list'));
+        const list = mAP.querySelector('#ap-inv-list');
+        const lignesExistantes = list?.querySelectorAll('.inv-ligne');
+        const derniereLigne = lignesExistantes?.length ? lignesExistantes[lignesExistantes.length - 1] : null;
+        _ajouterLigneInventaire(list, derniereLigne);
       });
 
       // Délégation sur les lignes inventaire
@@ -4073,17 +4076,21 @@ ${hasT ? `
         });
         invList.addEventListener('input', e => {
           const ligne = e.target.closest('.inv-ligne');
-          if (ligne && e.target.classList.contains('inv-long')) _majPoidsLigneInv(ligne);
+          if (!ligne) return;
+          if (e.target.classList.contains('inv-long') || e.target.classList.contains('inv-qte')) _majPoidsLigneInv(ligne);
         });
       }
 
-      // Bouton "+ Ajouter une référence" (commande)
+      // Bouton "+ Ajouter une référence" (commande) — reprend la section de la dernière ligne
       const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
       if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
-        _ajouterLigneCommandeCard(mAP.querySelector('#ap-cmd-list'));
+        const list = mAP.querySelector('#ap-cmd-list');
+        const lignesExistantes = list?.querySelectorAll('.inv-ligne');
+        const derniereLigne = lignesExistantes?.length ? lignesExistantes[lignesExistantes.length - 1] : null;
+        _ajouterLigneCommandeCard(list, derniereLigne);
       });
 
-      // Délégation type/désig/long sur les cartes commande
+      // Délégation type/désig/long/qté sur les cartes commande
       const cmdList = mAP.querySelector('#ap-cmd-list');
       if (cmdList) {
         cmdList.addEventListener('change', e => {
@@ -4094,7 +4101,8 @@ ${hasT ? `
         });
         cmdList.addEventListener('input', e => {
           const ligne = e.target.closest('.inv-ligne');
-          if (ligne && e.target.classList.contains('inv-long')) _majPoidsLigneInv(ligne);
+          if (!ligne) return;
+          if (e.target.classList.contains('inv-long') || e.target.classList.contains('cmd-qte')) _majPoidsLigneInv(ligne);
         });
       }
 
@@ -4572,14 +4580,15 @@ ${hasT ? `
     }
 
     const session = Auth.getSession();
-    let totalCreees = 0;
-    let dernierId   = null;
     let toutEnLigne = true;
+    const resumeLignes = [];
+    const fournisseursPris = new Set();
 
     for (const l of lignes) {
       const type       = l.querySelector('.inv-type')?.value?.trim();
       const desig      = l.querySelector('.inv-desig')?.value?.trim();
       const longueur   = parseFloat(l.querySelector('.inv-long')?.value);
+      const qte         = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
       const classe      = l.querySelector('.inv-classe')?.value?.trim() || '';
       const fournisseur = l.querySelector('.inv-fournisseur')?.value?.trim() || null;
       const origine     = l.querySelector('.inv-origine')?.value?.trim() || null;
@@ -4588,46 +4597,55 @@ ${hasT ? `
       const dims       = _getDims(type, desig);
       const poidsml    = dims?.pml || 0;
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : null;
-      const nouvelleId = l.dataset.idPrevu || _genererIdBarre();
-      dernierId = nouvelleId;
 
-      const barre = {
-          id: nouvelleId,
-          categorie: 'profil',
-          section_type: type,
-          designation: desig,
-          longueur_m: longueur,
-          poids_ml: poidsml,
-          poids_barre_kg: poidsBarre,
-          chantier_origine: origine,
-          lieu_stockage: lieu,
-          disponibilite: 'disponible',
-          chantier_affectation: null,
-          classe_acier: classe || null,
-          ref_commande: refCmd,
-          fournisseur: fournisseur,
-          ..._statutNouvelAjout(session),
-          date_ajout: _dateAujourdhui(),
-          ajoute_par: session?.identifiant || 'inconnu',
-          commentaire,
-        };
-        const enLigne = await _persisterElement(barre);
-        if (!enLigne) toutEnLigne = false;
-        await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, lieu || null);
-        totalCreees++;
-      dernierId = nouvelleId;
+      if (fournisseur) fournisseursPris.add(fournisseur);
+      const idsLigne = [];
+      for (let i = 0; i < qte; i++) {
+        const nouvelleId = (i === 0 && l.dataset.idPrevu) ? l.dataset.idPrevu : _genererIdBarre();
+        const barre = {
+            id: nouvelleId,
+            categorie: 'profil',
+            section_type: type,
+            designation: desig,
+            longueur_m: longueur,
+            poids_ml: poidsml,
+            poids_barre_kg: poidsBarre,
+            chantier_origine: origine,
+            lieu_stockage: lieu,
+            disponibilite: 'disponible',
+            chantier_affectation: null,
+            classe_acier: classe || null,
+            ref_commande: refCmd,
+            fournisseur: fournisseur,
+            ..._statutNouvelAjout(session),
+            date_ajout: _dateAujourdhui(),
+            ajoute_par: session?.identifiant || 'inconnu',
+            commentaire,
+          };
+          const enLigne = await _persisterElement(barre);
+          if (!enLigne) toutEnLigne = false;
+          await _enregistrerHistorique(nouvelleId, 'ENTREE', null, longueur, null, session?.identifiant || null, null, commentaire || null, lieu || null);
+          idsLigne.push(nouvelleId);
+      }
+      resumeLignes.push({ type, desig, classe, longueur, qte, ids: idsLigne });
     }
-
 
     _fermerModale('m-ajout-profil');
     _peuplerFiltres();
     _filtrer();
     _majBanniereRecents();
 
-    const msg = totalCreees === 1
-      ? `Profilé ajouté (${dernierId})`
-      : `${totalCreees} profilés ajoutés`;
-    _notif(msg + (toutEnLigne ? '' : ' — ⚠ mode hors ligne'), toutEnLigne ? 'succes' : 'alerte');
+    if (!toutEnLigne) _notif('⚠ Sauvegarde en mode hors ligne — données non synchronisées', 'alerte');
+
+    const enteteParts = [];
+    if (lieu) enteteParts.push(`Rangement : <strong>${_e(lieu)}</strong>`);
+    if (fournisseursPris.size) enteteParts.push(`Fournisseur : <strong>${_e([...fournisseursPris].join(', '))}</strong>`);
+    _afficherResumeReception(resumeLignes, {
+      titre: 'Ajout en stock enregistré',
+      enteteParts,
+      filtreChamp: 'lieu',
+      filtreValeur: lieu || null,
+    });
   }
 
   /**
@@ -4714,26 +4732,39 @@ ${hasT ? `
 
     // Afficher le résumé interactif
     const chantiersPris = [...new Set(resumeLignes.map(l => l.chantier).filter(Boolean))];
-    _afficherResumeReception(resumeLignes, chantiersPris.join(', '), refCmd, fournisseur);
+    const chantier = chantiersPris.join(', ');
+    const enteteParts = [];
+    if (chantier)    enteteParts.push(`Chantier : <strong>${_e(chantier)}</strong>`);
+    if (refCmd)      enteteParts.push(`Réf. : <strong>${_e(refCmd)}</strong>`);
+    if (fournisseur) enteteParts.push(`Fournisseur : <strong>${_e(fournisseur)}</strong>`);
+    _afficherResumeReception(resumeLignes, {
+      titre: 'Réception enregistrée',
+      enteteParts,
+      filtreChamp: 'chantier',
+      filtreValeur: chantiersPris.length === 1 ? chantiersPris[0] : null,
+    });
   }
 
   /**
-   * Affiche le modal de résumé après une réception de commande.
-   * Permet à l'opérateur de noter les IDs et de filtrer directement.
+   * Affiche le modal de résumé après un ajout de barres (réception de commande
+   * ou ajout direct en inventaire). Permet à l'opérateur de noter les IDs et
+   * de filtrer directement dans le stock.
+   * @param {Array} resumeLignes — [{ type, desig, classe, longueur, qte, ids }]
+   * @param {Object} opts — { titre, enteteParts: [string], filtreChamp: 'chantier'|'lieu', filtreValeur }
    */
-  function _afficherResumeReception(resumeLignes, chantier, refCmd, fournisseur) {
+  function _afficherResumeReception(resumeLignes, opts = {}) {
+    const { titre = 'Réception enregistrée', enteteParts = [], filtreChamp, filtreValeur } = opts;
     const m = document.getElementById('m-reception-resume');
     if (!m) return;
 
+    const titreEl = m.querySelector('.modale-titre');
+    if (titreEl) titreEl.textContent = titre;
+
     // En-tête récapitulatif
     const entete = m.querySelector('#resume-entete');
-    const parts = [];
-    if (chantier)    parts.push(`Chantier : <strong>${_e(chantier)}</strong>`);
-    if (refCmd)      parts.push(`Réf. : <strong>${_e(refCmd)}</strong>`);
-    if (fournisseur) parts.push(`Fournisseur : <strong>${_e(fournisseur)}</strong>`);
-    entete.innerHTML = parts.length
-      ? parts.join(' &nbsp;·&nbsp; ')
-      : '<em>Réception sans chantier défini</em>';
+    entete.innerHTML = enteteParts.length
+      ? enteteParts.join(' &nbsp;·&nbsp; ')
+      : '<em>Aucune information complémentaire</em>';
 
     // Tableau des lignes
     const tbody = m.querySelector('#resume-tbody');
@@ -4755,12 +4786,12 @@ ${hasT ? `
     // Bouton "Voir dans le stock"
     const btnFiltrer = m.querySelector('#btn-resume-filtrer');
     if (btnFiltrer) {
-      if (chantier) {
+      if (filtreChamp && filtreValeur && _filtresP[filtreChamp]) {
         btnFiltrer.style.display = '';
         btnFiltrer.onclick = () => {
           _fermerModale('m-reception-resume');
           _basculerOnglet('profils');
-          _filtresP.chantier.clear(); _filtresP.chantier.add(chantier);
+          _filtresP[filtreChamp].clear(); _filtresP[filtreChamp].add(filtreValeur);
           _filtrer();
         };
       } else {
@@ -4871,12 +4902,12 @@ ${hasT ? `
      INVENTAIRE — LIGNE PAR LIGNE
      ────────────────────────────────────────────────────────────── */
 
-  function _ajouterLigneInventaire(list) {
+  function _ajouterLigneInventaire(list, modele) {
     if (!list) return;
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
 
-    // ── Ligne 1 : Type | Désig | 🔍 | Longueur | ✕ ──
+    // ── Ligne 1 : Type | Désig | 🔍 | Longueur | Qté | Poids unitaire | ✕ ──
     const row1 = document.createElement('div');
     row1.className = 'inv-row-1';
 
@@ -4896,7 +4927,14 @@ ${hasT ? `
 
     const inpLong = document.createElement('input');
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
-    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
+    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.1'; inpLong.min = '0.1';
+
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'inv-qte inv-ctrl';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1'; inpQte.title = 'Nombre de barres identiques';
+
+    const spanPoids = document.createElement('span');
+    spanPoids.className = 'inv-poids-cell';
 
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
@@ -4906,24 +4944,11 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneInventaire(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+    [selType, selDesig, btnSchema, inpLong, inpQte, spanPoids, btnDel].forEach(el => row1.appendChild(el));
 
-    // ── Ligne 2 : ID prévu | Commentaire ──
+    // ── Ligne 2 : Classe | Commentaire | Origine | Fournisseur | Réf. BL ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
-
-    const spanId = document.createElement('span');
-    spanId.className = 'inv-id-cell';
-
-    const inpComm = document.createElement('input');
-    inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
-    inpComm.placeholder = 'Commentaire…';
-
-    [spanId, inpComm].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 : Classe | Origine | Fournisseur | Réf. | Poids ──
-    const row3 = document.createElement('div');
-    row3.className = 'inv-row-3';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'inv-classe inv-ctrl';
@@ -4933,6 +4958,15 @@ ${hasT ? `
       selClasse.appendChild(o);
     });
 
+    const inpComm = document.createElement('input');
+    inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
+    inpComm.placeholder = 'Commentaire…';
+
+    const selOrigine = document.createElement('select');
+    selOrigine.className = 'inv-origine inv-ctrl';
+    _peuplerSelectAffectation(selOrigine, '');
+    selOrigine.options[0].text = '— Origine —';
+
     const selFourn = document.createElement('select');
     selFourn.className = 'inv-fournisseur inv-ctrl';
     const fopts = `<option value="">— Fournisseur —</option>` +
@@ -4940,27 +4974,42 @@ ${hasT ? `
         .map(f => `<option value="${_e(f.nom)}">${_e(f.nom)}</option>`).join('');
     selFourn.innerHTML = fopts;
 
-    const selOrigine = document.createElement('select');
-    selOrigine.className = 'inv-origine inv-ctrl';
-    _peuplerSelectAffectation(selOrigine, '');
-    selOrigine.options[0].text = '— Origine —';
-
     const inpRef = document.createElement('input');
     inpRef.type = 'text'; inpRef.className = 'inv-ref inv-ctrl';
     inpRef.placeholder = 'Réf. BL / commande';
 
-    const spanPoids = document.createElement('span');
-    spanPoids.className = 'inv-poids-cell';
+    [selClasse, inpComm, selOrigine, selFourn, inpRef].forEach(el => row2.appendChild(el));
 
-    [selClasse, selOrigine, selFourn, inpRef, spanPoids].forEach(el => row3.appendChild(el));
+    // ── Ligne 3 : N° prévu ──
+    const row3 = document.createElement('div');
+    row3.className = 'inv-row-3';
+
+    const spanId = document.createElement('span');
+    spanId.className = 'inv-id-cell';
+
+    row3.appendChild(spanId);
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
     ligne.appendChild(row3);
     list.appendChild(ligne);
+
+    // Reprend la section (type + désignation) de la ligne modèle, si fournie
+    if (modele) {
+      const typeModele  = modele.querySelector('.inv-type')?.value;
+      const desigModele = modele.querySelector('.inv-desig')?.value;
+      if (typeModele) {
+        selType.value = typeModele;
+        _apMajDesigLigneInv(ligne);
+        if (desigModele) {
+          selDesig.value = desigModele;
+          _majPoidsLigneInv(ligne);
+        }
+      }
+    }
   }
 
-  function _ajouterLigneCommandeCard(list) {
+  function _ajouterLigneCommandeCard(list, modele) {
     if (!list) return;
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
@@ -4985,7 +5034,15 @@ ${hasT ? `
 
     const inpLong = document.createElement('input');
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
-    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
+    inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.1'; inpLong.min = '0.1';
+
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'cmd-qte inv-ctrl';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
+    inpQte.placeholder = 'Qté';
+
+    const spanPoids = document.createElement('span');
+    spanPoids.className = 'inv-poids-cell';
 
     const btnDel = document.createElement('button');
     btnDel.type = 'button'; btnDel.className = 'btn-suppr-ligne'; btnDel.title = 'Supprimer';
@@ -4995,34 +5052,11 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneCommandeCard(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, btnDel].forEach(el => row1.appendChild(el));
+    [selType, selDesig, btnSchema, inpLong, inpQte, spanPoids, btnDel].forEach(el => row1.appendChild(el));
 
-    // ── Ligne 2 : Lieu de stockage | Qté ──
+    // ── Ligne 2 : Classe acier | Commentaire | Destination ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
-
-    const spanId = document.createElement('span');
-    spanId.className = 'inv-id-cell';
-
-    const lieuDiv = document.createElement('div');
-    lieuDiv.className = 'lieu-cascade cmd-lieu';
-    _monterSelecteurLieu(lieuDiv);
-
-    const inpQte = document.createElement('input');
-    inpQte.type = 'number'; inpQte.className = 'cmd-qte inv-ctrl';
-    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
-    inpQte.placeholder = 'Qté';
-
-    [spanId, lieuDiv, inpQte].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 : Chantier destinataire | Classe acier | Commentaire ──
-    const row3 = document.createElement('div');
-    row3.className = 'inv-row-3';
-
-    const selChantier = document.createElement('select');
-    selChantier.className = 'cmd-chantier inv-ctrl';
-    _peuplerSelectAffectation(selChantier, '');
-    selChantier.options[0].text = '— Chantier destinataire —';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'cmd-classe inv-ctrl';
@@ -5036,12 +5070,44 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'cmd-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    [selChantier, selClasse, inpComm].forEach(el => row3.appendChild(el));
+    const selChantier = document.createElement('select');
+    selChantier.className = 'cmd-chantier inv-ctrl';
+    _peuplerSelectAffectation(selChantier, '');
+    selChantier.options[0].text = '— Destination —';
+
+    [selClasse, inpComm, selChantier].forEach(el => row2.appendChild(el));
+
+    // ── Ligne 3 : N° barre | Rangement ──
+    const row3 = document.createElement('div');
+    row3.className = 'inv-row-3';
+
+    const spanId = document.createElement('span');
+    spanId.className = 'inv-id-cell';
+
+    const lieuDiv = document.createElement('div');
+    lieuDiv.className = 'lieu-cascade cmd-lieu';
+    _monterSelecteurLieu(lieuDiv);
+
+    [spanId, lieuDiv].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
     ligne.appendChild(row3);
     list.appendChild(ligne);
+
+    // Reprend la section (type + désignation) de la ligne modèle, si fournie
+    if (modele) {
+      const typeModele  = modele.querySelector('.inv-type')?.value;
+      const desigModele = modele.querySelector('.inv-desig')?.value;
+      if (typeModele) {
+        selType.value = typeModele;
+        _apMajDesigLigneInv(ligne);
+        if (desigModele) {
+          selDesig.value = desigModele;
+          _majPoidsLigneInv(ligne);
+        }
+      }
+    }
   }
 
   function _apMajDesigLigneInv(ligne) {
@@ -5095,29 +5161,44 @@ ${hasT ? `
       }
     }
 
-    // ID — généré dès que Type + Désig + Long sont remplis, mémorisé sur la carte
+    // ID(s) — généré(s) dès que Type + Désig + Long sont remplis, mémorisé sur la carte
     if (spanId) {
       const pret = type && desig && !isNaN(long) && long > 0;
+      const qte  = Math.max(1, parseInt(ligne.querySelector('.inv-qte, .cmd-qte')?.value, 10) || 1);
       if (pret) {
         if (!ligne.dataset.idPrevu) {
           const list = ligne.closest('.inv-barres-list');
-          const dejaPris = list
-            ? [...list.querySelectorAll('.inv-ligne')].map(l => l.dataset.idPrevu).filter(Boolean)
+          const autresLignes = list
+            ? [...list.querySelectorAll('.inv-ligne')].filter(l => l !== ligne)
             : [];
+          // Réserve la plage complète (base + qté-1) de chaque autre ligne déjà numérotée
+          const finsReservees = autresLignes
+            .filter(l => l.dataset.idPrevu)
+            .map(l => {
+              const base = parseInt(l.dataset.idPrevu.slice(1).split('-')[0], 10);
+              const q    = Math.max(1, parseInt(l.querySelector('.inv-qte, .cmd-qte')?.value, 10) || 1);
+              return isNaN(base) ? 0 : base + q - 1;
+            });
           const numsExist = _data.barres
             .filter(b => b.id && /^P\d/.test(b.id))
             .map(b => parseInt(b.id.slice(1).split('-')[0], 10))
             .filter(n => !isNaN(n));
-          const numsPris = dejaPris
-            .map(id => parseInt(id.slice(1).split('-')[0], 10))
-            .filter(n => !isNaN(n));
-          const max = Math.max(0, ...numsExist, ...numsPris);
+          const max = Math.max(0, ...numsExist, ...finsReservees);
           ligne.dataset.idPrevu = `P${String(max + 1).padStart(4, '0')}`;
         }
-        spanId.innerHTML = `<span class="inv-id-chip">${ligne.dataset.idPrevu}</span>`;
+        const base = parseInt(ligne.dataset.idPrevu.slice(1), 10);
+        if (qte > 1) {
+          const dernier = `P${String(base + qte - 1).padStart(4, '0')}`;
+          spanId.innerHTML = `<span class="inv-id-chip">${ligne.dataset.idPrevu} → ${dernier}</span>`;
+          spanId.title = Array.from({ length: qte }, (_, i) => `P${String(base + i).padStart(4, '0')}`).join(', ');
+        } else {
+          spanId.innerHTML = `<span class="inv-id-chip">${ligne.dataset.idPrevu}</span>`;
+          spanId.title = '';
+        }
       } else {
         delete ligne.dataset.idPrevu;
         spanId.innerHTML = '';
+        spanId.title = '';
       }
     }
   }
