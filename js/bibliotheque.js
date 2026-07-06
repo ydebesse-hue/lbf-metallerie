@@ -77,11 +77,6 @@ async function biblioInit(profil) {
     Biblio.data = sectionsJson || SECTIONS_DEMO;
   }
 
-  // Charger les sections custom depuis localStorage
-  biblioChargerCustom();
-
-  // Initialisation de l'interface selon le profil
-  biblioRendreBoutonAjout();
   biblioRendreGrille();
   biblioBindFiltres();
 }
@@ -595,31 +590,18 @@ function _svgCorn(w, h, f, fl, s, egale) {
  * @returns {HTMLElement}
  */
 function biblioCreerCarteDesig(section) {
-  const estCustom  = section.source === 'custom';
-  const estAttente = section.statut === 'attente';
-  const peutModif  = Biblio.profil === 'gestion' || Biblio.profil === 'administration';
-  const peutValid  = Biblio.profil === 'administration';
-
   const carte = document.createElement('div');
-  carte.className = [
-    'biblio-carte',
-    estCustom  ? 'carte-custom'  : 'carte-std',
-    estAttente ? 'carte-attente' : ''
-  ].filter(Boolean).join(' ');
+  carte.className = 'biblio-carte carte-std';
 
-  // En-tête carte
-  let badgeHtml = estCustom
-    ? `<span class="badge badge-custom">Personnalisé</span>`
-    : `<span class="badge badge-std">EN std</span>`;
-  if (estAttente) {
-    badgeHtml = `<span class="badge badge-attente">⏳ En attente</span>`;
-  }
+  const badgeHtml = `<span class="badge badge-std">EN std</span>`;
 
   // SVG miniature selon le type
   const svgMini = biblioSvgMini(section.famille, 72, 60);
 
   // Construction des dimensions à afficher
   const dimsHtml = biblioResumeDesig(section);
+
+  const idSec = `${section.source}_${section.famille}_${section.desig}`.replace(/[^a-zA-Z0-9_]/g, '_');
 
   carte.innerHTML = `
     <div class="carte-header">
@@ -634,39 +616,10 @@ function biblioCreerCarteDesig(section) {
       <div class="carte-dims">${dimsHtml}</div>
     </div>
     <div class="carte-footer">
-      ${biblioFooterBoutons(section, peutModif, peutValid, estAttente)}
+      <button class="bl bl-detail" onclick="biblioOuvrirFiche('${idSec}')">Voir les détails</button>
     </div>`;
 
   return carte;
-}
-
-/**
- * Génère les boutons du footer selon le profil et le statut
- */
-function biblioFooterBoutons(section, peutModif, peutValid, estAttente) {
-  const idSec = `${section.source}_${section.famille}_${section.desig}`.replace(/[^a-zA-Z0-9_]/g, '_');
-
-  if (estAttente && peutValid) {
-    // Admin : valider ou refuser
-    return `
-      <button class="bl bl-detail" onclick="biblioOuvrirFiche('${idSec}')">Voir</button>
-      <button class="bl bl-valider" onclick="biblioValiderSection('${idSec}')">✔ Valider</button>
-      <button class="bl bl-refuser" onclick="biblioRefuserSection('${idSec}')">✘ Refuser</button>`;
-  } else if (estAttente && !peutValid) {
-    // Gestion : peut voir mais pas valider
-    return `
-      <button class="bl bl-detail" onclick="biblioOuvrirFiche('${idSec}')">Voir</button>
-      <span style="font-size:11px;color:var(--or);margin-left:4px">En attente admin</span>`;
-  } else if (peutModif) {
-    // Gestion / Admin : voir + modifier
-    return `
-      <button class="bl bl-detail" onclick="biblioOuvrirFiche('${idSec}')">Voir</button>
-      <button class="bl bl-vert"   onclick="biblioOuvrirEdition('${idSec}')">Modifier</button>`;
-  } else {
-    // Consultation : voir seulement
-    return `
-      <button class="bl bl-detail" onclick="biblioOuvrirFiche('${idSec}')">Voir les détails</button>`;
-  }
 }
 
 /* ══════════════════════════════════════════════
@@ -700,23 +653,16 @@ function biblioBindFiltres() {
  * @returns {Array} sections filtrées avec propriété source
  */
 function biblioGetSectionsFiltrees() {
-  // Fusion standard + custom avec marquage de la source
-  const toutes = [
-    ...Biblio.data.standard.flatMap(fam =>
-      fam.sections.map(s => ({
-        ...s,
-        famille: fam.famille,
-        type: fam.type,
-        norme: fam.norme,
-        source: 'standard',
-        statut: 'valide'
-      }))
-    ),
-    ...Biblio.data.custom.map(s => ({
+  const toutes = Biblio.data.standard.flatMap(fam =>
+    fam.sections.map(s => ({
       ...s,
-      source: 'custom'
+      famille: fam.famille,
+      type: fam.type,
+      norme: fam.norme,
+      source: 'standard',
+      statut: 'valide'
     }))
-  ];
+  );
 
   return toutes.filter(s => {
     // Filtre famille
@@ -726,8 +672,6 @@ function biblioGetSectionsFiltrees() {
       const txt = `${s.famille} ${s.desig}`.toLowerCase();
       if (!txt.includes(Biblio.filtres.recherche)) return false;
     }
-    // Les sections en attente ne sont visibles que par Gestion et Admin
-    if (s.statut === 'attente' && Biblio.profil === 'consultation') return false;
     return true;
   });
 }
@@ -864,7 +808,7 @@ function biblioOuvrirModaleFamille(famId, serieActive) {
   } else {
     const famJson = MAP_FAM[famId] || famId;
     const famStd  = Biblio.data.standard.find(f => f.famille === famJson);
-    toutes = famStd ? famStd.sections : Biblio.data.custom.filter(s => s.famille === famId);
+    toutes = famStd ? famStd.sections : [];
     norme  = famStd ? famStd.norme : '';
   }
   const famJson = MULTI_FAM[famId] ? MULTI_FAM[famId][0] : (MAP_FAM[famId] || famId);
@@ -1410,212 +1354,6 @@ function biblioResumeDesig(s) {
 }
 
 /* ══════════════════════════════════════════════
-   MODALE CRÉATION / ÉDITION (Gestion + Admin)
-══════════════════════ */
-
-/**
- * Affiche le bouton "+ Nouvelle section" selon le profil
- */
-function biblioRendreBoutonAjout() {
-  const btnZone = document.getElementById('biblio-btn-ajout');
-  if (!btnZone) return;
-
-  if (Biblio.profil === 'gestion' || Biblio.profil === 'administration') {
-    btnZone.innerHTML = `
-      <button class="btn btn-rouge" onclick="biblioOuvrirCreation()">
-        + Nouvelle section
-      </button>`;
-  } else {
-    btnZone.innerHTML = '';
-  }
-}
-
-/**
- * Ouvre la modale de création d'une nouvelle section
- */
-function biblioOuvrirCreation() {
-  Biblio.sectionEnCours = null;
-
-  const modale = document.getElementById('m-nouvelle-section');
-  if (!modale) return;
-
-  // Réinitialisation du formulaire
-  modale.querySelector('#ns-famille').value = '';
-  modale.querySelector('#ns-desig').value   = '';
-  modale.querySelector('#ns-nouvelle-famille-zone').style.display = 'none';
-  nsViderDims();
-  nsUpdateRecap();
-
-  // Note selon profil
-  const noteZone = modale.querySelector('.note-statut');
-  if (noteZone) {
-    if (Biblio.profil === 'administration') {
-      noteZone.innerHTML = `<div class="note-info">✔ En tant qu'administrateur, la section sera ajoutée directement sans validation.</div>`;
-    } else {
-      noteZone.innerHTML = `<div class="note-attente">⏳ Cette section sera soumise à validation par l'administrateur avant d'être disponible.</div>`;
-    }
-  }
-
-  modale.classList.add('open');
-}
-
-/**
- * Ouvre la modale en mode édition
- * @param {string} idSec - identifiant de section
- */
-function biblioOuvrirEdition(idSec) {
-  const section = biblioTrouverSection(idSec);
-  if (!section) return;
-
-  Biblio.sectionEnCours = section;
-  const modale = document.getElementById('m-nouvelle-section');
-  if (!modale) return;
-
-  // Pré-remplissage
-  const selFamille = modale.querySelector('#ns-famille');
-  if (selFamille) selFamille.value = section.famille;
-
-  const inputDesig = modale.querySelector('#ns-desig');
-  if (inputDesig) inputDesig.value = section.desig;
-
-  nsUpdateFamille();
-  nsRemplirDims(section);
-  nsUpdateRecap();
-
-  modale.classList.add('open');
-}
-
-/**
- * Soumet le formulaire de création/modification
- */
-function biblioSoumettre() {
-  const modale = document.getElementById('m-nouvelle-section');
-  if (!modale) return;
-
-  const famille = modale.querySelector('#ns-famille').value;
-  const desig   = modale.querySelector('#ns-desig').value.trim();
-
-  if (!famille || !desig) {
-    alert('Veuillez renseigner la famille et la désignation.');
-    return;
-  }
-
-  // Lecture des dimensions
-  const dims = nsLireDims();
-
-  const nouvSection = {
-    famille,
-    desig,
-    ...dims,
-    source: 'custom',
-    statut: Biblio.profil === 'administration' ? 'valide' : 'attente',
-    dateCreation: new Date().toISOString().split('T')[0],
-    creePar: window.AUTH ? window.AUTH.utilisateur : 'inconnu'
-  };
-
-  if (Biblio.sectionEnCours) {
-    // Mode édition : remplacement
-    const idx = Biblio.data.custom.findIndex(
-      s => s.famille === Biblio.sectionEnCours.famille &&
-           s.desig   === Biblio.sectionEnCours.desig
-    );
-    if (idx >= 0) {
-      // Admin valide directement, Gestion repasse en attente
-      if (Biblio.profil !== 'administration') nouvSection.statut = 'attente';
-      Biblio.data.custom[idx] = nouvSection;
-    }
-  } else {
-    // Mode création
-    Biblio.data.custom.push(nouvSection);
-  }
-
-  biblioSauvegarder();
-  modale.classList.remove('open');
-  biblioRendreGrille();
-
-  const msg = nouvSection.statut === 'attente'
-    ? 'Section soumise à validation administrateur.'
-    : 'Section ajoutée directement à la bibliothèque.';
-  biblioNotification(msg, nouvSection.statut === 'attente' ? 'attente' : 'succes');
-}
-
-/* ══════════════════════════════════════════════
-   VALIDATION ADMIN
-══════════════════════ */
-
-/**
- * Valide une section en attente
- * @param {string} idSec
- */
-function biblioValiderSection(idSec) {
-  if (Biblio.profil !== 'administration') return;
-  const section = biblioTrouverSectionCustom(idSec);
-  if (!section) return;
-
-  section.statut = 'valide';
-  section.dateValidation = new Date().toISOString().split('T')[0];
-  biblioSauvegarder();
-  biblioRendreGrille();
-  biblioNotification(`Section ${section.famille} ${section.desig} validée.`, 'succes');
-}
-
-/**
- * Refuse et supprime une section en attente
- * @param {string} idSec
- */
-function biblioRefuserSection(idSec) {
-  if (Biblio.profil !== 'administration') return;
-  if (!confirm('Confirmer le refus de cette section ?')) return;
-
-  const parts = idSec.replace('custom_', '').split('_');
-  const famille = parts[0];
-  const desig   = parts.slice(1).join('_').replace(/_/g, ' ');
-
-  Biblio.data.custom = Biblio.data.custom.filter(
-    s => !(s.famille === famille && s.desig.replace(/[^a-zA-Z0-9]/g, '_') === desig)
-  );
-
-  biblioSauvegarder();
-  biblioRendreGrille();
-  biblioNotification('Section refusée et supprimée.', 'erreur');
-}
-
-/* ══════════════════════════════════════════════
-   PERSISTANCE (localStorage — mode démo)
-   En production SharePoint : remplacer par appel REST
-══════════════════════ */
-
-/**
- * Sauvegarde les données (custom uniquement) en localStorage
- * En production : utiliser l'API SharePoint ou un serveur
- */
-function biblioSauvegarder() {
-  try {
-    // Sauvegarde temporaire en localStorage pour les démos
-    // À remplacer par une solution serveur en production
-    const cle = 'lbf_sections_custom';
-    localStorage.setItem(cle, JSON.stringify(Biblio.data.custom));
-  } catch (e) {
-    console.warn('Impossible de sauvegarder en localStorage', e);
-  }
-}
-
-/**
- * Charge les sections custom depuis localStorage (si disponibles)
- */
-function biblioChargerCustom() {
-  try {
-    const cle  = 'lbf_sections_custom';
-    const data = localStorage.getItem(cle);
-    if (data) {
-      Biblio.data.custom = JSON.parse(data);
-    }
-  } catch (e) {
-    console.warn('Impossible de charger les sections custom', e);
-  }
-}
-
-/* ══════════════════════════════════════════════
    GÉNÉRATEURS SVG
 ══════════════════════ */
 
@@ -1757,161 +1495,6 @@ function biblioSvgCote(section, w, h) {
 }
 
 /* ══════════════════════════════════════════════
-   HELPERS MODALE NOUVELLE SECTION
-══════════════════════ */
-
-/**
- * Mise à jour de l'affichage lors du changement de famille
- */
-function nsUpdateFamille() {
-  const modale  = document.getElementById('m-nouvelle-section');
-  if (!modale) return;
-
-  const val     = modale.querySelector('#ns-famille').value;
-  const nfZone  = modale.querySelector('#ns-nouvelle-famille-zone');
-  const dimsZone = modale.querySelector('#ns-dims-zone');
-
-  nfZone.style.display = val === 'nouveau' ? 'block' : 'none';
-
-  // Affichage des champs de dimensions selon la famille
-  if (dimsZone) {
-    dimsZone.innerHTML = nsChampsDims(val);
-  }
-
-  nsUpdateRecap();
-}
-
-/**
- * Retourne les champs de dimensions HTML selon la famille
- */
-function nsChampsDims(famille) {
-  const f = (id, label, ph) => `
-    <div class="fr">
-      <label>${label}</label>
-      <input type="number" id="ns-${id}" placeholder="${ph}" step="0.1" oninput="nsUpdateRecap()">
-    </div>`;
-
-  switch (famille) {
-    case 'Profilés I': case 'Profilés H':
-      return f('h','h — Hauteur (mm)','200')
-           + f('b','b — Largeur aile (mm)','100')
-           + f('tw','tw — Ép. âme (mm)','5.6')
-           + f('tf','tf — Ép. aile (mm)','8.5')
-           + f('r','r — Congé (mm)','12')
-           + f('pml','Poids/ml (kg/m)','22.4');
-
-    case 'Profilés U':
-      return f('h','h — Hauteur (mm)','120')
-           + f('b','b — Largeur (mm)','55')
-           + f('tw','tw — Ép. âme (mm)','7')
-           + f('tf','tf — Ép. aile (mm)','9')
-           + f('pml','Poids/ml (kg/m)','13.4');
-
-    case 'Cornière':
-      return f('a','a — Côté (mm)','100')
-           + f('t','t — Épaisseur (mm)','10')
-           + f('pml','Poids/ml (kg/m)','15');
-
-    case 'Plat':
-      return f('b','b — Largeur (mm)','100')
-           + f('e','e — Épaisseur (mm)','10')
-           + f('pml','Poids/ml (kg/m)','7.85');
-
-    case 'Barres rondes':
-      return f('d','d — Diamètre (mm)','20')
-           + f('pml','Poids/ml (kg/m)','2.47');
-
-    case 'Barres carrées':
-      return f('a','a — Côté (mm)','20')
-           + f('pml','Poids/ml (kg/m)','3.14');
-
-    default:
-      return f('h','h — Hauteur (mm)','')
-           + f('b','b — Largeur (mm)','')
-           + f('pml','Poids/ml (kg/m)','');
-  }
-}
-
-/**
- * Lit les valeurs des champs de dimensions
- */
-function nsLireDims() {
-  const lire = id => {
-    const el = document.getElementById(`ns-${id}`);
-    return el ? (parseFloat(el.value) || undefined) : undefined;
-  };
-  return {
-    h:   lire('h'),
-    b:   lire('b'),
-    tw:  lire('tw'),
-    tf:  lire('tf'),
-    r:   lire('r'),
-    a:   lire('a'),
-    t:   lire('t'),
-    e:   lire('e'),
-    d:   lire('d'),
-    pml: lire('pml')
-  };
-}
-
-/**
- * Vide les champs de dimensions
- */
-function nsViderDims() {
-  const ids = ['h','b','tw','tf','r','a','t','e','d','pml'];
-  ids.forEach(id => {
-    const el = document.getElementById(`ns-${id}`);
-    if (el) el.value = '';
-  });
-}
-
-/**
- * Pré-remplit les champs avec les valeurs d'une section existante
- */
-function nsRemplirDims(section) {
-  const remplir = (id, val) => {
-    const el = document.getElementById(`ns-${id}`);
-    if (el && val !== undefined) el.value = val;
-  };
-  remplir('h',   section.h);
-  remplir('b',   section.b);
-  remplir('tw',  section.tw);
-  remplir('tf',  section.tf);
-  remplir('r',   section.r);
-  remplir('a',   section.a);
-  remplir('t',   section.t);
-  remplir('e',   section.e);
-  remplir('d',   section.d);
-  remplir('pml', section.pml);
-}
-
-/**
- * Met à jour le récapitulatif dans la modale
- */
-function nsUpdateRecap() {
-  const modale = document.getElementById('m-nouvelle-section');
-  if (!modale) return;
-
-  const getVal = id => {
-    const el = modale.querySelector(`#ns-${id}`);
-    return el ? el.value || '—' : '—';
-  };
-
-  const recap = modale.querySelector('.ns-recap');
-  if (!recap) return;
-
-  const famille = modale.querySelector('#ns-famille').value || '—';
-  const desig   = modale.querySelector('#ns-desig')  .value || '—';
-
-  recap.innerHTML = `
-    <div class="dim-row"><span class="dim-label">Famille</span>   <span class="dim-val">${_e(famille)}</span></div>
-    <div class="dim-row"><span class="dim-label">Désignation</span><span class="dim-val">${_e(desig)}</span></div>
-    <div class="dim-row"><span class="dim-label">h</span>          <span class="dim-val">${_e(getVal('h'))}</span></div>
-    <div class="dim-row"><span class="dim-label">b</span>          <span class="dim-val">${_e(getVal('b'))}</span></div>
-    <div class="dim-row"><span class="dim-label">Poids/ml</span>   <span class="dim-val">${_e(getVal('pml'))}</span></div>`;
-}
-
-/* ══════════════════════════════════════════════
    UTILITAIRES
 ══════════════════════ */
 
@@ -1922,16 +1505,6 @@ function biblioTrouverSection(idSec) {
   const toutes = biblioGetSectionsFiltrees();
   return toutes.find(s => {
     const id = `${s.source}_${s.famille}_${s.desig}`.replace(/[^a-zA-Z0-9_]/g, '_');
-    return id === idSec;
-  }) || null;
-}
-
-/**
- * Retrouve une section custom par son identifiant
- */
-function biblioTrouverSectionCustom(idSec) {
-  return Biblio.data.custom.find(s => {
-    const id = `custom_${s.famille}_${s.desig}`.replace(/[^a-zA-Z0-9_]/g, '_');
     return id === idSec;
   }) || null;
 }

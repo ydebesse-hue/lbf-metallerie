@@ -1,86 +1,102 @@
 /* ============================================================
    GESTION DES COMPTES — comptes.js
-   Extrait de views/comptes.html pour intégration dans stock.html.
-   Données lues depuis data/users.json
-   Modifications persistées dans localStorage (clé lbf_users_modifs)
-   Migration SharePoint Conv. 7 : remplacer _chargerUsers / _persisterUsers
+   Intégré dans l'onglet Administration → Comptes de stock.html.
+
+   Comptes réels Supabase Auth (email + mot de passe). Toutes les
+   opérations d'administration (créer, modifier profil/statut,
+   supprimer) passent par l'Edge Function "manage-users", qui
+   vérifie que l'appelant est administrateur avant d'utiliser ses
+   privilèges élevés (jamais exposés côté client).
+
+   Prénom, nom, profil et statut se modifient directement dans le
+   tableau (sauvegarde immédiate au blur/change) — pas de modale
+   d'édition. Seules la création, la réinitialisation du mot de
+   passe et la suppression passent par une modale.
    ============================================================ */
 
 // ── État local ───────────────────────────────────────────────
-let _users   = [];   // Tableau complet des comptes
-let _editId  = null; // ID du compte en cours de modification
-let _supId   = null; // ID du compte à supprimer
-
-// ── Clé localStorage ────────────────────────────────────────
-const CLE_USERS = 'lbf_users_modifs';
+let _users     = [];             // Tableau complet des comptes
+let _editId    = null;           // ID du compte concerné par la réinitialisation de mdp
+let _supId     = null;           // ID du compte à supprimer
+let _triChamp  = 'profil';       // Colonne de tri active : email, prenom, nom, profil, actif
+let _triAsc    = true;           // Sens du tri
 
 /* ============================================================
    CHARGEMENT DES DONNÉES
    ============================================================ */
 
 /**
- * Charge users.json et fusionne les modifications localStorage.
+ * Charge la liste des comptes via l'Edge Function manage-users.
  */
 async function chargerUsers() {
   try {
-    _users = await window.SB.lire('users');
+    const res = await window.SB.appelerFonction('manage-users', { action: 'list' });
+    _users = res.users || [];
   } catch (err) {
-    console.warn('[Comptes] Supabase indisponible, fallback JSON :', err);
-    try {
-      const rep = await fetch('../data/users.json');
-      if (!rep.ok) throw new Error('users.json introuvable');
-      const data = await rep.json();
-      _users = data.users || [];
-    } catch(e) {
-      afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
-      _users = [];
-    }
+    console.error('[Comptes] Erreur chargement des comptes :', err);
+    afficherNotif('Impossible de charger la liste des comptes.', 'erreur');
+    _users = [];
   }
+  _trierUsers();
   _rendreTableau();
 }
 
+/* ============================================================
+   TRI
+   ============================================================ */
+
+const _ORDRE_PROFIL = { consultation: 0, gestion: 1, administration: 2 };
+
+function _prenomDe(u) { return (u.nomComplet || '').split(' ')[0] || ''; }
+function _nomDe(u)    { return (u.nomComplet || '').split(' ').slice(1).join(' '); }
+
 /**
- * Lit les comptes modifiés depuis localStorage.
- * @returns {Array}
+ * Trie _users selon _triChamp / _triAsc. Égalité départagée par l'email.
  */
-function _chargerLocal() {
-  try {
-    const raw = localStorage.getItem(CLE_USERS);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+function _trierUsers() {
+  _users.sort((a, b) => {
+    let va, vb;
+    switch (_triChamp) {
+      case 'profil': va = _ORDRE_PROFIL[a.profil] ?? 9; vb = _ORDRE_PROFIL[b.profil] ?? 9; break;
+      case 'prenom': va = _prenomDe(a).toLowerCase(); vb = _prenomDe(b).toLowerCase(); break;
+      case 'nom':    va = _nomDe(a).toLowerCase();    vb = _nomDe(b).toLowerCase();    break;
+      case 'actif':  va = a.actif ? 1 : 0; vb = b.actif ? 1 : 0; break;
+      case 'email':
+      default:       va = (a.email || '').toLowerCase(); vb = (b.email || '').toLowerCase();
+    }
+    let cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+    if (cmp === 0) cmp = (a.email || '').toLowerCase().localeCompare((b.email || '').toLowerCase());
+    return _triAsc ? cmp : -cmp;
+  });
 }
 
 /**
- * Persiste un compte (ajout ou modification) dans localStorage.
- * @param {Object} user
+ * Met à jour les flèches de tri dans l'en-tête et branche le clic sur les colonnes.
  */
-async function _persisterUser(user) {
-  try {
-    await window.SB.upsert('users', user);
-  } catch(e) {
-    console.warn('[Comptes] Supabase indisponible, fallback localStorage :', e);
-    const local = _chargerLocal();
-    const idx = local.findIndex(u => u.id === user.id);
-    if (idx !== -1) { local[idx] = user; } else { local.push(user); }
-    localStorage.setItem(CLE_USERS, JSON.stringify(local));
-  }
-  // Mettre à jour l'état en mémoire
-  const idxData = _users.findIndex(u => u.id === user.id);
-  if (idxData !== -1) { _users[idxData] = user; } else { _users.push(user); }
-}
+function _initTriTableau() {
+  const thead = document.querySelector('#admin-panel-comptes thead');
+  if (!thead) return;
 
-/**
- * Génère un nouvel ID de type USR-XXX.
- * @returns {string}
- */
-function _genIdUser() {
-  const nums = _users
-    .map(u => parseInt((u.id || '').replace('USR-', ''), 10))
-    .filter(n => !isNaN(n));
-  const max = nums.length ? Math.max(...nums) : 0;
-  return 'USR-' + String(max + 1).padStart(3, '0');
+  const majFleches = () => {
+    thead.querySelectorAll('th[data-tri]').forEach(th => {
+      const fleche = th.querySelector('.tri-fleche');
+      if (!fleche) return;
+      fleche.textContent = th.dataset.tri === _triChamp ? (_triAsc ? '▲' : '▼') : '';
+    });
+  };
+
+  thead.addEventListener('click', e => {
+    const th = e.target.closest('th[data-tri]');
+    if (!th) return;
+    const champ = th.dataset.tri;
+    if (_triChamp === champ) _triAsc = !_triAsc;
+    else { _triChamp = champ; _triAsc = true; }
+    _trierUsers();
+    _rendreTableau();
+    majFleches();
+  });
+
+  majFleches();
 }
 
 /* ============================================================
@@ -88,222 +104,211 @@ function _genIdUser() {
    ============================================================ */
 
 /**
- * Rendu du tableau des comptes.
+ * Rendu du tableau des comptes. Prénom/nom/profil/statut sont des
+ * champs éditables directement dans la ligne.
  */
 function _rendreTableau() {
   const tbody = document.getElementById('comptes-tbody');
   if (!tbody) return;
 
   if (!_users.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="zone-vide">Aucun compte trouvé.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="vide" style="padding:20px;text-align:center;color:#aaa">Aucun compte trouvé.</td></tr>';
     return;
   }
 
   const sessionCourante = Auth.getSession();
 
   tbody.innerHTML = _users.map(u => {
-    const estMoi   = (u.id === sessionCourante?.id);
-    const estAdmin = (u.profil === 'administration');
-
-    const labelProfil = {
-      consultation:   'Consultation',
-      gestion:        'Gestion',
-      administration: 'Administration',
-    };
-
-    const profilHtml = `<span class="profil-label profil-${u.profil}">
-      ${labelProfil[u.profil] || u.profil}
-    </span>`;
-
-    const statutHtml = u.actif
-      ? '<span class="statut-actif">● Actif</span>'
-      : '<span class="statut-inactif">○ Désactivé</span>';
+    const estMoi = (u.id === sessionCourante?.id);
+    const [prenom, ...resteNom] = (u.nomComplet || '').split(' ');
+    const nom = resteNom.join(' ') || (resteNom.length ? '' : '');
 
     // Bouton supprimer désactivé pour son propre compte
     const btnSup = estMoi
       ? `<button class="btn-ligne bl-supprimer" disabled title="Impossible de supprimer son propre compte">Supprimer</button>`
       : `<button class="btn-ligne bl-supprimer" onclick="ouvrirSuppression('${_esc(u.id)}','${_esc(u.nomComplet)}')">Supprimer</button>`;
 
-    return `<tr>
-      <td><strong>${_esc(u.identifiant)}</strong>${estMoi ? ' <span style="color:#aaa;font-size:10px">(vous)</span>' : ''}</td>
-      <td>${_esc(u.prenom || '')}</td>
-      <td>${_esc(u.nom || u.nomComplet || '')}</td>
-      <td>${_esc(u.email || '')}</td>
-      <td>${profilHtml}</td>
-      <td>${statutHtml}</td>
+    return `<tr data-id="${_esc(u.id)}">
+      <td><strong>${_esc(u.email)}</strong>${estMoi ? ' <span style="color:#aaa;font-size:10px">(vous)</span>' : ''}</td>
+      <td><input type="text" class="cpt-inline-input" data-field="prenom" value="${_esc(prenom || '')}" placeholder="Prénom"></td>
+      <td><input type="text" class="cpt-inline-input" data-field="nom" value="${_esc(nom || '')}" placeholder="Nom"></td>
       <td>
-        <button class="btn-ligne bl-modifier" onclick="ouvrirModification('${_esc(u.id)}')">Modifier</button>
-        <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet || u.nom || '')}')">🔑 MDP</button>
+        <select class="cpt-inline-input cpt-profil profil-${u.profil}" data-field="profil">
+          <option value="consultation"${u.profil === 'consultation' ? ' selected' : ''}>Consultation</option>
+          <option value="gestion"${u.profil === 'gestion' ? ' selected' : ''}>Gestion</option>
+          <option value="administration"${u.profil === 'administration' ? ' selected' : ''}>Administration</option>
+        </select>
+      </td>
+      <td>
+        <select class="cpt-inline-input" data-field="actif"${estMoi ? ' disabled title="Impossible de désactiver son propre compte"' : ''}>
+          <option value="true"${u.actif ? ' selected' : ''}>● Actif</option>
+          <option value="false"${!u.actif ? ' selected' : ''}>○ Désactivé</option>
+        </select>
+      </td>
+      <td>
+        <button class="btn-ligne bl-mdp" onclick="ouvrirChangeMdp('${_esc(u.id)}','${_esc(u.nomComplet)}','${_esc(u.email)}')">🔑 Réinitialiser</button>
         ${btnSup}
       </td>
     </tr>`;
   }).join('');
 }
 
+/**
+ * Sauvegarde immédiate d'un champ modifié en ligne (prénom, nom, profil, statut).
+ */
+async function _sauvegarderChampInline(tr, field, valeur) {
+  const id = tr.dataset.id;
+  const u = _users.find(u => u.id === id);
+  if (!u) return;
+
+  let nomComplet = u.nomComplet;
+  let profil     = u.profil;
+  let actif      = u.actif;
+
+  if (field === 'prenom' || field === 'nom') {
+    const prenomInp = tr.querySelector('[data-field="prenom"]').value.trim();
+    const nomInp    = tr.querySelector('[data-field="nom"]').value.trim();
+    if (!nomInp) {
+      afficherNotif('Le nom est obligatoire.', 'erreur');
+      _rendreTableau();
+      return;
+    }
+    nomComplet = [prenomInp, nomInp].filter(Boolean).join(' ');
+    if (nomComplet === u.nomComplet) return;
+  } else if (field === 'profil') {
+    profil = valeur;
+    if (profil === u.profil) return;
+  } else if (field === 'actif') {
+    actif = (valeur === 'true');
+    if (actif === u.actif) return;
+  }
+
+  try {
+    await window.SB.appelerFonction('manage-users', {
+      action: 'update', id, profil, actif, nomComplet,
+    });
+    u.nomComplet = nomComplet;
+    u.profil     = profil;
+    u.actif      = actif;
+    afficherNotif('Compte modifié.', 'succes');
+  } catch (err) {
+    afficherNotif(err.message || 'Erreur lors de la modification.', 'erreur');
+    _rendreTableau(); // revert visuel sur échec
+  }
+}
+
+// Délégation d'événements sur le tableau : sauvegarde au blur (texte) / change (select)
+document.addEventListener('DOMContentLoaded', () => {
+  _initTriTableau();
+
+  const tbody = document.getElementById('comptes-tbody');
+  if (!tbody) return;
+
+  tbody.addEventListener('blur', e => {
+    const inp = e.target.closest('input.cpt-inline-input');
+    if (!inp) return;
+    const tr = inp.closest('tr');
+    if (tr) _sauvegarderChampInline(tr, inp.dataset.field, inp.value);
+  }, true);
+
+  tbody.addEventListener('change', e => {
+    const sel = e.target.closest('select.cpt-inline-input');
+    if (!sel) return;
+    if (sel.classList.contains('cpt-profil')) {
+      sel.classList.remove('profil-consultation', 'profil-gestion', 'profil-administration');
+      sel.classList.add(`profil-${sel.value}`);
+    }
+    const tr = sel.closest('tr');
+    if (tr) _sauvegarderChampInline(tr, sel.dataset.field, sel.value);
+  });
+});
+
 /* ============================================================
    MODALE CRÉATION
    ============================================================ */
 
-function ouvrirCreation() {
-  _editId = null;
+async function ouvrirCreation() {
+  await chargerUsers(); // liste à jour avant la vérification de doublon
   document.getElementById('m-compte-titre').textContent = 'Nouveau compte';
-  document.getElementById('mc-identifiant').value = '';
-  document.getElementById('mc-prenom').value       = '';
-  document.getElementById('mc-nom').value          = '';
-  document.getElementById('mc-email').value        = '';
-  document.getElementById('mc-profil').value       = 'consultation';
-  document.getElementById('mc-mdp').value          = '';
-  document.getElementById('mc-mdp2').value         = '';
-  document.getElementById('mc-actif').value        = 'true';
-  document.getElementById('mc-mdp-zone').style.display  = '';
-  document.getElementById('mc-mdp2-zone').style.display = '';
-  document.getElementById('m-compte-info').style.display = 'none';
-  _cacherErreur('mc-erreur');
-  ouvrirM('m-compte');
-  document.getElementById('mc-identifiant').focus();
-}
-
-/* ============================================================
-   MODALE MODIFICATION
-   ============================================================ */
-
-function ouvrirModification(id) {
-  const u = _users.find(u => u.id === id);
-  if (!u) return;
-
-  _editId = id;
-  document.getElementById('m-compte-titre').textContent = 'Modifier le compte';
-  document.getElementById('mc-identifiant').value = u.identifiant;
-  document.getElementById('mc-prenom').value       = u.prenom  || '';
-  document.getElementById('mc-nom').value          = u.nom     || u.nomComplet || '';
-  document.getElementById('mc-email').value        = u.email   || '';
-  document.getElementById('mc-profil').value       = u.profil;
-  document.getElementById('mc-actif').value        = String(u.actif);
-
-  // Pas de champs MDP en modification (utiliser modale dédiée)
-  document.getElementById('mc-mdp-zone').style.display  = 'none';
-  document.getElementById('mc-mdp2-zone').style.display = 'none';
-
+  document.getElementById('mc-email').value    = '';
+  document.getElementById('mc-email').disabled = false;
+  document.getElementById('mc-prenom').value   = '';
+  document.getElementById('mc-nom').value      = '';
+  document.getElementById('mc-profil').value   = 'consultation';
   const info = document.getElementById('m-compte-info');
-  info.textContent = 'Pour changer le mot de passe, utilisez le bouton 🔑 MDP dans la liste.';
+  info.textContent = 'Un email d\'invitation sera envoyé à cette adresse pour que l\'utilisateur choisisse son mot de passe.';
   info.style.display = 'block';
-
   _cacherErreur('mc-erreur');
   ouvrirM('m-compte');
+  document.getElementById('mc-email').focus();
 }
 
 /* ============================================================
-   SAUVEGARDE COMPTE (création + modification)
+   SAUVEGARDE COMPTE (création uniquement — modification en ligne)
    ============================================================ */
 
 async function sauvegarderCompte() {
-  const identifiant = document.getElementById('mc-identifiant').value.trim();
-  const prenom      = document.getElementById('mc-prenom').value.trim();
-  const nom         = document.getElementById('mc-nom').value.trim();
-  const email       = document.getElementById('mc-email').value.trim();
-  const profil      = document.getElementById('mc-profil').value;
-  const actif       = document.getElementById('mc-actif').value === 'true';
-  const mdp1        = document.getElementById('mc-mdp').value;
-  const mdp2        = document.getElementById('mc-mdp2').value;
-  const nomComplet  = [prenom, nom].filter(Boolean).join(' ');
+  const email  = document.getElementById('mc-email').value.trim();
+  const prenom = document.getElementById('mc-prenom').value.trim();
+  const nom    = document.getElementById('mc-nom').value.trim();
+  const profil = document.getElementById('mc-profil').value;
+  const nomComplet = [prenom, nom].filter(Boolean).join(' ');
 
-  // Validations
-  if (!identifiant || !nom) {
-    afficherErreurModale('mc-erreur', 'Identifiant et nom sont obligatoires.');
+  if (!email || !nom) {
+    afficherErreurModale('mc-erreur', 'Email et nom sont obligatoires.');
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    afficherErreurModale('mc-erreur', 'Adresse email invalide.');
     return;
   }
 
-  // En création, vérifier unicité identifiant
-  if (!_editId) {
-    const doublon = _users.find(u => u.identifiant.toLowerCase() === identifiant.toLowerCase());
-    if (doublon) {
-      afficherErreurModale('mc-erreur', 'Cet identifiant est déjà utilisé.');
-      return;
-    }
-    if (!mdp1) {
-      afficherErreurModale('mc-erreur', 'Un mot de passe est requis pour créer un compte.');
-      return;
-    }
-    if (mdp1 !== mdp2) {
-      afficherErreurModale('mc-erreur', 'Les mots de passe ne correspondent pas.');
-      return;
-    }
+  const doublon = _users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+  if (doublon) {
+    afficherErreurModale('mc-erreur', 'Cet email est déjà utilisé.');
+    return;
   }
 
-  // Construire l'objet
-  let user;
-  if (_editId) {
-    // Modification — conserver le MDP existant
-    user = { ..._users.find(u => u.id === _editId) };
-    user.identifiant = identifiant;
-    user.prenom      = prenom;
-    user.nom         = nom;
-    user.email       = email;
-    user.nomComplet  = nomComplet;
-    user.profil      = profil;
-    user.actif       = actif;
-  } else {
-    // Création — hacher le mot de passe
-    const hashMdp = await sha256(mdp1);
-    user = {
-      id:          _genIdUser(),
-      identifiant: identifiant,
-      prenom:      prenom,
-      nom:         nom,
-      email:       email,
-      nomComplet:  nomComplet,
-      profil:      profil,
-      motDePasse:  hashMdp,
-      actif:       actif,
-    };
+  try {
+    const redirectTo = window.location.origin + window.location.pathname.replace(/views\/.*$/, 'login.html');
+    await window.SB.appelerFonction('manage-users', {
+      action: 'create', email, nomComplet, profil, redirectTo,
+    });
+    afficherNotif('Compte créé — email d\'invitation envoyé.', 'succes');
+    await chargerUsers();
+    fermerM('m-compte');
+  } catch (err) {
+    afficherErreurModale('mc-erreur', err.message || 'Erreur lors de l\'enregistrement.');
   }
-
-  await _persisterUser(user);
-  _rendreTableau();
-  fermerM('m-compte');
-  afficherNotif(_editId ? 'Compte modifié.' : 'Compte créé avec succès.', 'succes');
 }
 
 /* ============================================================
-   MODALE CHANGEMENT MOT DE PASSE
+   RÉINITIALISATION DU MOT DE PASSE
    ============================================================ */
 
-function ouvrirChangeMdp(id, nom) {
+function ouvrirChangeMdp(id, nom, email) {
   _editId = id;
-  document.getElementById('mdp-nom-compte').textContent = nom;
-  document.getElementById('mdp-nouveau').value  = '';
-  document.getElementById('mdp-confirme').value = '';
+  document.getElementById('mdp-nom-compte').textContent   = nom;
+  document.getElementById('mdp-email-compte').textContent = email;
   _cacherErreur('mdp-erreur');
   ouvrirM('m-mdp');
-  document.getElementById('mdp-nouveau').focus();
 }
 
 async function sauvegarderMdp() {
-  const mdp1 = document.getElementById('mdp-nouveau').value;
-  const mdp2 = document.getElementById('mdp-confirme').value;
-
-  if (!mdp1) {
-    afficherErreurModale('mdp-erreur', 'Le nouveau mot de passe est obligatoire.');
-    return;
-  }
-  if (mdp1 !== mdp2) {
-    afficherErreurModale('mdp-erreur', 'Les mots de passe ne correspondent pas.');
-    return;
-  }
-  if (mdp1.length < 6) {
-    afficherErreurModale('mdp-erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
-    return;
-  }
-
   const user = _users.find(u => u.id === _editId);
   if (!user) return;
 
-  const hashMdp = await sha256(mdp1);
-  const userMaj = { ...user, motDePasse: hashMdp };
-  await _persisterUser(userMaj);
-
-  fermerM('m-mdp');
-  afficherNotif('Mot de passe mis à jour.', 'succes');
+  try {
+    // Ne nécessite pas de privilèges admin : disponible avec la clé anon.
+    const { error } = await window.SB.client.auth.resetPasswordForEmail(user.email, {
+      redirectTo: window.location.origin + window.location.pathname.replace(/views\/.*$/, 'login.html'),
+    });
+    if (error) throw error;
+    fermerM('m-mdp');
+    afficherNotif('Email de réinitialisation envoyé.', 'succes');
+  } catch (err) {
+    afficherErreurModale('mdp-erreur', err.message || 'Erreur lors de l\'envoi.');
+  }
 }
 
 /* ============================================================
@@ -313,49 +318,23 @@ async function sauvegarderMdp() {
 function ouvrirSuppression(id, nom) {
   _supId = id;
   document.getElementById('sup-nom-compte').textContent = nom;
-  ouvrirM('m-supprimer');
+  ouvrirM('m-supprimer-compte');
 }
 
 async function confirmerSuppression() {
   if (!_supId) return;
 
   try {
-    await window.SB.supprimer('users', _supId);
-  } catch(e) {
-    console.warn('[Comptes] Supabase indisponible, fallback localStorage :', e);
-    const user = _users.find(u => u.id === _supId);
-    if (user) {
-      const local = _chargerLocal();
-      local.push({ ...user, _supprime: true });
-      localStorage.setItem(CLE_USERS, JSON.stringify(local));
-    }
+    await window.SB.appelerFonction('manage-users', { action: 'delete', id: _supId });
+    _users = _users.filter(u => u.id !== _supId);
+    _rendreTableau();
+    afficherNotif('Compte supprimé.', 'succes');
+  } catch (err) {
+    afficherNotif(err.message || 'Erreur lors de la suppression.', 'erreur');
   }
 
-  _users = _users.filter(u => u.id !== _supId);
   _supId = null;
-
-  _rendreTableau();
-  fermerM('m-supprimer');
-  afficherNotif('Compte supprimé.', 'succes');
-}
-
-/* ============================================================
-   UTILITAIRES CRYPTO
-   ============================================================ */
-
-/**
- * Calcule le hash SHA-256 d'une chaîne via l'API Web Crypto native.
- * @param {string} texte
- * @returns {Promise<string>} hex
- */
-async function sha256(texte) {
-  const buf = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(texte)
-  );
-  return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  fermerM('m-supprimer-compte');
 }
 
 /* ============================================================
@@ -372,14 +351,6 @@ function fermerM(id) {
 
 function bgClose(e, id) {
   if (e.target === document.getElementById(id)) fermerM(id);
-}
-
-function toggleMdp(inputId, btnId) {
-  const inp = document.getElementById(inputId);
-  const btn = document.getElementById(btnId);
-  const visible = inp.type === 'text';
-  inp.type = visible ? 'password' : 'text';
-  btn.textContent = visible ? '👁' : '🙈';
 }
 
 function afficherErreurModale(id, msg) {

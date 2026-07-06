@@ -1,25 +1,22 @@
 /**
- * supabase.js — Client Supabase centralisé
+ * supabase.js — Client Supabase centralisé (SDK officiel)
  * Stock Métallerie — Le Bras Frères
  *
  * Toutes les fonctions d'accès à la base de données passent par ce fichier.
- * Pour migrer vers SharePoint, remplacer uniquement ce fichier.
+ * Le SDK gère automatiquement l'ajout du token de l'utilisateur connecté
+ * (Supabase Auth) sur chaque requête — plus de gestion manuelle des headers.
  */
 
 // ═══════════════════════════════════════════════════════
 //  CONFIGURATION
 // ═══════════════════════════════════════════════════════
 
-const SUPABASE_URL    = 'https://guhktnlmilhcmgeecdxn.supabase.co';
-const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1aGt0bmxtaWxoY21nZWVjZHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDc0MTIsImV4cCI6MjA5ODQyMzQxMn0.Gvu5Hv4BlvddYbvlSHEmP8Z5dxQmoSQ9GxvsitrQUdc';
+const SUPABASE_URL  = 'https://guhktnlmilhcmgeecdxn.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1aGt0bmxtaWxoY21nZWVjZHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NDc0MTIsImV4cCI6MjA5ODQyMzQxMn0.Gvu5Hv4BlvddYbvlSHEmP8Z5dxQmoSQ9GxvsitrQUdc';
 
-// En-têtes communs à toutes les requêtes
-const _headers = {
-  'apikey':        SUPABASE_ANON,
-  'Authorization': 'Bearer ' + SUPABASE_ANON,
-  'Content-Type':  'application/json',
-  'Prefer':        'return=representation',
-};
+const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
 
 // ═══════════════════════════════════════════════════════
 //  FONCTIONS GÉNÉRIQUES
@@ -28,15 +25,19 @@ const _headers = {
 /**
  * Lit tous les enregistrements d'une table.
  * @param {string} table
+ * @param {{order?: string, limit?: number}} opts — order au format "colonne.asc"|"colonne.desc"
  * @returns {Promise<Array>}
  */
 async function sbLire(table, opts = {}) {
-  let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
-  if (opts.order) url += `&order=${encodeURIComponent(opts.order)}`;
-  if (opts.limit) url += `&limit=${opts.limit}`;
-  const rep = await fetch(url, { headers: _headers });
-  if (!rep.ok) throw new Error(`Erreur lecture ${table} : ${rep.status}`);
-  return rep.json();
+  let q = _sb.from(table).select('*');
+  if (opts.order) {
+    const [col, dir] = opts.order.split('.');
+    q = q.order(col, { ascending: dir !== 'desc' });
+  }
+  if (opts.limit) q = q.limit(opts.limit);
+  const { data, error } = await q;
+  if (error) throw new Error(`Erreur lecture ${table} : ${error.message}`);
+  return data;
 }
 
 /**
@@ -46,16 +47,8 @@ async function sbLire(table, opts = {}) {
  * @returns {Promise<Object>}
  */
 async function sbInserer(table, data) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method:  'POST',
-    headers: _headers,
-    body:    JSON.stringify(data),
-  });
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur insertion ${table} : ${err}`);
-  }
-  const result = await rep.json();
+  const { data: result, error } = await _sb.from(table).insert(data).select();
+  if (error) throw new Error(`Erreur insertion ${table} : ${error.message}`);
   return Array.isArray(result) ? result[0] : result;
 }
 
@@ -67,16 +60,8 @@ async function sbInserer(table, data) {
  * @returns {Promise<Object>}
  */
 async function sbMettreAJour(table, id, data) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
-    method:  'PATCH',
-    headers: _headers,
-    body:    JSON.stringify(data),
-  });
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur mise à jour ${table} : ${err}`);
-  }
-  const result = await rep.json();
+  const { data: result, error } = await _sb.from(table).update(data).eq('id', id).select();
+  if (error) throw new Error(`Erreur mise à jour ${table} : ${error.message}`);
   return Array.isArray(result) ? result[0] : result;
 }
 
@@ -90,14 +75,8 @@ async function sbMettreAJour(table, id, data) {
  * @returns {Promise<void>}
  */
 async function sbMettreAJourFiltre(table, colonne, valeur, data) {
-  const rep = await fetch(
-    `${SUPABASE_URL}/rest/v1/${table}?${encodeURIComponent(colonne)}=eq.${encodeURIComponent(valeur)}`,
-    { method: 'PATCH', headers: { ..._headers, Prefer: 'return=minimal' }, body: JSON.stringify(data) }
-  );
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur mise à jour filtrée ${table}.${colonne} : ${err}`);
-  }
+  const { error } = await _sb.from(table).update(data).eq(colonne, valeur);
+  if (error) throw new Error(`Erreur mise à jour filtrée ${table}.${colonne} : ${error.message}`);
 }
 
 /**
@@ -107,33 +86,19 @@ async function sbMettreAJourFiltre(table, colonne, valeur, data) {
  * @returns {Promise<void>}
  */
 async function sbSupprimer(table, id) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
-    method:  'DELETE',
-    headers: { ...(_headers), Prefer: 'return=minimal' },
-  });
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur suppression ${table} : ${err}`);
-  }
+  const { error } = await _sb.from(table).delete().eq('id', id);
+  if (error) throw new Error(`Erreur suppression ${table} : ${error.message}`);
 }
 
 /**
  * Supprime toutes les lignes d'une table.
- * Utilise le filtre PostgREST "id=not.is.null" (PK texte ou uuid).
- * Pour lbf_barres_historique qui peut avoir une PK différente, passer pkColonne.
  * @param {string} table
  * @param {string} [pkColonne='id']
  * @returns {Promise<void>}
  */
 async function sbViderTable(table, pkColonne = 'id') {
-  const rep = await fetch(
-    `${SUPABASE_URL}/rest/v1/${table}?${encodeURIComponent(pkColonne)}=not.is.null`,
-    { method: 'DELETE', headers: { ..._headers, Prefer: 'return=minimal' } }
-  );
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur vidage ${table} : ${err}`);
-  }
+  const { error } = await _sb.from(table).delete().not(pkColonne, 'is', null);
+  if (error) throw new Error(`Erreur vidage ${table} : ${error.message}`);
 }
 
 /**
@@ -143,16 +108,8 @@ async function sbViderTable(table, pkColonne = 'id') {
  * @returns {Promise<Object>}
  */
 async function sbUpsert(table, data) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method:  'POST',
-    headers: { ..._headers, Prefer: 'resolution=merge-duplicates,return=representation' },
-    body:    JSON.stringify(data),
-  });
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur upsert ${table} : ${err}`);
-  }
-  const result = await rep.json();
+  const { data: result, error } = await _sb.from(table).upsert(data).select();
+  if (error) throw new Error(`Erreur upsert ${table} : ${error.message}`);
   return Array.isArray(result) ? result[0] : result;
 }
 
@@ -167,12 +124,13 @@ async function sbUpsert(table, data) {
  * @returns {Promise<Array>}
  */
 async function sbLireHistoriqueParBarre(barreId) {
-  const rep = await fetch(
-    `${SUPABASE_URL}/rest/v1/lbf_barres_historique?barre_id=eq.${encodeURIComponent(barreId)}&order=date_operation.asc`,
-    { headers: _headers }
-  );
-  if (!rep.ok) throw new Error(`Erreur lecture historique ${barreId} : ${rep.status}`);
-  return rep.json();
+  const { data, error } = await _sb
+    .from('lbf_barres_historique')
+    .select('*')
+    .eq('barre_id', barreId)
+    .order('date_operation', { ascending: true });
+  if (error) throw new Error(`Erreur lecture historique ${barreId} : ${error.message}`);
+  return data;
 }
 
 /**
@@ -182,17 +140,27 @@ async function sbLireHistoriqueParBarre(barreId) {
  * @returns {Promise<Object>}
  */
 async function sbInsererHistorique(data) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/lbf_barres_historique`, {
-    method:  'POST',
-    headers: _headers,
-    body:    JSON.stringify(data),
-  });
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur insertion historique : ${err}`);
-  }
-  const result = await rep.json();
+  const { data: result, error } = await _sb.from('lbf_barres_historique').insert(data).select();
+  if (error) throw new Error(`Erreur insertion historique : ${error.message}`);
   return Array.isArray(result) ? result[0] : result;
+}
+
+/**
+ * Retourne la dernière entrée d'historique pour chaque ID fourni.
+ * @param {string[]} ids
+ * @returns {Promise<Object>} map barre_id → dernière ligne historique
+ */
+async function sbDerniereOpParBarres(ids) {
+  if (!ids.length) return {};
+  const { data, error } = await _sb
+    .from('lbf_barres_historique')
+    .select('*')
+    .in('barre_id', ids)
+    .order('date_operation', { ascending: false });
+  if (error) throw new Error(`Erreur historique multiple : ${error.message}`);
+  const map = {};
+  data.forEach(l => { if (!map[l.barre_id]) map[l.barre_id] = l; });
+  return map;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -205,13 +173,9 @@ async function sbInsererHistorique(data) {
  * @returns {Promise<string|null>}
  */
 async function sbLireConfig(cle) {
-  const rep = await fetch(
-    `${SUPABASE_URL}/rest/v1/config?key=eq.${encodeURIComponent(cle)}&select=value`,
-    { headers: _headers }
-  );
-  if (!rep.ok) throw new Error(`Erreur lecture config "${cle}" : ${rep.status}`);
-  const rows = await rep.json();
-  return rows.length ? rows[0].value : null;
+  const { data, error } = await _sb.from('config').select('value').eq('key', cle);
+  if (error) throw new Error(`Erreur lecture config "${cle}" : ${error.message}`);
+  return data.length ? data[0].value : null;
 }
 
 /**
@@ -221,41 +185,38 @@ async function sbLireConfig(cle) {
  * @returns {Promise<void>}
  */
 async function sbSauvegarderConfig(cle, valeur) {
-  const rep = await fetch(`${SUPABASE_URL}/rest/v1/config`, {
-    method:  'POST',
-    headers: { ..._headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body:    JSON.stringify({ key: cle, value: valeur, updated_at: new Date().toISOString() }),
-  });
-  if (!rep.ok) {
-    const err = await rep.text();
-    throw new Error(`Erreur sauvegarde config "${cle}" : ${err}`);
+  const { error } = await _sb
+    .from('config')
+    .upsert({ key: cle, value: valeur, updated_at: new Date().toISOString() });
+  if (error) throw new Error(`Erreur sauvegarde config "${cle}" : ${error.message}`);
+}
+
+// ═══════════════════════════════════════════════════════
+//  APPEL D'UNE EDGE FUNCTION (gestion des comptes)
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Appelle une Edge Function Supabase avec le jeton de l'utilisateur connecté.
+ * @param {string} nom — nom de la fonction (ex. "manage-users")
+ * @param {Object} body
+ * @returns {Promise<Object>}
+ */
+async function sbAppelerFonction(nom, body) {
+  const { data, error } = await _sb.functions.invoke(nom, { body });
+  if (error) {
+    const detail = error.context?.body ? await error.context.text?.().catch(() => '') : '';
+    throw new Error(`Erreur fonction ${nom} : ${error.message}${detail ? ' — ' + detail : ''}`);
   }
+  if (data?.error) throw new Error(data.error);
+  return data;
 }
 
 // ═══════════════════════════════════════════════════════
 //  EXPORT
 // ═══════════════════════════════════════════════════════
 
-/**
- * Retourne la dernière entrée d'historique pour chaque ID fourni.
- * @param {string[]} ids
- * @returns {Promise<Object>} map barre_id → dernière ligne historique
- */
-async function sbDerniereOpParBarres(ids) {
-  if (!ids.length) return {};
-  const param = ids.map(id => encodeURIComponent(id)).join(',');
-  const rep = await fetch(
-    `${SUPABASE_URL}/rest/v1/lbf_barres_historique?barre_id=in.(${param})&order=date_operation.desc`,
-    { headers: _headers }
-  );
-  if (!rep.ok) throw new Error(`Erreur historique multiple : ${rep.status}`);
-  const lignes = await rep.json();
-  const map = {};
-  lignes.forEach(l => { if (!map[l.barre_id]) map[l.barre_id] = l; });
-  return map;
-}
-
 window.SB = {
+  client:                 _sb,
   lire:                   sbLire,
   inserer:                sbInserer,
   mettreAJour:            sbMettreAJour,
@@ -268,4 +229,5 @@ window.SB = {
   lireConfig:             sbLireConfig,
   sauvegarderConfig:      sbSauvegarderConfig,
   derniereOpParBarres:    sbDerniereOpParBarres,
+  appelerFonction:        sbAppelerFonction,
 };
