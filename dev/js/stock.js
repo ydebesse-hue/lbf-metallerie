@@ -5015,6 +5015,11 @@ ${hasT ? `
     inpLong.type = 'number'; inpLong.className = 'inv-long inv-inp-long inv-ctrl';
     inpLong.placeholder = 'Long. (m)'; inpLong.step = '0.01'; inpLong.min = '0.01';
 
+    const inpQte = document.createElement('input');
+    inpQte.type = 'number'; inpQte.className = 'cmd-qte inv-ctrl';
+    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
+    inpQte.placeholder = 'Qté';
+
     const spanPoids = document.createElement('span');
     spanPoids.className = 'inv-poids-cell';
 
@@ -5026,34 +5031,11 @@ ${hasT ? `
       if (!list.querySelector('.inv-ligne')) _ajouterLigneCommandeCard(list);
     });
 
-    [selType, selDesig, btnSchema, inpLong, spanPoids, btnDel].forEach(el => row1.appendChild(el));
+    [selType, selDesig, btnSchema, inpLong, inpQte, spanPoids, btnDel].forEach(el => row1.appendChild(el));
 
-    // ── Ligne 2 : Lieu de stockage | Qté ──
+    // ── Ligne 2 : Classe acier | Commentaire | Destination ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
-
-    const spanId = document.createElement('span');
-    spanId.className = 'inv-id-cell';
-
-    const lieuDiv = document.createElement('div');
-    lieuDiv.className = 'lieu-cascade cmd-lieu';
-    _monterSelecteurLieu(lieuDiv);
-
-    const inpQte = document.createElement('input');
-    inpQte.type = 'number'; inpQte.className = 'cmd-qte inv-ctrl';
-    inpQte.value = '1'; inpQte.min = '1'; inpQte.step = '1';
-    inpQte.placeholder = 'Qté';
-
-    [spanId, lieuDiv, inpQte].forEach(el => row2.appendChild(el));
-
-    // ── Ligne 3 : Chantier destinataire | Classe acier | Commentaire ──
-    const row3 = document.createElement('div');
-    row3.className = 'inv-row-3';
-
-    const selChantier = document.createElement('select');
-    selChantier.className = 'cmd-chantier inv-ctrl';
-    _peuplerSelectAffectation(selChantier, '');
-    selChantier.options[0].text = '— Chantier destinataire —';
 
     const selClasse = document.createElement('select');
     selClasse.className = 'cmd-classe inv-ctrl';
@@ -5067,7 +5049,25 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'cmd-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    [selChantier, selClasse, inpComm].forEach(el => row3.appendChild(el));
+    const selChantier = document.createElement('select');
+    selChantier.className = 'cmd-chantier inv-ctrl';
+    _peuplerSelectAffectation(selChantier, '');
+    selChantier.options[0].text = '— Destination —';
+
+    [selClasse, inpComm, selChantier].forEach(el => row2.appendChild(el));
+
+    // ── Ligne 3 : N° barre | Rangement ──
+    const row3 = document.createElement('div');
+    row3.className = 'inv-row-3';
+
+    const spanId = document.createElement('span');
+    spanId.className = 'inv-id-cell';
+
+    const lieuDiv = document.createElement('div');
+    lieuDiv.className = 'lieu-cascade cmd-lieu';
+    _monterSelecteurLieu(lieuDiv);
+
+    [spanId, lieuDiv].forEach(el => row3.appendChild(el));
 
     ligne.appendChild(row1);
     ligne.appendChild(row2);
