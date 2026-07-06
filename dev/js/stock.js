@@ -4076,7 +4076,8 @@ ${hasT ? `
         });
         invList.addEventListener('input', e => {
           const ligne = e.target.closest('.inv-ligne');
-          if (ligne && e.target.classList.contains('inv-long')) _majPoidsLigneInv(ligne);
+          if (!ligne) return;
+          if (e.target.classList.contains('inv-long') || e.target.classList.contains('inv-qte')) _majPoidsLigneInv(ligne);
         });
       }
 
@@ -5118,29 +5119,44 @@ ${hasT ? `
       }
     }
 
-    // ID — généré dès que Type + Désig + Long sont remplis, mémorisé sur la carte
+    // ID(s) — généré(s) dès que Type + Désig + Long sont remplis, mémorisé sur la carte
     if (spanId) {
       const pret = type && desig && !isNaN(long) && long > 0;
+      const qte  = Math.max(1, parseInt(ligne.querySelector('.inv-qte')?.value, 10) || 1);
       if (pret) {
         if (!ligne.dataset.idPrevu) {
           const list = ligne.closest('.inv-barres-list');
-          const dejaPris = list
-            ? [...list.querySelectorAll('.inv-ligne')].map(l => l.dataset.idPrevu).filter(Boolean)
+          const autresLignes = list
+            ? [...list.querySelectorAll('.inv-ligne')].filter(l => l !== ligne)
             : [];
+          // Réserve la plage complète (base + qté-1) de chaque autre ligne déjà numérotée
+          const finsReservees = autresLignes
+            .filter(l => l.dataset.idPrevu)
+            .map(l => {
+              const base = parseInt(l.dataset.idPrevu.slice(1).split('-')[0], 10);
+              const q    = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
+              return isNaN(base) ? 0 : base + q - 1;
+            });
           const numsExist = _data.barres
             .filter(b => b.id && /^P\d/.test(b.id))
             .map(b => parseInt(b.id.slice(1).split('-')[0], 10))
             .filter(n => !isNaN(n));
-          const numsPris = dejaPris
-            .map(id => parseInt(id.slice(1).split('-')[0], 10))
-            .filter(n => !isNaN(n));
-          const max = Math.max(0, ...numsExist, ...numsPris);
+          const max = Math.max(0, ...numsExist, ...finsReservees);
           ligne.dataset.idPrevu = `P${String(max + 1).padStart(4, '0')}`;
         }
-        spanId.innerHTML = `<span class="inv-id-chip">${ligne.dataset.idPrevu}</span>`;
+        const base = parseInt(ligne.dataset.idPrevu.slice(1), 10);
+        if (qte > 1) {
+          const dernier = `P${String(base + qte - 1).padStart(4, '0')}`;
+          spanId.innerHTML = `<span class="inv-id-chip">${ligne.dataset.idPrevu} → ${dernier}</span>`;
+          spanId.title = Array.from({ length: qte }, (_, i) => `P${String(base + i).padStart(4, '0')}`).join(', ');
+        } else {
+          spanId.innerHTML = `<span class="inv-id-chip">${ligne.dataset.idPrevu}</span>`;
+          spanId.title = '';
+        }
       } else {
         delete ligne.dataset.idPrevu;
         spanId.innerHTML = '';
+        spanId.title = '';
       }
     }
   }
