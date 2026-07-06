@@ -4081,13 +4081,16 @@ ${hasT ? `
         });
       }
 
-      // Bouton "+ Ajouter une référence" (commande)
+      // Bouton "+ Ajouter une référence" (commande) — reprend la section de la dernière ligne
       const btnAjLigne = mAP.querySelector('#ap-cmd-ajouter-ligne');
       if (btnAjLigne) btnAjLigne.addEventListener('click', () => {
-        _ajouterLigneCommandeCard(mAP.querySelector('#ap-cmd-list'));
+        const list = mAP.querySelector('#ap-cmd-list');
+        const lignesExistantes = list?.querySelectorAll('.inv-ligne');
+        const derniereLigne = lignesExistantes?.length ? lignesExistantes[lignesExistantes.length - 1] : null;
+        _ajouterLigneCommandeCard(list, derniereLigne);
       });
 
-      // Délégation type/désig/long sur les cartes commande
+      // Délégation type/désig/long/qté sur les cartes commande
       const cmdList = mAP.querySelector('#ap-cmd-list');
       if (cmdList) {
         cmdList.addEventListener('change', e => {
@@ -4098,7 +4101,8 @@ ${hasT ? `
         });
         cmdList.addEventListener('input', e => {
           const ligne = e.target.closest('.inv-ligne');
-          if (ligne && e.target.classList.contains('inv-long')) _majPoidsLigneInv(ligne);
+          if (!ligne) return;
+          if (e.target.classList.contains('inv-long') || e.target.classList.contains('cmd-qte')) _majPoidsLigneInv(ligne);
         });
       }
 
@@ -4984,7 +4988,7 @@ ${hasT ? `
     }
   }
 
-  function _ajouterLigneCommandeCard(list) {
+  function _ajouterLigneCommandeCard(list, modele) {
     if (!list) return;
     const ligne = document.createElement('div');
     ligne.className = 'inv-ligne';
@@ -5066,6 +5070,20 @@ ${hasT ? `
     ligne.appendChild(row2);
     ligne.appendChild(row3);
     list.appendChild(ligne);
+
+    // Reprend la section (type + désignation) de la ligne modèle, si fournie
+    if (modele) {
+      const typeModele  = modele.querySelector('.inv-type')?.value;
+      const desigModele = modele.querySelector('.inv-desig')?.value;
+      if (typeModele) {
+        selType.value = typeModele;
+        _apMajDesigLigneInv(ligne);
+        if (desigModele) {
+          selDesig.value = desigModele;
+          _majPoidsLigneInv(ligne);
+        }
+      }
+    }
   }
 
   function _apMajDesigLigneInv(ligne) {
@@ -5122,7 +5140,7 @@ ${hasT ? `
     // ID(s) — généré(s) dès que Type + Désig + Long sont remplis, mémorisé sur la carte
     if (spanId) {
       const pret = type && desig && !isNaN(long) && long > 0;
-      const qte  = Math.max(1, parseInt(ligne.querySelector('.inv-qte')?.value, 10) || 1);
+      const qte  = Math.max(1, parseInt(ligne.querySelector('.inv-qte, .cmd-qte')?.value, 10) || 1);
       if (pret) {
         if (!ligne.dataset.idPrevu) {
           const list = ligne.closest('.inv-barres-list');
@@ -5134,7 +5152,7 @@ ${hasT ? `
             .filter(l => l.dataset.idPrevu)
             .map(l => {
               const base = parseInt(l.dataset.idPrevu.slice(1).split('-')[0], 10);
-              const q    = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
+              const q    = Math.max(1, parseInt(l.querySelector('.inv-qte, .cmd-qte')?.value, 10) || 1);
               return isNaN(base) ? 0 : base + q - 1;
             });
           const numsExist = _data.barres
