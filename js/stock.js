@@ -4918,20 +4918,6 @@ ${hasT ? `
 
     [selType, selDesig, btnSchema, inpLong, inpQte, btnDel].forEach(el => row1.appendChild(el));
 
-    // Reprend la section (type + désignation) de la ligne modèle, si fournie
-    if (modele) {
-      const typeModele  = modele.querySelector('.inv-type')?.value;
-      const desigModele = modele.querySelector('.inv-desig')?.value;
-      if (typeModele) {
-        selType.value = typeModele;
-        _apMajDesigLigneInv(ligne);
-        if (desigModele) {
-          selDesig.value = desigModele;
-          _majPoidsLigneInv(ligne);
-        }
-      }
-    }
-
     // ── Ligne 2 : ID prévu | Commentaire ──
     const row2 = document.createElement('div');
     row2.className = 'inv-row-2';
@@ -4982,6 +4968,20 @@ ${hasT ? `
     ligne.appendChild(row2);
     ligne.appendChild(row3);
     list.appendChild(ligne);
+
+    // Reprend la section (type + désignation) de la ligne modèle, si fournie
+    if (modele) {
+      const typeModele  = modele.querySelector('.inv-type')?.value;
+      const desigModele = modele.querySelector('.inv-desig')?.value;
+      if (typeModele) {
+        selType.value = typeModele;
+        _apMajDesigLigneInv(ligne);
+        if (desigModele) {
+          selDesig.value = desigModele;
+          _majPoidsLigneInv(ligne);
+        }
+      }
+    }
   }
 
   function _ajouterLigneCommandeCard(list) {
