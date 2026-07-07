@@ -295,7 +295,11 @@ const Stock = (() => {
       // Chargement stock depuis Supabase
       let barres = [];
       try {
-        barres = await window.SB.lire('stock');
+        const [profils, toles] = await Promise.all([
+          window.SB.lire('stock'),
+          window.SB.lire('stock_toles'),
+        ]);
+        barres = [...profils, ...toles];
       } catch(e) {
         console.warn('[Stock] Supabase indisponible, fallback JSON :', e);
         const rep = await fetch('../data/stock.json');
@@ -381,10 +385,12 @@ const Stock = (() => {
     if (Auth.hasRight('can_validate')) {
       setInterval(async () => {
         try {
-          const [demandes, barres] = await Promise.all([
+          const [demandes, profils, toles] = await Promise.all([
             window.SB.lire('demandes'),
             window.SB.lire('stock'),
+            window.SB.lire('stock_toles'),
           ]);
+          const barres = [...profils, ...toles];
           const nouvellesDemandes = demandes.filter(d => d.statut === 'en_attente');
           const avantDemandes = _demandes.length;
           const avantAjouts   = (_data?.barres || []).filter(b => b.statut === 'en_attente').length;
@@ -526,8 +532,8 @@ const Stock = (() => {
     for (const b of oldBarres) {
       const newId = _newId(b.id);
       try {
-        await window.SB.upsert('stock', { ...b, id: newId });
-        await window.SB.supprimer('stock', b.id);
+        await window.SB.upsert(_tableStock(newId), { ...b, id: newId });
+        await window.SB.supprimer(_tableStock(b.id), b.id);
         ok++;
         console.log(`  ✓ ${b.id} → ${newId}`);
       } catch(e) {
@@ -557,6 +563,19 @@ const Stock = (() => {
   }
 
   /**
+   * Table Supabase réelle pour un élément ou un ID — les profilés restent
+   * dans `stock`, les tôles vivent dans `stock_toles` (tables séparées,
+   * schémas distincts). Se base sur la catégorie si connue, sinon sur le
+   * préfixe de l'ID ("T" = tôle).
+   */
+  function _tableStock(elementOuId) {
+    if (elementOuId && typeof elementOuId === 'object') {
+      return elementOuId.categorie === 'tole' ? 'stock_toles' : 'stock';
+    }
+    return typeof elementOuId === 'string' && elementOuId.startsWith('T') ? 'stock_toles' : 'stock';
+  }
+
+  /**
    * Persiste un élément (ajout ou modification) dans Supabase
    * Fallback localStorage si Supabase indisponible
    * @param {Object} element — objet barre ou tôle
@@ -572,7 +591,7 @@ const Stock = (() => {
 
     // Persister dans Supabase
     try {
-      await window.SB.upsert('stock', element);
+      await window.SB.upsert(_tableStock(element), element);
       return true; // ✅ sauvegardé en base
     } catch(e) {
       console.warn('[Stock] Supabase indisponible, fallback localStorage :', e);
@@ -5648,7 +5667,7 @@ ${hasT ? `
     if (nouvelleQty <= 0) {
       // Archiver si plus rien en stock — enregistrer le chantier consommateur
       try {
-        await window.SB.mettreAJour('stock', _sortieToleId, { quantite: 0, statut: 'archivee', chantier_affectation: chantierDest });
+        await window.SB.mettreAJour('stock_toles', _sortieToleId, { quantite: 0, statut: 'archivee', chantier_affectation: chantierDest });
       } catch(e) { /* hors ligne */ }
       const b = _data.barres.find(x => x.id === _sortieToleId);
       if (b) { b.quantite = 0; b.statut = 'archivee'; b.chantier_affectation = chantierDest; }
@@ -5657,7 +5676,7 @@ ${hasT ? `
     } else {
       const poidsT = Math.round(tole.poids_unitaire_kg * nouvelleQty * 10) / 10;
       try {
-        await window.SB.mettreAJour('stock', _sortieToleId, { quantite: nouvelleQty, poids_total_kg: poidsT });
+        await window.SB.mettreAJour('stock_toles', _sortieToleId, { quantite: nouvelleQty, poids_total_kg: poidsT });
       } catch(e) { /* hors ligne */ }
       const b = _data.barres.find(x => x.id === _sortieToleId);
       if (b) { b.quantite = nouvelleQty; b.poids_total_kg = poidsT; }
@@ -8767,7 +8786,7 @@ ${hasT ? `
       const el = _parId(id);
       const longAvant = el?.longueur_m ?? 0;
       try {
-        await window.SB.mettreAJour('stock', id, { statut: 'archivee' });
+        await window.SB.mettreAJour(_tableStock(id), id, { statut: 'archivee' });
         await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
           null, Auth.getSession()?.identifiant || null, null, 'Archivage manuel');
       } catch(e) {
@@ -8786,7 +8805,7 @@ ${hasT ? `
     } else {
       // ── Suppression définitive : DELETE ──────────────────────
       try {
-        await window.SB.supprimer('stock', id);
+        await window.SB.supprimer(_tableStock(id), id);
       } catch(e) {
         console.warn('[Stock] Supabase indisponible, suppression locale :', e);
         const local = _chargerLocal();
@@ -9324,12 +9343,11 @@ ${hasT ? `
      ────────────────────────────────────────────────────────────── */
 
   // Métadonnées de toutes les tables (ordre d'upsert intentionnel)
-  // `table` = table Supabase réelle ; `id` = clé de stockage dans le JSON de sauvegarde
-  // (distincte quand plusieurs entrées virtuelles pointent vers la même table, ex. stock).
+  // `table` = table Supabase réelle ; `id` = clé de stockage dans le JSON de sauvegarde.
   const _TABLES_META = [
-    { id: 'stock_profils',         table: 'stock', filtre: { champ: 'categorie', valeur: 'profil' },
+    { id: 'stock_profils',         table: 'stock',
       label: 'Stock — Profilés',    pk: 'id',  chkBkp: 'chk-bkp-stock-profils', chkRaz: 'chk-raz-stock-profils' },
-    { id: 'stock_toles',           table: 'stock', filtre: { champ: 'categorie', valeur: 'tole' },
+    { id: 'stock_toles',           table: 'stock_toles',
       label: 'Stock — Tôles',       pk: 'id',  chkBkp: 'chk-bkp-stock-toles',   chkRaz: 'chk-raz-stock-toles' },
     { id: 'lbf_barres_historique', label: 'Historique des barres',    pk: 'id',  chkBkp: 'chk-bkp-historique',   chkRaz: 'chk-raz-historique' },
     { id: 'demandes',              label: 'Demandes',                 pk: 'id',  chkBkp: 'chk-bkp-demandes',     chkRaz: 'chk-raz-demandes' },
@@ -9841,9 +9859,12 @@ ${hasT ? `
         const ancienLieux = _lieuxDuRack(ancienRack);
         const nouveauRack = { ...ancienRack, nom, nb_allees: na, nb_etages: na === 0 ? 0 : ne };
         const nouveauxLieux = _lieuxDuRack(nouveauRack);
-        await Promise.all(ancienLieux.map((ancienLieu, i) => {
+        await Promise.all(ancienLieux.flatMap((ancienLieu, i) => {
           const nouveauLieu = nouveauxLieux[i] ?? nouveauxLieux[0];
-          return window.SB.mettreAJourFiltre('stock', 'lieu_stockage', ancienLieu, { lieu_stockage: nouveauLieu });
+          return [
+            window.SB.mettreAJourFiltre('stock', 'lieu_stockage', ancienLieu, { lieu_stockage: nouveauLieu }),
+            window.SB.mettreAJourFiltre('stock_toles', 'lieu_stockage', ancienLieu, { lieu_stockage: nouveauLieu }),
+          ];
         }));
         const mapLieux = Object.fromEntries(ancienLieux.map((l, i) => [l, nouveauxLieux[i] ?? nouveauxLieux[0]]));
         _data.barres.forEach(b => { if (mapLieux[b.lieu_stockage]) b.lieu_stockage = mapLieux[b.lieu_stockage]; });
@@ -10008,8 +10029,10 @@ ${hasT ? `
       // Cascade : propager le renommage dans tout le stock
       if (ancienNom && ancienNom !== nom) {
         await Promise.all([
-          window.SB.mettreAJourFiltre('stock', 'chantier_origine',     ancienNom, { chantier_origine:     nom }),
-          window.SB.mettreAJourFiltre('stock', 'chantier_affectation', ancienNom, { chantier_affectation: nom }),
+          window.SB.mettreAJourFiltre('stock',       'chantier_origine',     ancienNom, { chantier_origine:     nom }),
+          window.SB.mettreAJourFiltre('stock',       'chantier_affectation', ancienNom, { chantier_affectation: nom }),
+          window.SB.mettreAJourFiltre('stock_toles', 'chantier_origine',     ancienNom, { chantier_origine:     nom }),
+          window.SB.mettreAJourFiltre('stock_toles', 'chantier_affectation', ancienNom, { chantier_affectation: nom }),
         ]);
         _data.barres.forEach(b => {
           if (b.chantier_origine     === ancienNom) b.chantier_origine     = nom;
@@ -10134,7 +10157,10 @@ ${hasT ? `
     try {
       await window.SB.mettreAJour('fournisseurs', id, { nom });
       if (ancienNom && ancienNom !== nom) {
-        await window.SB.mettreAJourFiltre('stock', 'fournisseur', ancienNom, { fournisseur: nom });
+        await Promise.all([
+          window.SB.mettreAJourFiltre('stock',       'fournisseur', ancienNom, { fournisseur: nom }),
+          window.SB.mettreAJourFiltre('stock_toles', 'fournisseur', ancienNom, { fournisseur: nom }),
+        ]);
         _data.barres.forEach(b => { if (b.fournisseur === ancienNom) b.fournisseur = nom; });
         _filtrer();
       }
