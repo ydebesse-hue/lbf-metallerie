@@ -6357,7 +6357,7 @@ ${hasT ? `
     _afficherInfo(m, '#dtole-chantier-aff', t.chantier_affectation ? (_labelChantier(t.chantier_affectation) || t.chantier_affectation) : '—');
     _afficherInfo(m, '#dtole-lieu',         t.lieu_stockage  || '—');
     _afficherInfo(m, '#dtole-ref',          t.ref_commande   || '—');
-    _afficherInfo(m, '#dtole-date',         _fmtDate(t.date_ajout));
+    _afficherInfo(m, '#dtole-date',         _fmtDateHeure(t.date_ajout));
     _afficherInfo(m, '#dtole-commentaire',  t.commentaire    || '—');
 
     // Boutons
@@ -6467,7 +6467,7 @@ ${hasT ? `
     _afficherInfo(m, '#dprofil-ref',           b.ref_commande   || '—');
     _afficherInfo(m, '#dprofil-fournisseur',   b.fournisseur    || '—');
     _afficherInfo(m, '#dprofil-ajoute-par',    b.ajoute_par     || '—');
-    _afficherInfo(m, '#dprofil-date',          _fmtDate(b.date_ajout));
+    _afficherInfo(m, '#dprofil-date',          _fmtDateHeure(b.date_ajout));
     _afficherInfo(m, '#dprofil-commentaire',   b.commentaire    || '—');
 
     // Schéma collapsible
