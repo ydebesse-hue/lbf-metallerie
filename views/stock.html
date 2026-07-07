@@ -1597,16 +1597,18 @@
     @media (max-width: 900px) { .input-recherche { width: 150px; } }
 
     @media (max-width: 768px) {
-      header { padding: 0 12px; height: 54px; align-items: stretch; }
-      .logo-zone { flex: 0 0 auto; align-items: flex-start; padding-top: 4px; }
+      header { padding: 8px 12px; height: auto; flex-wrap: wrap; align-items: center; row-gap: 6px; }
+      .logo-zone { flex: 0 0 auto; }
       .logo-zone img { height: 26px; }
-      .app-title { font-size: 12px; flex: 1; min-width: 0; align-self: flex-end; padding-bottom: 4px; }
+      .app-title { position: static; transform: none; font-size: 12px; flex: 1; min-width: 0; text-align: right; }
       .header-droite {
-        flex: 0 0 auto;
-        flex-direction: column;
-        align-items: flex-end;
-        justify-content: space-between;
-        padding: 4px 0;
+        flex: 0 0 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        row-gap: 4px;
+        gap: 6px;
       }
       #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
       .btn-deco { font-size: 10px; padding: 3px 7px; }
