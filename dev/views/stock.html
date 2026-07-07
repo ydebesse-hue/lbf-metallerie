@@ -1604,14 +1604,15 @@
       .header-droite {
         flex: 0 0 100%;
         flex-direction: row;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: flex-end;
+        row-gap: 4px;
         gap: 6px;
       }
       #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
       .btn-deco { font-size: 10px; padding: 3px 7px; }
       #header-user { display: none; }
-      .lbl-contact { display: none; }
       .nav-principale { padding: 0 8px; }
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
@@ -1911,12 +1912,12 @@
   <header>
     <div class="logo-zone">
       <img src="../assets/Logo_LBF2.png" alt="Le Bras Frères" onerror="this.style.display='none'">
-      <a class="btn-deco lien-contact-logo" style="text-decoration:none;display:inline-block" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande" title="Contacter l'administrateur">✉<span class="lbl-contact"> Contact</span></a>
     </div>
     <div class="app-title">Stock <span>Métallerie</span></div>
     <div class="header-droite">
       <span id="header-badge" class="badge-profil"></span>
       <span id="header-user"></span>
+      <a class="btn-deco" style="text-decoration:none;display:inline-block" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande" title="Contacter l'administrateur">✉ Contact</a>
       <button class="btn-deco" onclick="Auth.logout()">Déconnexion</button>
     </div>
   </header>

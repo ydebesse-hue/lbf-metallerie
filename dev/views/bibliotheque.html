@@ -985,14 +985,15 @@ header {
   .header-right {
     flex: 0 0 100%;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
+    row-gap: 4px;
     gap: 6px;
   }
   #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
   .btn-header { font-size: 10px; padding: 3px 7px; }
   .user-info { display: none; }
-  .lbl-contact { display: none; }
   .main-nav  { padding: 0 12px; }
   .nav-item  { padding: 9px 12px; font-size: 12px; }
   .biblio-toolbar { padding: 8px 12px; }
@@ -1013,13 +1014,13 @@ header {
   <div class="logo-zone">
     <img src="../assets/Logo_LBF2.png" alt="Le Bras Frères"
          onerror="this.style.display='none'">
-    <a class="btn-header lien-contact-logo" style="text-decoration:none;display:inline-block" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande" title="Contacter l'administrateur">✉<span class="lbl-contact"> Contact</span></a>
   </div>
   <div class="app-title">Stock <span>Métallerie</span></div>
   <div class="header-right">
     <!-- Badge profil — mis à jour par biblioSetProfil() -->
     <span id="header-badge" class="badge badge-rouge">Consultation</span>
     <span id="header-user"  class="user-info">Visiteur</span>
+    <a class="btn-header" style="text-decoration:none;display:inline-block" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande" title="Contacter l'administrateur">✉ Contact</a>
     <button class="btn-header" onclick="Auth.logout()">Déconnexion</button>
   </div>
 </header>
