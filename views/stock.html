@@ -1603,14 +1603,14 @@
       .app-title { font-size: 12px; flex: 1; min-width: 0; align-self: flex-end; padding-bottom: 4px; }
       .header-droite {
         flex: 0 0 auto;
-        flex-direction: column;
-        align-items: flex-end;
-        justify-content: space-between;
-        padding: 4px 0;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
       }
       #header-badge { font-size: 9px; padding: 2px 5px; letter-spacing: 0.5px; }
       .btn-deco { font-size: 10px; padding: 3px 7px; }
       #header-user { display: none; }
+      .lbl-contact { display: none; }
       .nav-principale { padding: 0 8px; }
       .nav-item { padding: 8px 10px; font-size: 12px; }
       .sous-onglets { padding: 0 8px; }
@@ -1915,7 +1915,7 @@
     <div class="header-droite">
       <span id="header-badge" class="badge-profil"></span>
       <span id="header-user"></span>
-      <a class="btn-deco" style="text-decoration:none;display:inline-block" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande" title="Contacter l'administrateur">✉ Contact</a>
+      <a class="btn-deco" style="text-decoration:none;display:inline-block" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande" title="Contacter l'administrateur">✉<span class="lbl-contact"> Contact</span></a>
       <button class="btn-deco" onclick="Auth.logout()">Déconnexion</button>
     </div>
   </header>
