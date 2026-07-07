@@ -3006,21 +3006,26 @@ ${hasT ? `
     if (tarc) tarc.style.display = onglet === 'archivees' ? '' : 'none';
     if (tsyn) tsyn.style.display = onglet === 'synthese'  ? '' : 'none';
 
-    // Basculer entre tableau et zone synthèse
+    // Basculer entre tableau, zone synthèse et zone plan
     const ztab  = document.getElementById('tableau-stock');
     const zpied = document.querySelector('.pied-tableau');
     const zsyn  = document.getElementById('zone-synthese');
-    const estSyn = onglet === 'synthese';
-    if (ztab)  ztab.style.display  = estSyn ? 'none' : '';
-    if (zpied) zpied.style.display = estSyn ? 'none' : '';
-    if (zsyn)  zsyn.style.display  = estSyn ? '' : 'none';
+    const zplan = document.getElementById('zone-plan');
+    const estSyn  = onglet === 'synthese';
+    const estPlan = onglet === 'plan';
+    if (ztab)  ztab.style.display  = (estSyn || estPlan) ? 'none' : '';
+    if (zpied) zpied.style.display = (estSyn || estPlan) ? 'none' : '';
+    if (zsyn)  zsyn.style.display  = estSyn  ? '' : 'none';
+    if (zplan) zplan.style.display = estPlan ? '' : 'none';
+    if (estPlan) _rendrePlanStock();
 
     requestAnimationFrame(_ajusterStickyTop);
 
     // Titre dynamique selon l'onglet
     const titres = {
       profils: 'Stock Profilés — LBF', toles: 'Stock Tôles — LBF',
-      archivees: 'Stock Archivées — LBF', synthese: 'Synthèse Stock — LBF'
+      archivees: 'Stock Archivées — LBF', synthese: 'Synthèse Stock — LBF',
+      plan: 'Plan stock — LBF'
     };
     document.title = titres[onglet] || 'Stock — LBF';
 
@@ -8404,7 +8409,7 @@ ${hasT ? `
   /** Génère les marqueurs SVG à superposer sur l'image du plan.
    *  showNames=true : tous les marqueurs avec nom + bouton ✕ (vue admin).
    *  showNames=false : uniquement le rack actif en rouge, sans texte (vue localisation). */
-  function _svgMarqueursPlan(positions, rackActif, showNames = false) {
+  function _svgMarqueursPlan(positions, rackActif, showNames = false, suppression = true) {
     return _racks.map(r => {
       const pos = positions[r.id];
       if (!pos) return '';
@@ -8426,7 +8431,7 @@ ${hasT ? `
             <text x="${cx}" y="${cy}" dy="22" text-anchor="middle" fill="rgb(45,95,50)"
               font-size="11" font-family="Tahoma" font-weight="bold"
               style="text-shadow:0 0 3px white,0 0 3px white">${_e(r.nom)}</text>
-          </g>
+          </g>${suppression ? `
           <g pointer-events="all" style="cursor:pointer"
              onclick="window._supprimerMarqueurRack('${_e(r.id)}')"
              title="Retirer ${_e(r.nom)} du plan">
@@ -8435,7 +8440,7 @@ ${hasT ? `
             <text x="${bx}" y="${by}" text-anchor="middle" dominant-baseline="middle"
               fill="white" font-size="11" font-family="Tahoma" font-weight="bold"
               pointer-events="none">✕</text>
-          </g>`;
+          </g>` : ''}`;
       }
       // Vue localisation : cercle rouge avec pulsation
       return `
@@ -8491,6 +8496,56 @@ ${hasT ? `
   }
 
   window._ouvrirCarte = _ouvrirCarte;
+
+  /* ── Onglet "Plan stock" (visible à tous) ────────────────────── */
+
+  function _rendrePlanStock() {
+    const img      = _chargerPlanImg();
+    const wrap     = document.getElementById('plan-stock-wrap');
+    const noPlan   = document.getElementById('plan-stock-no-plan');
+    const planImg  = document.getElementById('plan-stock-img');
+    const planSvg  = document.getElementById('plan-stock-svg');
+
+    if (!img) {
+      if (wrap)   wrap.style.display   = 'none';
+      if (noPlan) noPlan.style.display = '';
+      return;
+    }
+    if (wrap)   wrap.style.display   = '';
+    if (noPlan) noPlan.style.display = 'none';
+    if (planImg) planImg.src = img;
+    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
+  }
+
+  function _imprimerPlanStock() {
+    const img = _chargerPlanImg();
+    if (!img) { _notif('Aucun plan chargé', 'alerte'); return; }
+
+    const svgMarqueurs = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
+    const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><title>Plan de stockage — LBF</title>
+<style>
+  body { font-family: Tahoma, Geneva, sans-serif; margin: 20px; }
+  h1 { font-size: 18px; margin: 0 0 14px; }
+  .wrap { position: relative; width: 100%; max-width: 1000px; }
+  .wrap img { display: block; width: 100%; height: auto; border: 1px solid #ccc; }
+  .wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+</style></head>
+<body>
+<h1>Plan de stockage — LBF Métallerie</h1>
+<div class="wrap">
+  <img src="${img}" alt="Plan de stockage">
+  <svg overflow="visible">${svgMarqueurs}</svg>
+</div>
+<script>window.onload = function() { window.print(); }<\/script>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=1000,height=750');
+    if (win) { win.document.write(html); win.document.close(); }
+    else _notif('Fenêtre bloquée — autorisez les pop-ups pour ce site', 'alerte');
+  }
+
+  document.getElementById('btn-imprimer-plan')?.addEventListener('click', _imprimerPlanStock);
 
   /* ── Gestion admin du plan ───────────────────────────────────── */
 
