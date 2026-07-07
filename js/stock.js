@@ -8501,38 +8501,43 @@ ${hasT ? `
 
   function _rendrePlanStock() {
     const img      = _chargerPlanImg();
-    const wrap     = document.getElementById('plan-stock-wrap');
     const noPlan   = document.getElementById('plan-stock-no-plan');
     const planImg  = document.getElementById('plan-stock-img');
     const planSvg  = document.getElementById('plan-stock-svg');
 
-    if (!img) {
-      if (wrap)   wrap.style.display   = 'none';
-      if (noPlan) noPlan.style.display = '';
-      return;
-    }
-    if (wrap)   wrap.style.display   = '';
     if (noPlan) noPlan.style.display = 'none';
-    if (planImg) planImg.src = img;
+    if (planImg) planImg.src = img || PLAN_PROVISOIRE_SRC;
     if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
   }
 
   function _imprimerPlanStock() {
-    const img = _chargerPlanImg();
-    if (!img) { _notif('Aucun plan chargé', 'alerte'); return; }
-
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
+    const img = _chargerPlanImg() || PLAN_PROVISOIRE_SRC;
     const svgMarqueurs = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
+    const date = new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
     const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><title>Plan de stockage — LBF</title>
 <style>
-  body { font-family: Tahoma, Geneva, sans-serif; margin: 20px; }
-  h1 { font-size: 18px; margin: 0 0 14px; }
-  .wrap { position: relative; width: 100%; max-width: 1000px; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#222;padding:20px 28px}
+  .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:3px solid #d22323;padding-bottom:10px}
+  .hdr>div{flex:1}
+  .hdr>div:nth-child(2){text-align:center}
+  .hdr>div:nth-child(2) .hdr-titre{font-size:15px;font-weight:bold;color:#222}
+  .hdr>div:nth-child(2) .hdr-sous{font-size:11px;color:#666;margin-top:2px}
+  .hdr>div:last-child{text-align:right;font-size:10px;color:#888}
+  .wrap { position: relative; width: 100%; max-width: 297mm; margin: 0 auto; }
   .wrap img { display: block; width: 100%; height: auto; border: 1px solid #ccc; }
   .wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  @media print{body{padding:10px 16px}@page{size:A4 landscape;margin:1cm}}
 </style></head>
 <body>
-<h1>Plan de stockage — LBF Métallerie</h1>
+<div class="hdr">
+  <div><img src="${logoUrl}" alt="LBF" style="height:38px;object-fit:contain;display:block"></div>
+  <div><div class="hdr-titre">Stock Métallerie</div><div class="hdr-sous">Plan de stockage</div></div>
+  <div>Imprimé le<br>${date}</div>
+</div>
 <div class="wrap">
   <img src="${img}" alt="Plan de stockage">
   <svg overflow="visible">${svgMarqueurs}</svg>
@@ -8540,7 +8545,7 @@ ${hasT ? `
 <script>window.onload = function() { window.print(); }<\/script>
 </body></html>`;
 
-    const win = window.open('', '_blank', 'width=1000,height=750');
+    const win = window.open('', '_blank', 'width=1100,height=800');
     if (win) { win.document.write(html); win.document.close(); }
     else _notif('Fenêtre bloquée — autorisez les pop-ups pour ce site', 'alerte');
   }
