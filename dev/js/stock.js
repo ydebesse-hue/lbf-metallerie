@@ -8510,11 +8510,26 @@ ${hasT ? `
     if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
   }
 
-  function _imprimerPlanStock() {
+  async function _imprimerPlanStock() {
     const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
     const img = _chargerPlanImg() || PLAN_PROVISOIRE_SRC;
     const svgMarqueurs = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
     const date = new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    // Dimensions réelles de l'image pour caler le cadre exactement sur son
+    // ratio — indispensable pour que tout tienne sur une seule page A4 et
+    // que les marqueurs SVG (positionnés en %) restent alignés.
+    const { w: imgW, h: imgH } = await new Promise(resolve => {
+      const probe = new Image();
+      probe.onload  = () => resolve({ w: probe.naturalWidth || 820, h: probe.naturalHeight || 520 });
+      probe.onerror = () => resolve({ w: 820, h: 520 });
+      probe.src = img;
+    });
+    // Zone imprimable A4 paysage (297×210 mm, marges 10 mm) moins la place de l'en-tête
+    const MAX_W_MM = 277, MAX_H_MM = 155;
+    const ratio  = imgW / imgH;
+    let finalW = MAX_W_MM, finalH = MAX_W_MM / ratio;
+    if (finalH > MAX_H_MM) { finalH = MAX_H_MM; finalW = MAX_H_MM * ratio; }
 
     const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><title>Plan de stockage — LBF</title>
@@ -8527,8 +8542,8 @@ ${hasT ? `
   .hdr>div:nth-child(2) .hdr-titre{font-size:15px;font-weight:bold;color:#222}
   .hdr>div:nth-child(2) .hdr-sous{font-size:11px;color:#666;margin-top:2px}
   .hdr>div:last-child{text-align:right;font-size:10px;color:#888}
-  .wrap { position: relative; width: 100%; max-width: 297mm; margin: 0 auto; }
-  .wrap img { display: block; width: 100%; height: auto; border: 1px solid #ccc; }
+  .wrap { position: relative; width: ${finalW}mm; height: ${finalH}mm; margin: 0 auto; }
+  .wrap img { display: block; width: 100%; height: 100%; border: 1px solid #ccc; }
   .wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   @media print{body{padding:10px 16px}@page{size:A4 landscape;margin:1cm}}
 </style></head>
