@@ -1006,10 +1006,8 @@ const Stock = (() => {
           : '—';
       case 'dispo':
         return _badgeDispo(b);
-      case 'date': {
-        const d = b.date_modif || b.date_validation || b.date_ajout;
-        return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
-      }
+      case 'date':
+        return _fmtDate(b.date_modif || b.date_validation || b.date_ajout);
       case 'chantier':
         return b.chantier_affectation ? _e(_labelChantier(b.chantier_affectation)) : '—';
       case 'lieu':
@@ -1061,9 +1059,7 @@ const Stock = (() => {
     } else {
       data.forEach(b => {
         const poidsEff  = _poidsEffectifProfil(b);
-        const dateLabel = b.date_modif
-          ? new Date(b.date_modif).toLocaleDateString('fr-FR')
-          : (b.date_ajout ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—');
+        const dateLabel = _fmtDate(b.date_modif || b.date_ajout);
         const chantier  = _labelChantier(b.chantier_affectation) || '—';
         h += `<tr data-id="${_e(b.id)}">
           <td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>
@@ -1118,9 +1114,7 @@ const Stock = (() => {
         const surf     = _surfaceTole(b);
         const surfTot  = surf * (b.quantite || 1);
         const poidsU   = b.poids_unitaire_kg || 0;
-        const dateLabel = b.date_modif
-          ? new Date(b.date_modif).toLocaleDateString('fr-FR')
-          : (b.date_ajout ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—');
+        const dateLabel = _fmtDate(b.date_modif || b.date_ajout);
         const chantier = _labelChantier(b.chantier_affectation) || '—';
         h += `<tr data-id="${_e(b.id)}">
           <td class="td-id"><span class="chip-id">${_e(b.id)}</span></td>
@@ -1203,7 +1197,7 @@ const Stock = (() => {
           ? `<span class="chip-lieu chip-lieu-btn" data-lieu="${_e(t.lieu_stockage)}" title="Voir sur le plan">${_e(t.lieu_stockage)} <span class="chip-plan-pin">📍</span></span>`
           : '—';
       case 'date':
-        return t.date_ajout ? new Date(t.date_ajout).toLocaleDateString('fr-FR') : '—';
+        return _fmtDate(t.date_ajout);
       case 'chantier':
         return `${_e(_labelChantier(t.chantier_origine))}${t.chantier_affectation
           ? ` <span class="chip-chantier" title="Affecté à : ${_e(_labelChantier(t.chantier_affectation))}">→ ${_e(_labelChantier(t.chantier_affectation))}</span>`
@@ -1361,7 +1355,7 @@ const Stock = (() => {
       return `<span class="badge badge-attente">⏳ Attribution demandée</span>
         <span class="infos-demande">
           👤 <b>${_e(demandeEnCours.demandeur || '—')}</b><br>
-          📅 ${_e(demandeEnCours.date_demande || '—')}<br>
+          📅 ${_e(_fmtDateHeure(demandeEnCours.date_demande))}<br>
           🏗 ${_e(destination)}
         </span>`;
     }
@@ -3322,7 +3316,7 @@ ${hasT ? `
         </div>
         <div style="font-size:13px;color:#555">Chantier : ${_e(_labelChantier(d.chantier_demande) || d.chantier_demande || '—')}</div>
         ${d.statut === 'refuse' && d.motif_refus ? `<div style="font-size:13px;color:#555">Motif : ${_e(d.motif_refus)}</div>` : ''}
-        <div style="font-size:11px;color:#aaa">${_e(d.date_traitement || d.date_demande || '')}</div>
+        <div style="font-size:11px;color:#aaa">${_e(_fmtDateHeure(d.date_traitement || d.date_demande))}</div>
         ${traitee ? `<div style="text-align:right;margin-top:4px">
           <button class="btn-ligne" style="background:#e8e8e8;color:var(--noir)" onclick="Stock.marquerDemandeLue('${_e(d.id)}')">Marquer comme lu</button>
         </div>` : ''}
@@ -6343,7 +6337,7 @@ ${hasT ? `
       if (demandeEnCoursT) {
         _afficherInfo(m, '#dtole-dem-demandeur',   demandeEnCoursT.demandeur || '—');
         _afficherInfo(m, '#dtole-dem-destination', _labelChantier(demandeEnCoursT.chantier_demande) || demandeEnCoursT.chantier_demande || '—');
-        _afficherInfo(m, '#dtole-dem-date',        demandeEnCoursT.date_demande || '—');
+        _afficherInfo(m, '#dtole-dem-date',        _fmtDateHeure(demandeEnCoursT.date_demande));
         _afficherInfo(m, '#dtole-dem-commentaire', demandeEnCoursT.commentaire || '—');
       }
     }
@@ -6363,7 +6357,7 @@ ${hasT ? `
     _afficherInfo(m, '#dtole-chantier-aff', t.chantier_affectation ? (_labelChantier(t.chantier_affectation) || t.chantier_affectation) : '—');
     _afficherInfo(m, '#dtole-lieu',         t.lieu_stockage  || '—');
     _afficherInfo(m, '#dtole-ref',          t.ref_commande   || '—');
-    _afficherInfo(m, '#dtole-date',         t.date_ajout     || '—');
+    _afficherInfo(m, '#dtole-date',         _fmtDateHeure(t.date_ajout));
     _afficherInfo(m, '#dtole-commentaire',  t.commentaire    || '—');
 
     // Boutons
@@ -6454,7 +6448,7 @@ ${hasT ? `
       if (demandeEnCours) {
         _afficherInfo(m, '#dprofil-dem-demandeur',   demandeEnCours.demandeur || '—');
         _afficherInfo(m, '#dprofil-dem-destination', _labelChantier(demandeEnCours.chantier_demande) || demandeEnCours.chantier_demande || '—');
-        _afficherInfo(m, '#dprofil-dem-date',        demandeEnCours.date_demande || '—');
+        _afficherInfo(m, '#dprofil-dem-date',        _fmtDateHeure(demandeEnCours.date_demande));
         _afficherInfo(m, '#dprofil-dem-commentaire', demandeEnCours.commentaire || '—');
       }
     }
@@ -6473,7 +6467,7 @@ ${hasT ? `
     _afficherInfo(m, '#dprofil-ref',           b.ref_commande   || '—');
     _afficherInfo(m, '#dprofil-fournisseur',   b.fournisseur    || '—');
     _afficherInfo(m, '#dprofil-ajoute-par',    b.ajoute_par     || '—');
-    _afficherInfo(m, '#dprofil-date',          b.date_ajout     || '—');
+    _afficherInfo(m, '#dprofil-date',          _fmtDateHeure(b.date_ajout));
     _afficherInfo(m, '#dprofil-commentaire',   b.commentaire    || '—');
 
     // Schéma collapsible
@@ -7117,7 +7111,7 @@ ${hasT ? `
       <div class="dim-row"><span class="dim-label">Demandeur</span><span class="dim-val">${_e(dem.demandeur)}</span></div>
       <div class="dim-row"><span class="dim-label">Chantier demandé</span><span class="dim-val">${_e(dem.chantier_demande)}</span></div>
       <div class="dim-row"><span class="dim-label">Élément concerné</span><span class="dim-val">${_e(descBarre)}</span></div>
-      <div class="dim-row"><span class="dim-label">Date de demande</span><span class="dim-val">${_e(dem.date_demande)}</span></div>
+      <div class="dim-row"><span class="dim-label">Date de demande</span><span class="dim-val">${_e(_fmtDateHeure(dem.date_demande))}</span></div>
       ${dem.commentaire ? `<div class="dim-row"><span class="dim-label">Commentaire</span><span class="dim-val">${_e(dem.commentaire)}</span></div>` : ''}`;
   }
 
@@ -7535,10 +7529,7 @@ ${hasT ? `
         statutHtml = `<span class="tole-statut-stock">● En stock</span>`;
       }
 
-      const dateRaw = item.date_validation || item.date_modif;
-      const dateAff = dateRaw
-        ? new Date(dateRaw).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
-        : '—';
+      const dateAff = _fmtDateHeure(item.date_validation || item.date_modif);
 
       const rowCls = isCurrent ? ' class="tole-arbre-current"' : '';
       let h = `<tr${rowCls}>
@@ -7582,9 +7573,7 @@ ${hasT ? `
         <th>Chantier</th><th>Par</th><th>Commentaire</th>
       </tr></thead><tbody>`;
     lignes.forEach(l => {
-      const date  = l.date_operation
-        ? new Date(l.date_operation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
-        : '—';
+      const date  = _fmtDateHeure(l.date_operation);
       const op    = OP[l.type_operation] || { label: l.type_operation, cls: '' };
       const avant = l.longueur_avant_m != null ? `${parseFloat(l.longueur_avant_m)} pcs` : '—';
       const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m)} pcs` : '—';
@@ -7696,8 +7685,7 @@ ${hasT ? `
         statutHtml = `<span class="tole-statut-stock">● En stock</span>`;
       }
 
-      const dateRaw = item.date_validation || item.date_ajout || '';
-      const dateAff = dateRaw ? new Date(dateRaw).toLocaleDateString('fr-FR') : '—';
+      const dateAff = _fmtDate(item.date_validation || item.date_ajout);
 
       let h = `<tr${rowCls}>
         <td style="font-family:monospace;font-size:12px;white-space:nowrap">${indent}${_e(item.id)}</td>
@@ -7745,9 +7733,7 @@ ${hasT ? `
       </tr></thead><tbody>`;
 
     lignes.forEach(l => {
-      const date = l.date_operation
-        ? new Date(l.date_operation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
-        : '—';
+      const date  = _fmtDateHeure(l.date_operation);
       const cls   = BADGES[l.type_operation] || '';
       const avant = l.longueur_avant_m != null ? `${parseFloat(l.longueur_avant_m).toFixed(2)} m` : '—';
       const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m).toFixed(2)} m` : '—';
@@ -8305,6 +8291,20 @@ ${hasT ? `
   /** Retourne la date du jour au format ISO (YYYY-MM-DD) */
   function _dateAujourdhui() {
     return new Date().toISOString();
+  }
+
+  /** Formate une date ISO en date courte française (ex. "07/07/2026"). */
+  function _fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return isNaN(d) ? '—' : d.toLocaleDateString('fr-FR');
+  }
+
+  /** Formate une date ISO en date + heure française (ex. "07/07/2026 09:11"). */
+  function _fmtDateHeure(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return isNaN(d) ? '—' : d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   }
 
   /**
@@ -9057,8 +9057,7 @@ ${hasT ? `
       </tr>`;
       lignes = resultats.map(b => {
         const poids = _poidsEffectifProfil(b);
-        const dateAjout = b.date_ajout
-          ? new Date(b.date_ajout).toLocaleDateString('fr-FR') : '—';
+        const dateAjout = _fmtDate(b.date_ajout);
         return `<tr>
           <td>${_e(b.id)}</td>
           <td>${_e(b.section_type)}</td>
@@ -9384,7 +9383,7 @@ ${hasT ? `
       const backup = JSON.parse(await file.text());
       if (!backup.tables || !backup.version) { _notif('Fichier invalide — pas une sauvegarde LBF', 'alerte'); return; }
 
-      const date   = backup.date ? new Date(backup.date).toLocaleString('fr-FR') : '—';
+      const date   = _fmtDateHeure(backup.date);
       // Générer les cases à cocher pour les tables présentes dans le backup
       const tablesDispo = Object.entries(backup.tables);
       const lignesChk = tablesDispo.map(([t, arr]) => {
@@ -9706,10 +9705,7 @@ ${hasT ? `
 
     items.forEach(b => {
       const dernH   = dernOps[b.id];
-      const dateRaw = dernH?.date_operation || b.date_modif || b.date_ajout;
-      const dateAff = dateRaw
-        ? new Date(dateRaw).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
-        : '—';
+      const dateAff = _fmtDateHeure(dernH?.date_operation || b.date_modif || b.date_ajout);
       const opType  = dernH?.type_operation || (b.date_modif ? 'MODIFICATION' : 'ENTREE');
       const opInfo  = _RECENTS_OP[opType] || { label: opType, color: '#666' };
       const par     = _e(dernH?.operateur || b.modifie_par || b.ajoute_par || '—');
