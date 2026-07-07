@@ -9324,8 +9324,13 @@ ${hasT ? `
      ────────────────────────────────────────────────────────────── */
 
   // Métadonnées de toutes les tables (ordre d'upsert intentionnel)
+  // `table` = table Supabase réelle ; `id` = clé de stockage dans le JSON de sauvegarde
+  // (distincte quand plusieurs entrées virtuelles pointent vers la même table, ex. stock).
   const _TABLES_META = [
-    { id: 'stock',                 label: 'Stock (profilés + tôles)', pk: 'id',  chkBkp: 'chk-bkp-stock',        chkRaz: 'chk-raz-stock' },
+    { id: 'stock_profils',         table: 'stock', filtre: { champ: 'categorie', valeur: 'profil' },
+      label: 'Stock — Profilés',    pk: 'id',  chkBkp: 'chk-bkp-stock-profils', chkRaz: 'chk-raz-stock-profils' },
+    { id: 'stock_toles',           table: 'stock', filtre: { champ: 'categorie', valeur: 'tole' },
+      label: 'Stock — Tôles',       pk: 'id',  chkBkp: 'chk-bkp-stock-toles',   chkRaz: 'chk-raz-stock-toles' },
     { id: 'lbf_barres_historique', label: 'Historique des barres',    pk: 'id',  chkBkp: 'chk-bkp-historique',   chkRaz: 'chk-raz-historique' },
     { id: 'demandes',              label: 'Demandes',                 pk: 'id',  chkBkp: 'chk-bkp-demandes',     chkRaz: 'chk-raz-demandes' },
     { id: 'users',                 label: 'Comptes utilisateurs',     pk: 'id',  chkBkp: 'chk-bkp-users',        chkRaz: 'chk-raz-users' },
@@ -9349,9 +9354,12 @@ ${hasT ? `
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
     try {
       const tables = {};
-      for (const { id: t } of selection) {
-        try { tables[t] = await window.SB.lire(t, { limit: 100000 }); }
-        catch(e) { tables[t] = []; console.warn(`[Backup] table ${t} inaccessible`, e); }
+      for (const m of selection) {
+        try {
+          let rows = await window.SB.lire(m.table || m.id, { limit: 100000 });
+          if (m.filtre) rows = rows.filter(r => r[m.filtre.champ] === m.filtre.valeur);
+          tables[m.id] = rows;
+        } catch(e) { tables[m.id] = []; console.warn(`[Backup] table ${m.id} inaccessible`, e); }
       }
       const backup = { version: '2', date: new Date().toISOString(), app: 'LBF Stock Métallerie', tables };
       const blob   = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -9424,9 +9432,11 @@ ${hasT ? `
     for (const tableId of tablesChoisies) {
       const rows = backup.tables[tableId];
       if (!rows?.length) continue;
+      const meta       = _TABLES_META.find(m => m.id === tableId);
+      const physTable  = meta?.table || tableId;
       for (const row of rows) {
-        try { await window.SB.upsert(tableId, row); total++; }
-        catch(e) { erreurs++; console.warn(`[Restore] ${tableId} :`, e); }
+        try { await window.SB.upsert(physTable, row); total++; }
+        catch(e) { erreurs++; console.warn(`[Restore] ${physTable} :`, e); }
       }
     }
     if (erreurs === 0) {
@@ -9445,9 +9455,12 @@ ${hasT ? `
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Suppression en cours…'; }
     let erreurs = 0;
     const rapport = [];
-    for (const { id: table, label, pk } of selection) {
+    for (const m of selection) {
+      const { label, pk, filtre } = m;
+      const table = m.table || m.id;
       try {
-        await window.SB.viderTable(table, pk);
+        if (filtre) await window.SB.viderTableFiltre(table, filtre.champ, filtre.valeur, pk);
+        else        await window.SB.viderTable(table, pk);
         rapport.push(`✓ ${label} vidée`);
       } catch(e) {
         erreurs++;
