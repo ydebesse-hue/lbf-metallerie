@@ -102,6 +102,19 @@ async function sbViderTable(table, pkColonne = 'id') {
 }
 
 /**
+ * Supprime les lignes d'une table où colonne = valeur.
+ * @param {string} table
+ * @param {string} colonne
+ * @param {string} valeur
+ * @param {string} [pkColonne='id'] — non utilisé, gardé pour cohérence de signature
+ * @returns {Promise<void>}
+ */
+async function sbViderTableFiltre(table, colonne, valeur) {
+  const { error } = await _sb.from(table).delete().eq(colonne, valeur);
+  if (error) throw new Error(`Erreur vidage filtré ${table}.${colonne} : ${error.message}`);
+}
+
+/**
  * Upsert — insère ou met à jour selon l'id.
  * @param {string} table
  * @param {Object} data
@@ -224,6 +237,7 @@ window.SB = {
   supprimer:              sbSupprimer,
   upsert:                 sbUpsert,
   viderTable:             sbViderTable,
+  viderTableFiltre:       sbViderTableFiltre,
   lireHistoriqueParBarre: sbLireHistoriqueParBarre,
   insererHistorique:      sbInsererHistorique,
   lireConfig:             sbLireConfig,
