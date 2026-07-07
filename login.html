@@ -373,6 +373,13 @@
       _hashParams.get('access_token') || _hashParams.get('type') ||
       _queryParams.get('code') || _queryParams.get('type')
     );
+    // Supabase renvoie parfois une erreur dans l'URL (lien expiré, déjà
+    // utilisé...) au lieu d'un token valide — typiquement quand le lien
+    // a été "pré-cliqué" par un scanner de sécurité de messagerie avant
+    // l'ouverture réelle par l'utilisateur. Sans ce contrôle, l'utilisateur
+    // atterrissait silencieusement sur l'écran de connexion classique.
+    const _erreurAuth = _hashParams.get('error_description') || _queryParams.get('error_description')
+                      || _hashParams.get('error') || _queryParams.get('error');
 
     function _afficherCarteNouveauMdp() {
       document.getElementById('carte-login').style.display = 'none';
@@ -390,6 +397,14 @@
     // ─── Démarrage ────────────────────────────────────────
     (async function() {
       await window.Auth.ready();
+
+      if (_erreurAuth) {
+        const msgErreur = document.getElementById('msg-erreur');
+        msgErreur.textContent = "Ce lien a expiré ou a déjà été utilisé. Demandez à un administrateur de vous renvoyer une invitation.";
+        msgErreur.classList.add('visible');
+        history.replaceState(null, '', window.location.pathname);
+        return;
+      }
 
       if (_lienAuth) {
         _afficherCarteNouveauMdp();
