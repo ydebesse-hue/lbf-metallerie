@@ -8503,17 +8503,14 @@ ${hasT ? `
     const img      = _chargerPlanImg();
     const noPlan   = document.getElementById('plan-stock-no-plan');
     const planImg  = document.getElementById('plan-stock-img');
-    const planSvg  = document.getElementById('plan-stock-svg');
 
     if (noPlan) noPlan.style.display = 'none';
     if (planImg) planImg.src = img || PLAN_PROVISOIRE_SRC;
-    if (planSvg) planSvg.innerHTML = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
   }
 
   async function _imprimerPlanStock() {
     const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
     const img = _chargerPlanImg() || PLAN_PROVISOIRE_SRC;
-    const svgMarqueurs = _svgMarqueursPlan(_chargerPlanPos(), null, true, false);
     const date = new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     // Dimensions réelles de l'image pour caler le cadre exactement sur son
@@ -8542,9 +8539,8 @@ ${hasT ? `
   .hdr>div:nth-child(2) .hdr-titre{font-size:15px;font-weight:bold;color:#222}
   .hdr>div:nth-child(2) .hdr-sous{font-size:11px;color:#666;margin-top:2px}
   .hdr>div:last-child{text-align:right;font-size:10px;color:#888}
-  .wrap { position: relative; width: ${finalW}mm; height: ${finalH}mm; margin: 0 auto; }
+  .wrap { width: ${finalW}mm; height: ${finalH}mm; margin: 0 auto; }
   .wrap img { display: block; width: 100%; height: 100%; border: 1px solid #ccc; }
-  .wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   @media print{body{padding:10px 16px}@page{size:A4 landscape;margin:1cm}}
 </style></head>
 <body>
@@ -8555,7 +8551,6 @@ ${hasT ? `
 </div>
 <div class="wrap">
   <img src="${img}" alt="Plan de stockage">
-  <svg overflow="visible">${svgMarqueurs}</svg>
 </div>
 <script>window.onload = function() { window.print(); }<\/script>
 </body></html>`;
