@@ -189,6 +189,27 @@
       margin-top: 2px;
     }
 
+    /* Lien contact admin */
+    .lien-contact-admin {
+      display: block;
+      text-align: center;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #888;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .lien-contact-admin:hover { color: #555; }
+
+    .lien-contact-admin small {
+      display: block;
+      color: #bbb;
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
     /* Pied de carte */
     .login-footer {
       margin-top: 20px;
@@ -315,6 +336,11 @@
     <a class="lien-consultation" href="views/stock.html" id="lien-consultation" onclick="clicConsultation(event)">
       Consulter sans connexion →
       <small>Lecture seule</small>
+    </a>
+
+    <a class="lien-contact-admin" href="mailto:yoann-debesse@lebrasfreres.fr?subject=Stock%20M%C3%A9tallerie%20%E2%80%94%20Demande">
+      ✉ Contacter l'administrateur
+      <small>Création de compte, bug, question…</small>
     </a>
 
     <div class="login-footer">Le Bras Frères — Atelier Métallerie</div>
