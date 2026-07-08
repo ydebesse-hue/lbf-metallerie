@@ -3508,13 +3508,6 @@ ${hasT ? `
     const operateur = Auth.getSession()?.identifiant || 'inconnu';
     const dateMaj   = _dateAujourdhui();
 
-    const OP_LABELS_AG = {
-      chantier:    valeur ? `Chantier → ${_labelChantier(valeur) || valeur}` : 'Retour stock',
-      lieu:        `Lieu → ${valeur}`,
-      statut:      valeur === 'disponible' ? 'Statut → Disponible' : 'Statut → Affecté',
-      commentaire: 'Commentaire mis à jour',
-    };
-    const commentaireHist = OP_LABELS_AG[type] || 'Modification groupée';
     const typeHist = type === 'chantier'
       ? (valeur ? 'AFFECTATION' : 'RETOUR')
       : 'MODIFICATION';
@@ -3530,12 +3523,21 @@ ${hasT ? `
           date_modif:  dateMaj,
           modifie_par: operateur,
         });
+        let details = null;
+        if (type === 'chantier') {
+          details = _diffChamps([['Chantier affect.', _labelChantier(barre.chantier_affectation) || barre.chantier_affectation, _labelChantier(valeur) || valeur]]);
+        } else if (type === 'lieu') {
+          details = _diffChamps([['Lieu', barre.lieu_stockage, valeur]]);
+        } else if (type === 'statut') {
+          details = _diffChamps([['Disponibilité', barre.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', valeur === 'disponible' ? 'Disponible' : 'Affecté']]);
+        }
         await _enregistrerHistorique(
           id, typeHist,
           barre.longueur_m, barre.longueur_m,
           type === 'chantier' ? (valeur || barre.chantier_affectation || null) : (barre.chantier_affectation || null),
-          operateur, operateur, commentaireHist,
-          type === 'lieu' ? valeur : (barre.lieu_stockage || null)
+          operateur, operateur, type === 'commentaire' ? (valeur || null) : null,
+          type === 'lieu' ? valeur : (barre.lieu_stockage || null),
+          details || null
         );
         n++;
       } catch {}
@@ -5967,24 +5969,28 @@ ${hasT ? `
             original.chantier_origine || null, op, null, null, lieuActuel);
         } else if (longueur !== longAvant) {
           await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
-            original.chantier_affectation || null, op, null, 'Correction longueur', lieuActuel);
+            original.chantier_affectation || null, op, null, null, lieuActuel);
         }
       } else if (field === 'chantier') {
         const chantier = rawVal || null;
         const type = chantier ? 'AFFECTATION' : 'RETOUR';
-        const labelCh = chantier ? `Chantier → ${_labelChantier(chantier) || chantier}` : 'Retour stock';
+        const details = _diffChamps([
+          ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(chantier) || chantier],
+        ]);
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          chantier, op, null, labelCh, lieuActuel);
+          chantier, op, null, null, lieuActuel, details || null);
       } else if (field === 'dispo') {
         const type = rawVal === 'affecte' ? 'AFFECTATION' : 'RETOUR';
-        const labelDispo = rawVal === 'affecte' ? 'Statut → Affecté' : 'Statut → Disponible';
+        const details = _diffChamps([
+          ['Disponibilité', original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', rawVal === 'affecte' ? 'Affecté' : 'Disponible'],
+        ]);
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null, labelDispo, lieuActuel);
+          original.chantier_affectation || null, op, null, null, lieuActuel, details || null);
       } else if (field === 'lieu') {
         const nouveauLieu = rawVal || null;
+        const details = _diffChamps([['Lieu', original.lieu_stockage, nouveauLieu]]);
         await _enregistrerHistorique(id, 'MODIFICATION', original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null,
-          `Lieu → ${nouveauLieu || 'Aucun'}`, nouveauLieu);
+          original.chantier_affectation || null, op, null, null, nouveauLieu, details || null);
       }
     }
 
@@ -6711,22 +6717,28 @@ ${hasT ? `
 
     const enLigne = await _persisterElement(modif);
 
+    const detailsFiche = _diffChamps([
+      ['Lieu',             original.lieu_stockage, lieu],
+      ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(chAff) || chAff],
+      ['Disponibilité',    original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+    ]);
+
     if (estArch) {
       await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
-        chAff || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+        chAff || original.chantier_origine || null, op, null, commentaire || null, lieu || null, detailsFiche || null);
     } else if (longueur !== longAvant) {
       await _enregistrerHistorique(id, longueur < longAvant ? 'RETOUR' : 'MODIFICATION', longAvant, longueur,
-        chAff || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
+        chAff || original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsFiche || null);
     } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
       await _enregistrerHistorique(id, 'AFFECTATION', longAvant, longueur,
-        chAff, op, null, commentaire || null, lieu || null);
+        chAff, op, null, commentaire || null, lieu || null, detailsFiche || null);
     } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
       await _enregistrerHistorique(id, 'RETOUR', longAvant, longueur,
-        original.chantier_affectation, op, null, commentaire || null, lieu || null);
-    } else if (lieu !== original.lieu_stockage || commentaire !== original.commentaire) {
+        original.chantier_affectation, op, null, commentaire || null, lieu || null, detailsFiche || null);
+    } else if (detailsFiche || commentaire !== (original.commentaire || '')) {
       await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
         chAff || original.chantier_affectation || null, op, null,
-        commentaire || `Lieu → ${lieu || 'Aucun'}`, lieu || null);
+        commentaire || null, lieu || null, detailsFiche || null);
     }
 
     _peuplerFiltres();
@@ -7385,6 +7397,14 @@ ${hasT ? `
       .join(' · ');
   }
 
+  /** Affiche le détail d'une opération (un champ modifié par ligne), sous le badge d'opération. */
+  function _htmlDetailsLignes(details) {
+    if (!details) return '';
+    return details.split(' · ')
+      .map(d => `<div style="font-size:11px;color:#888;margin-top:2px;white-space:nowrap">${_e(d)}</div>`)
+      .join('');
+  }
+
   /**
    * Enregistre une entrée dans lbf_barres_historique (non-bloquant).
    * En cas d'erreur Supabase, l'opération est ignorée silencieusement.
@@ -7621,7 +7641,7 @@ ${hasT ? `
     };
     let h = `<table class="hist-table">
       <thead><tr>
-        <th>Date</th><th>Opération</th><th>Détail</th><th>Qté avant</th><th>Qté après</th>
+        <th>Date</th><th>Opération</th><th>Qté avant</th><th>Qté après</th>
         <th>Chantier</th><th>Par</th><th>Commentaire</th>
       </tr></thead><tbody>`;
     lignes.forEach(l => {
@@ -7631,8 +7651,7 @@ ${hasT ? `
       const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m)} pcs` : '—';
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
-        <td><span class="badge-operation ${op.cls}">${_e(op.label)}</span></td>
-        <td style="font-size:11px;color:#888">${_e(l.details || '—')}</td>
+        <td style="white-space:nowrap"><span class="badge-operation ${op.cls}">${_e(op.label)}</span>${_htmlDetailsLignes(l.details)}</td>
         <td>${avant}</td>
         <td>${apres}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
@@ -7777,7 +7796,6 @@ ${hasT ? `
       <thead><tr>
         <th>Date</th>
         <th>Opération</th>
-        <th>Détail</th>
         <th>Long. avant</th>
         <th>Long. après</th>
         <th>Lieu</th>
@@ -7794,8 +7812,7 @@ ${hasT ? `
 
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
-        <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
-        <td style="font-size:11px;color:#888;max-width:220px">${_e(l.details || '—')}</td>
+        <td style="white-space:nowrap"><span class="badge-operation ${cls}">${_e(l.type_operation)}</span>${_htmlDetailsLignes(l.details)}</td>
         <td>${avant}</td>
         <td>${apres}</td>
         <td>${_e(l.lieu || '—')}</td>
