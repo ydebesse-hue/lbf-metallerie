@@ -115,6 +115,18 @@ async function sbViderTableFiltre(table, colonne, valeur) {
 }
 
 /**
+ * Supprime les lignes d'une table où colonne commence par un préfixe donné.
+ * @param {string} table
+ * @param {string} colonne
+ * @param {string} prefixe
+ * @returns {Promise<void>}
+ */
+async function sbViderTableParPrefixe(table, colonne, prefixe) {
+  const { error } = await _sb.from(table).delete().like(colonne, `${prefixe}%`);
+  if (error) throw new Error(`Erreur vidage ${table}.${colonne} (préfixe ${prefixe}) : ${error.message}`);
+}
+
+/**
  * Upsert — insère ou met à jour selon l'id.
  * @param {string} table
  * @param {Object} data
@@ -238,6 +250,7 @@ window.SB = {
   upsert:                 sbUpsert,
   viderTable:             sbViderTable,
   viderTableFiltre:       sbViderTableFiltre,
+  viderTableParPrefixe:   sbViderTableParPrefixe,
   lireHistoriqueParBarre: sbLireHistoriqueParBarre,
   insererHistorique:      sbInsererHistorique,
   lireConfig:             sbLireConfig,
