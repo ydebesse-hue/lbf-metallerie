@@ -7621,8 +7621,8 @@ ${hasT ? `
     };
     let h = `<table class="hist-table">
       <thead><tr>
-        <th>Date</th><th>Opération</th><th>Qté avant</th><th>Qté après</th>
-        <th>Chantier</th><th>Par</th><th>Commentaire</th><th>Détail</th>
+        <th>Date</th><th>Opération</th><th>Détail</th><th>Qté avant</th><th>Qté après</th>
+        <th>Chantier</th><th>Par</th><th>Commentaire</th>
       </tr></thead><tbody>`;
     lignes.forEach(l => {
       const date  = _fmtDateHeure(l.date_operation);
@@ -7632,12 +7632,12 @@ ${hasT ? `
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
         <td><span class="badge-operation ${op.cls}">${_e(op.label)}</span></td>
+        <td style="font-size:11px;color:#888">${_e(l.details || '—')}</td>
         <td>${avant}</td>
         <td>${apres}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
         <td style="font-size:11px;color:#555">${_e(l.commentaire || '—')}</td>
-        <td style="font-size:11px;color:#888">${_e(l.details || '—')}</td>
       </tr>`;
     });
     return h + '</tbody></table>';
@@ -7777,13 +7777,13 @@ ${hasT ? `
       <thead><tr>
         <th>Date</th>
         <th>Opération</th>
+        <th>Détail</th>
         <th>Long. avant</th>
         <th>Long. après</th>
         <th>Lieu</th>
         <th>Chantier</th>
         <th>Opérateur</th>
         <th>Commentaire</th>
-        <th>Détail</th>
       </tr></thead><tbody>`;
 
     lignes.forEach(l => {
@@ -7795,13 +7795,13 @@ ${hasT ? `
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
         <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
+        <td style="font-size:11px;color:#888;max-width:220px">${_e(l.details || '—')}</td>
         <td>${avant}</td>
         <td>${apres}</td>
         <td>${_e(l.lieu || '—')}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
         <td style="font-size:12px;color:#555;max-width:220px">${_e(l.commentaire || '—')}</td>
-        <td style="font-size:11px;color:#888;max-width:220px">${_e(l.details || '—')}</td>
       </tr>`;
     });
 
