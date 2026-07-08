@@ -6142,25 +6142,32 @@ ${hasT ? `
 
       const longAvant = original.longueur_m;
       const op = session?.identifiant || null;
+
+      const detailsDiff = _diffChamps([
+        ['Lieu',            original.lieu_stockage,  lieu],
+        ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(affectation) || affectation],
+        ['Disponibilité',   original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+      ]);
+      const commentaireDetail = [commentaire, detailsDiff].filter(Boolean).join(' — ');
+
       if (estArchivage) {
         await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
-          affectation || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+          affectation || original.chantier_origine || null, op, null, commentaireDetail || null, lieu || null);
       } else if (longueur < longAvant) {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+          original.chantier_origine || null, op, null, commentaireDetail || null, lieu || null);
       } else if (longueur > longAvant) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
+          affectation || original.chantier_affectation || null, op, null, commentaireDetail || null, lieu || null);
       } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
         await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
-          affectation || null, op, null, commentaire || null, lieu || null);
+          affectation || null, op, null, commentaireDetail || null, lieu || null);
       } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_affectation || null, op, null, commentaire || null, lieu || null);
-      } else if (lieu !== original.lieu_stockage) {
+          original.chantier_affectation || null, op, null, commentaireDetail || null, lieu || null);
+      } else if (detailsDiff || commentaire !== (original.commentaire || '')) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null,
-          `Lieu → ${lieu || 'Aucun'}`, lieu || null);
+          affectation || original.chantier_affectation || null, op, null, commentaireDetail || null, lieu || null);
       }
 
     } else {
@@ -6206,7 +6213,20 @@ ${hasT ? `
       };
 
       _enLigneModif = await _persisterElement(modif);
-      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaire || null, lieu || null);
+
+      const detailsDiffT = _diffChamps([
+        ['Épaisseur',      original.epaisseur_mm, ep],
+        ['Largeur',        original.largeur_mm,   lrg],
+        ['Longueur',       original.longueur_mm,  lng],
+        ['Type',           original.type_tole,    type],
+        ['Réf. commande',  original.ref_commande,  refCmd || null],
+        ['Chantier',       _labelChantier(original.chantier_origine) || original.chantier_origine, _labelChantier(modif.chantier_origine) || modif.chantier_origine],
+        ['Lieu',           original.lieu_stockage, lieu],
+        ['Disponibilité',  original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+      ]);
+      const commentaireDetailT = [commentaire, detailsDiffT].filter(Boolean).join(' — ');
+
+      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaireDetailT || null, lieu || null);
       _majAlerteSeuil();
     }
 
@@ -7356,6 +7376,18 @@ ${hasT ? `
   /* ──────────────────────────────────────────────────────────────
      HISTORIQUE DES BARRES
      ────────────────────────────────────────────────────────────── */
+
+  /**
+   * Construit un résumé "Champ : avant → après" pour les champs qui ont changé.
+   * @param {Array<[string, *, *]>} champs — [label, valeurAvant, valeurApres]
+   * @returns {string}
+   */
+  function _diffChamps(champs) {
+    return champs
+      .filter(([, avant, apres]) => (avant ?? null) !== (apres ?? null) && !(avant == null && apres == null))
+      .map(([label, avant, apres]) => `${label} : ${avant ?? '—'} → ${apres ?? '—'}`)
+      .join(' · ');
+  }
 
   /**
    * Enregistre une entrée dans lbf_barres_historique (non-bloquant).
