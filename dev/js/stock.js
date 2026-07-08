@@ -9842,9 +9842,7 @@ ${hasT ? `
         const u = b.categorie === 'profil' ? ' m' : ' pcs';
         avApresLigne = `<div style="font-size:11px;color:#888;margin-top:2px">${av.toFixed(2)}${u} → ${ap.toFixed(2)}${u}</div>`;
       }
-      const detailsLigne = dernH?.details
-        ? `<div style="font-size:11px;color:#888;margin-top:2px">${_e(dernH.details)}</div>`
-        : '';
+      const detailsLigne = _htmlDetailsLignes(dernH?.details);
 
       const btnHist = b.categorie === 'tole'
         ? `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>`
