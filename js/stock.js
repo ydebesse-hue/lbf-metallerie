@@ -3508,13 +3508,6 @@ ${hasT ? `
     const operateur = Auth.getSession()?.identifiant || 'inconnu';
     const dateMaj   = _dateAujourdhui();
 
-    const OP_LABELS_AG = {
-      chantier:    valeur ? `Chantier → ${_labelChantier(valeur) || valeur}` : 'Retour stock',
-      lieu:        `Lieu → ${valeur}`,
-      statut:      valeur === 'disponible' ? 'Statut → Disponible' : 'Statut → Affecté',
-      commentaire: 'Commentaire mis à jour',
-    };
-    const commentaireHist = OP_LABELS_AG[type] || 'Modification groupée';
     const typeHist = type === 'chantier'
       ? (valeur ? 'AFFECTATION' : 'RETOUR')
       : 'MODIFICATION';
@@ -3530,12 +3523,21 @@ ${hasT ? `
           date_modif:  dateMaj,
           modifie_par: operateur,
         });
+        let details = null;
+        if (type === 'chantier') {
+          details = _diffChamps([['Chantier affect.', _labelChantier(barre.chantier_affectation) || barre.chantier_affectation, _labelChantier(valeur) || valeur]]);
+        } else if (type === 'lieu') {
+          details = _diffChamps([['Lieu', barre.lieu_stockage, valeur]]);
+        } else if (type === 'statut') {
+          details = _diffChamps([['Disponibilité', barre.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', valeur === 'disponible' ? 'Disponible' : 'Affecté']]);
+        }
         await _enregistrerHistorique(
           id, typeHist,
           barre.longueur_m, barre.longueur_m,
           type === 'chantier' ? (valeur || barre.chantier_affectation || null) : (barre.chantier_affectation || null),
-          operateur, operateur, commentaireHist,
-          type === 'lieu' ? valeur : (barre.lieu_stockage || null)
+          operateur, operateur, type === 'commentaire' ? (valeur || null) : null,
+          type === 'lieu' ? valeur : (barre.lieu_stockage || null),
+          details || null
         );
         n++;
       } catch {}
@@ -5967,24 +5969,28 @@ ${hasT ? `
             original.chantier_origine || null, op, null, null, lieuActuel);
         } else if (longueur !== longAvant) {
           await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
-            original.chantier_affectation || null, op, null, 'Correction longueur', lieuActuel);
+            original.chantier_affectation || null, op, null, null, lieuActuel);
         }
       } else if (field === 'chantier') {
         const chantier = rawVal || null;
         const type = chantier ? 'AFFECTATION' : 'RETOUR';
-        const labelCh = chantier ? `Chantier → ${_labelChantier(chantier) || chantier}` : 'Retour stock';
+        const details = _diffChamps([
+          ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(chantier) || chantier],
+        ]);
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          chantier, op, null, labelCh, lieuActuel);
+          chantier, op, null, null, lieuActuel, details || null);
       } else if (field === 'dispo') {
         const type = rawVal === 'affecte' ? 'AFFECTATION' : 'RETOUR';
-        const labelDispo = rawVal === 'affecte' ? 'Statut → Affecté' : 'Statut → Disponible';
+        const details = _diffChamps([
+          ['Disponibilité', original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', rawVal === 'affecte' ? 'Affecté' : 'Disponible'],
+        ]);
         await _enregistrerHistorique(id, type, original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null, labelDispo, lieuActuel);
+          original.chantier_affectation || null, op, null, null, lieuActuel, details || null);
       } else if (field === 'lieu') {
         const nouveauLieu = rawVal || null;
+        const details = _diffChamps([['Lieu', original.lieu_stockage, nouveauLieu]]);
         await _enregistrerHistorique(id, 'MODIFICATION', original.longueur_m, original.longueur_m,
-          original.chantier_affectation || null, op, null,
-          `Lieu → ${nouveauLieu || 'Aucun'}`, nouveauLieu);
+          original.chantier_affectation || null, op, null, null, nouveauLieu, details || null);
       }
     }
 
@@ -6142,25 +6148,30 @@ ${hasT ? `
 
       const longAvant = original.longueur_m;
       const op = session?.identifiant || null;
+
+      const detailsDiff = _diffChamps([
+        ['Lieu',            original.lieu_stockage,  lieu],
+        ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(affectation) || affectation],
+        ['Disponibilité',   original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+      ]);
       if (estArchivage) {
         await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
-          affectation || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+          affectation || original.chantier_origine || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (longueur < longAvant) {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+          original.chantier_origine || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (longueur > longAvant) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
+          affectation || original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
         await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
-          affectation || null, op, null, commentaire || null, lieu || null);
+          affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_affectation || null, op, null, commentaire || null, lieu || null);
-      } else if (lieu !== original.lieu_stockage) {
+          original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
+      } else if (detailsDiff || commentaire !== (original.commentaire || '')) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null,
-          `Lieu → ${lieu || 'Aucun'}`, lieu || null);
+          affectation || original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       }
 
     } else {
@@ -6206,7 +6217,18 @@ ${hasT ? `
       };
 
       _enLigneModif = await _persisterElement(modif);
-      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaire || null, lieu || null);
+
+      const detailsDiffT = _diffChamps([
+        ['Épaisseur',      original.epaisseur_mm, ep],
+        ['Largeur',        original.largeur_mm,   lrg],
+        ['Longueur',       original.longueur_mm,  lng],
+        ['Type',           original.type_tole,    type],
+        ['Réf. commande',  original.ref_commande,  refCmd || null],
+        ['Chantier',       _labelChantier(original.chantier_origine) || original.chantier_origine, _labelChantier(modif.chantier_origine) || modif.chantier_origine],
+        ['Lieu',           original.lieu_stockage, lieu],
+        ['Disponibilité',  original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+      ]);
+      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaire || null, lieu || null, detailsDiffT || null);
       _majAlerteSeuil();
     }
 
@@ -6695,22 +6717,28 @@ ${hasT ? `
 
     const enLigne = await _persisterElement(modif);
 
+    const detailsFiche = _diffChamps([
+      ['Lieu',             original.lieu_stockage, lieu],
+      ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(chAff) || chAff],
+      ['Disponibilité',    original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+    ]);
+
     if (estArch) {
       await _enregistrerHistorique(id, 'ARCHIVAGE', longAvant, 0,
-        chAff || original.chantier_origine || null, op, null, commentaire || null, lieu || null);
+        chAff || original.chantier_origine || null, op, null, commentaire || null, lieu || null, detailsFiche || null);
     } else if (longueur !== longAvant) {
       await _enregistrerHistorique(id, longueur < longAvant ? 'RETOUR' : 'MODIFICATION', longAvant, longueur,
-        chAff || original.chantier_affectation || null, op, null, 'Correction longueur', lieu || null);
+        chAff || original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsFiche || null);
     } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
       await _enregistrerHistorique(id, 'AFFECTATION', longAvant, longueur,
-        chAff, op, null, commentaire || null, lieu || null);
+        chAff, op, null, commentaire || null, lieu || null, detailsFiche || null);
     } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
       await _enregistrerHistorique(id, 'RETOUR', longAvant, longueur,
-        original.chantier_affectation, op, null, commentaire || null, lieu || null);
-    } else if (lieu !== original.lieu_stockage || commentaire !== original.commentaire) {
+        original.chantier_affectation, op, null, commentaire || null, lieu || null, detailsFiche || null);
+    } else if (detailsFiche || commentaire !== (original.commentaire || '')) {
       await _enregistrerHistorique(id, 'MODIFICATION', longAvant, longueur,
         chAff || original.chantier_affectation || null, op, null,
-        commentaire || `Lieu → ${lieu || 'Aucun'}`, lieu || null);
+        commentaire || null, lieu || null, detailsFiche || null);
     }
 
     _peuplerFiltres();
@@ -7358,6 +7386,26 @@ ${hasT ? `
      ────────────────────────────────────────────────────────────── */
 
   /**
+   * Construit un résumé "Champ : avant → après" pour les champs qui ont changé.
+   * @param {Array<[string, *, *]>} champs — [label, valeurAvant, valeurApres]
+   * @returns {string}
+   */
+  function _diffChamps(champs) {
+    return champs
+      .filter(([, avant, apres]) => (avant ?? null) !== (apres ?? null) && !(avant == null && apres == null))
+      .map(([label, avant, apres]) => `${label} : ${avant ?? '—'} → ${apres ?? '—'}`)
+      .join(' · ');
+  }
+
+  /** Affiche le détail d'une opération (un champ modifié par ligne), sous le badge d'opération. */
+  function _htmlDetailsLignes(details) {
+    if (!details) return '';
+    return details.split(' · ')
+      .map(d => `<div style="font-size:11px;color:#888;margin-top:2px;white-space:nowrap">${_e(d)}</div>`)
+      .join('');
+  }
+
+  /**
    * Enregistre une entrée dans lbf_barres_historique (non-bloquant).
    * En cas d'erreur Supabase, l'opération est ignorée silencieusement.
    * @param {string} barreId
@@ -7368,8 +7416,10 @@ ${hasT ? `
    * @param {string|null} operateur
    * @param {string|null} validePar
    * @param {string|null} commentaire
+   * @param {string|null} lieu
+   * @param {string|null} details — résumé des champs modifiés ("Champ : avant → après"), colonne séparée
    */
-  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire, lieu = null) {
+  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire, lieu = null, details = null) {
     if (!barreId || !typeOperation) return;
     try {
       await window.SB.insererHistorique({
@@ -7382,6 +7432,7 @@ ${hasT ? `
         valide_par:       validePar      || null,
         commentaire:      commentaire    || null,
         lieu:             lieu           || null,
+        details:          details        || null,
       });
     } catch(e) {
       console.warn('[Stock] Impossible d\'enregistrer l\'historique :', e);
@@ -7391,8 +7442,9 @@ ${hasT ? `
   /**
    * Enregistre une entrée historique pour une tôle.
    * Réutilise lbf_barres_historique : longueur_avant/après stocke la quantité.
+   * @param {string|null} details — résumé des champs modifiés ("Champ : avant → après"), colonne séparée
    */
-  async function _enregistrerHistoriqueTole(toleId, typeOperation, qtyAvant, qtyApres, chantier, operateur, commentaire, lieu = null) {
+  async function _enregistrerHistoriqueTole(toleId, typeOperation, qtyAvant, qtyApres, chantier, operateur, commentaire, lieu = null, details = null) {
     if (!toleId || !typeOperation) return;
     try {
       await window.SB.insererHistorique({
@@ -7405,6 +7457,7 @@ ${hasT ? `
         valide_par:       commentaire || null,
         commentaire:      commentaire || null,
         lieu:             lieu       || null,
+        details:          details    || null,
       });
     } catch(e) {
       console.warn('[Stock] Impossible d\'enregistrer l\'historique tôle :', e);
@@ -7598,7 +7651,7 @@ ${hasT ? `
       const apres = l.longueur_apres_m != null ? `${parseFloat(l.longueur_apres_m)} pcs` : '—';
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
-        <td><span class="badge-operation ${op.cls}">${_e(op.label)}</span></td>
+        <td style="white-space:nowrap"><span class="badge-operation ${op.cls}">${_e(op.label)}</span>${_htmlDetailsLignes(l.details)}</td>
         <td>${avant}</td>
         <td>${apres}</td>
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
@@ -7759,7 +7812,7 @@ ${hasT ? `
 
       h += `<tr>
         <td style="white-space:nowrap">${_e(date)}</td>
-        <td><span class="badge-operation ${cls}">${_e(l.type_operation)}</span></td>
+        <td style="white-space:nowrap"><span class="badge-operation ${cls}">${_e(l.type_operation)}</span>${_htmlDetailsLignes(l.details)}</td>
         <td>${avant}</td>
         <td>${apres}</td>
         <td>${_e(l.lieu || '—')}</td>
@@ -9344,12 +9397,19 @@ ${hasT ? `
 
   // Métadonnées de toutes les tables (ordre d'upsert intentionnel)
   // `table` = table Supabase réelle ; `id` = clé de stockage dans le JSON de sauvegarde.
+  // `historiqueId` sur une entrée stock = l'historique correspondant (lbf_barres_historique
+  // filtré par préfixe d'ID) est TOUJOURS sauvegardé/restauré/supprimé avec elle — pas de
+  // sélection indépendante possible, pour éviter toute désynchronisation stock/historique.
+  // Les entrées historique_* n'ont pas de chkBkp/chkRaz : elles ne sont jamais cochables seules.
   const _TABLES_META = [
-    { id: 'stock_profils',         table: 'stock',
-      label: 'Stock — Profilés',    pk: 'id',  chkBkp: 'chk-bkp-stock-profils', chkRaz: 'chk-raz-stock-profils' },
-    { id: 'stock_toles',           table: 'stock_toles',
-      label: 'Stock — Tôles',       pk: 'id',  chkBkp: 'chk-bkp-stock-toles',   chkRaz: 'chk-raz-stock-toles' },
-    { id: 'lbf_barres_historique', label: 'Historique des barres',    pk: 'id',  chkBkp: 'chk-bkp-historique',   chkRaz: 'chk-raz-historique' },
+    { id: 'stock_profils',    table: 'stock',
+      label: 'Stock — Profilés (+ historique)', pk: 'id', chkBkp: 'chk-bkp-stock-profils', chkRaz: 'chk-raz-stock-profils',
+      historiqueId: 'historique_profils' },
+    { id: 'historique_profils', table: 'lbf_barres_historique', label: 'Historique — Profilés', pk: 'id', prefixeBarre: 'P' },
+    { id: 'stock_toles',      table: 'stock_toles',
+      label: 'Stock — Tôles (+ historique)',    pk: 'id', chkBkp: 'chk-bkp-stock-toles',   chkRaz: 'chk-raz-stock-toles',
+      historiqueId: 'historique_toles' },
+    { id: 'historique_toles',   table: 'lbf_barres_historique', label: 'Historique — Tôles',   pk: 'id', prefixeBarre: 'T' },
     { id: 'demandes',              label: 'Demandes',                 pk: 'id',  chkBkp: 'chk-bkp-demandes',     chkRaz: 'chk-raz-demandes' },
     { id: 'users',                 label: 'Comptes utilisateurs',     pk: 'id',  chkBkp: 'chk-bkp-users',        chkRaz: 'chk-raz-users' },
     { id: 'racks',                 label: 'Zones de stockage',        pk: 'id',  chkBkp: 'chk-bkp-racks',        chkRaz: 'chk-raz-racks' },
@@ -9378,6 +9438,15 @@ ${hasT ? `
           if (m.filtre) rows = rows.filter(r => r[m.filtre.champ] === m.filtre.valeur);
           tables[m.id] = rows;
         } catch(e) { tables[m.id] = []; console.warn(`[Backup] table ${m.id} inaccessible`, e); }
+
+        // Historique lié — toujours inclus avec son stock, jamais sélectionnable seul
+        if (m.historiqueId) {
+          const hMeta = _TABLES_META.find(x => x.id === m.historiqueId);
+          try {
+            const hist = await window.SB.lire(hMeta.table, { limit: 100000 });
+            tables[hMeta.id] = hist.filter(r => r.barre_id && r.barre_id.startsWith(hMeta.prefixeBarre));
+          } catch(e) { tables[hMeta.id] = []; console.warn(`[Backup] table ${hMeta.id} inaccessible`, e); }
+        }
       }
       const backup = { version: '2', date: new Date().toISOString(), app: 'LBF Stock Métallerie', tables };
       const blob   = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -9405,17 +9474,21 @@ ${hasT ? `
       if (!backup.tables || !backup.version) { _notif('Fichier invalide — pas une sauvegarde LBF', 'alerte'); return; }
 
       const date   = _fmtDateHeure(backup.date);
-      // Générer les cases à cocher pour les tables présentes dans le backup
-      const tablesDispo = Object.entries(backup.tables);
+      // Les historiques liés (historiqueId) ne sont jamais affichés/cochés séparément —
+      // ils sont toujours restaurés avec leur table stock parente.
+      const idsHistoriqueLies = new Set(_TABLES_META.filter(m => m.historiqueId).map(m => m.historiqueId));
+      const tablesDispo = Object.entries(backup.tables).filter(([t]) => !idsHistoriqueLies.has(t));
       const lignesChk = tablesDispo.map(([t, arr]) => {
         const meta  = _TABLES_META.find(m => m.id === t);
         const label = meta ? meta.label : t;
+        let total = arr.length;
+        if (meta?.historiqueId && backup.tables[meta.historiqueId]) total += backup.tables[meta.historiqueId].length;
         return `<tr>
           <td><label class="backup-chk-item" style="margin:0">
             <input type="checkbox" class="chk-rst-table" data-table="${_e(t)}" checked>
             <strong>${_e(label)}</strong>
           </label></td>
-          <td class="r">${arr.length}</td>
+          <td class="r">${total}</td>
         </tr>`;
       }).join('');
 
@@ -9432,9 +9505,14 @@ ${hasT ? `
         </p>
         <button id="btn-backup-confirmer" class="btn-action btn-rouge">Restaurer la sélection</button>`;
       document.getElementById('btn-backup-confirmer').onclick = () => {
-        const tablesChoisies = [...zone.querySelectorAll('.chk-rst-table:checked')].map(c => c.dataset.table);
-        if (!tablesChoisies.length) { _notif('Sélectionnez au moins une table', 'alerte'); return; }
-        if (!confirm(`Restaurer ${tablesChoisies.length} table(s) ?\n\nLes données actuelles seront remplacées.`)) return;
+        const choix = [...zone.querySelectorAll('.chk-rst-table:checked')].map(c => c.dataset.table);
+        if (!choix.length) { _notif('Sélectionnez au moins une table', 'alerte'); return; }
+        // Ajouter automatiquement l'historique lié à chaque stock sélectionné
+        const tablesChoisies = choix.flatMap(t => {
+          const meta = _TABLES_META.find(m => m.id === t);
+          return (meta?.historiqueId && backup.tables[meta.historiqueId]) ? [t, meta.historiqueId] : [t];
+        });
+        if (!confirm(`Restaurer ${choix.length} table(s) ?\n\nLes données actuelles seront remplacées.`)) return;
         _restaurerSauvegarde(backup, tablesChoisies);
       };
     } catch(e) {
@@ -9484,6 +9562,19 @@ ${hasT ? `
         erreurs++;
         rapport.push(`✗ ${label} — ${e.message}`);
         console.error(`[Reset] ${table} :`, e);
+      }
+
+      // Historique lié — toujours supprimé avec son stock
+      if (m.historiqueId) {
+        const hMeta = _TABLES_META.find(x => x.id === m.historiqueId);
+        try {
+          await window.SB.viderTableParPrefixe(hMeta.table, 'barre_id', hMeta.prefixeBarre);
+          rapport.push(`✓ ${hMeta.label} vidé`);
+        } catch(e) {
+          erreurs++;
+          rapport.push(`✗ ${hMeta.label} — ${e.message}`);
+          console.error(`[Reset] ${hMeta.table} :`, e);
+        }
       }
     }
     const zone = document.getElementById('reset-resultat');
@@ -9751,6 +9842,7 @@ ${hasT ? `
         const u = b.categorie === 'profil' ? ' m' : ' pcs';
         avApresLigne = `<div style="font-size:11px;color:#888;margin-top:2px">${av.toFixed(2)}${u} → ${ap.toFixed(2)}${u}</div>`;
       }
+      const detailsLigne = _htmlDetailsLignes(dernH?.details);
 
       const btnHist = b.categorie === 'tole'
         ? `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>`
@@ -9759,7 +9851,7 @@ ${hasT ? `
       h += `<tr>
         <td><span style="font-family:monospace;font-size:12px">${_e(b.id)}</span></td>
         <td>${desig}</td>
-        <td>${opBadge}${commentLigne}${avApresLigne}</td>
+        <td>${opBadge}${commentLigne}${avApresLigne}${detailsLigne}</td>
         <td style="white-space:nowrap">${_e(dateAff)}</td>
         <td>${par}</td>
         <td>${btnHist}</td>
