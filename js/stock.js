@@ -9344,12 +9344,19 @@ ${hasT ? `
 
   // Métadonnées de toutes les tables (ordre d'upsert intentionnel)
   // `table` = table Supabase réelle ; `id` = clé de stockage dans le JSON de sauvegarde.
+  // `historiqueId` sur une entrée stock = l'historique correspondant (lbf_barres_historique
+  // filtré par préfixe d'ID) est TOUJOURS sauvegardé/restauré/supprimé avec elle — pas de
+  // sélection indépendante possible, pour éviter toute désynchronisation stock/historique.
+  // Les entrées historique_* n'ont pas de chkBkp/chkRaz : elles ne sont jamais cochables seules.
   const _TABLES_META = [
-    { id: 'stock_profils',         table: 'stock',
-      label: 'Stock — Profilés',    pk: 'id',  chkBkp: 'chk-bkp-stock-profils', chkRaz: 'chk-raz-stock-profils' },
-    { id: 'stock_toles',           table: 'stock_toles',
-      label: 'Stock — Tôles',       pk: 'id',  chkBkp: 'chk-bkp-stock-toles',   chkRaz: 'chk-raz-stock-toles' },
-    { id: 'lbf_barres_historique', label: 'Historique des barres',    pk: 'id',  chkBkp: 'chk-bkp-historique',   chkRaz: 'chk-raz-historique' },
+    { id: 'stock_profils',    table: 'stock',
+      label: 'Stock — Profilés (+ historique)', pk: 'id', chkBkp: 'chk-bkp-stock-profils', chkRaz: 'chk-raz-stock-profils',
+      historiqueId: 'historique_profils' },
+    { id: 'historique_profils', table: 'lbf_barres_historique', label: 'Historique — Profilés', pk: 'id', prefixeBarre: 'P' },
+    { id: 'stock_toles',      table: 'stock_toles',
+      label: 'Stock — Tôles (+ historique)',    pk: 'id', chkBkp: 'chk-bkp-stock-toles',   chkRaz: 'chk-raz-stock-toles',
+      historiqueId: 'historique_toles' },
+    { id: 'historique_toles',   table: 'lbf_barres_historique', label: 'Historique — Tôles',   pk: 'id', prefixeBarre: 'T' },
     { id: 'demandes',              label: 'Demandes',                 pk: 'id',  chkBkp: 'chk-bkp-demandes',     chkRaz: 'chk-raz-demandes' },
     { id: 'users',                 label: 'Comptes utilisateurs',     pk: 'id',  chkBkp: 'chk-bkp-users',        chkRaz: 'chk-raz-users' },
     { id: 'racks',                 label: 'Zones de stockage',        pk: 'id',  chkBkp: 'chk-bkp-racks',        chkRaz: 'chk-raz-racks' },
@@ -9378,6 +9385,15 @@ ${hasT ? `
           if (m.filtre) rows = rows.filter(r => r[m.filtre.champ] === m.filtre.valeur);
           tables[m.id] = rows;
         } catch(e) { tables[m.id] = []; console.warn(`[Backup] table ${m.id} inaccessible`, e); }
+
+        // Historique lié — toujours inclus avec son stock, jamais sélectionnable seul
+        if (m.historiqueId) {
+          const hMeta = _TABLES_META.find(x => x.id === m.historiqueId);
+          try {
+            const hist = await window.SB.lire(hMeta.table, { limit: 100000 });
+            tables[hMeta.id] = hist.filter(r => r.barre_id && r.barre_id.startsWith(hMeta.prefixeBarre));
+          } catch(e) { tables[hMeta.id] = []; console.warn(`[Backup] table ${hMeta.id} inaccessible`, e); }
+        }
       }
       const backup = { version: '2', date: new Date().toISOString(), app: 'LBF Stock Métallerie', tables };
       const blob   = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -9405,17 +9421,21 @@ ${hasT ? `
       if (!backup.tables || !backup.version) { _notif('Fichier invalide — pas une sauvegarde LBF', 'alerte'); return; }
 
       const date   = _fmtDateHeure(backup.date);
-      // Générer les cases à cocher pour les tables présentes dans le backup
-      const tablesDispo = Object.entries(backup.tables);
+      // Les historiques liés (historiqueId) ne sont jamais affichés/cochés séparément —
+      // ils sont toujours restaurés avec leur table stock parente.
+      const idsHistoriqueLies = new Set(_TABLES_META.filter(m => m.historiqueId).map(m => m.historiqueId));
+      const tablesDispo = Object.entries(backup.tables).filter(([t]) => !idsHistoriqueLies.has(t));
       const lignesChk = tablesDispo.map(([t, arr]) => {
         const meta  = _TABLES_META.find(m => m.id === t);
         const label = meta ? meta.label : t;
+        let total = arr.length;
+        if (meta?.historiqueId && backup.tables[meta.historiqueId]) total += backup.tables[meta.historiqueId].length;
         return `<tr>
           <td><label class="backup-chk-item" style="margin:0">
             <input type="checkbox" class="chk-rst-table" data-table="${_e(t)}" checked>
             <strong>${_e(label)}</strong>
           </label></td>
-          <td class="r">${arr.length}</td>
+          <td class="r">${total}</td>
         </tr>`;
       }).join('');
 
@@ -9432,9 +9452,14 @@ ${hasT ? `
         </p>
         <button id="btn-backup-confirmer" class="btn-action btn-rouge">Restaurer la sélection</button>`;
       document.getElementById('btn-backup-confirmer').onclick = () => {
-        const tablesChoisies = [...zone.querySelectorAll('.chk-rst-table:checked')].map(c => c.dataset.table);
-        if (!tablesChoisies.length) { _notif('Sélectionnez au moins une table', 'alerte'); return; }
-        if (!confirm(`Restaurer ${tablesChoisies.length} table(s) ?\n\nLes données actuelles seront remplacées.`)) return;
+        const choix = [...zone.querySelectorAll('.chk-rst-table:checked')].map(c => c.dataset.table);
+        if (!choix.length) { _notif('Sélectionnez au moins une table', 'alerte'); return; }
+        // Ajouter automatiquement l'historique lié à chaque stock sélectionné
+        const tablesChoisies = choix.flatMap(t => {
+          const meta = _TABLES_META.find(m => m.id === t);
+          return (meta?.historiqueId && backup.tables[meta.historiqueId]) ? [t, meta.historiqueId] : [t];
+        });
+        if (!confirm(`Restaurer ${choix.length} table(s) ?\n\nLes données actuelles seront remplacées.`)) return;
         _restaurerSauvegarde(backup, tablesChoisies);
       };
     } catch(e) {
@@ -9484,6 +9509,19 @@ ${hasT ? `
         erreurs++;
         rapport.push(`✗ ${label} — ${e.message}`);
         console.error(`[Reset] ${table} :`, e);
+      }
+
+      // Historique lié — toujours supprimé avec son stock
+      if (m.historiqueId) {
+        const hMeta = _TABLES_META.find(x => x.id === m.historiqueId);
+        try {
+          await window.SB.viderTableParPrefixe(hMeta.table, 'barre_id', hMeta.prefixeBarre);
+          rapport.push(`✓ ${hMeta.label} vidé`);
+        } catch(e) {
+          erreurs++;
+          rapport.push(`✗ ${hMeta.label} — ${e.message}`);
+          console.error(`[Reset] ${hMeta.table} :`, e);
+        }
       }
     }
     const zone = document.getElementById('reset-resultat');
