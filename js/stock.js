@@ -6148,26 +6148,24 @@ ${hasT ? `
         ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(affectation) || affectation],
         ['Disponibilité',   original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
       ]);
-      const commentaireDetail = [commentaire, detailsDiff].filter(Boolean).join(' — ');
-
       if (estArchivage) {
         await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
-          affectation || original.chantier_origine || null, op, null, commentaireDetail || null, lieu || null);
+          affectation || original.chantier_origine || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (longueur < longAvant) {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_origine || null, op, null, commentaireDetail || null, lieu || null);
+          original.chantier_origine || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (longueur > longAvant) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, commentaireDetail || null, lieu || null);
+          affectation || original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (dispo === 'affecte' && original.disponibilite !== 'affecte') {
         await _enregistrerHistorique(original.id, 'AFFECTATION', longAvant, longueur,
-          affectation || null, op, null, commentaireDetail || null, lieu || null);
+          affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (dispo === 'disponible' && original.disponibilite === 'affecte') {
         await _enregistrerHistorique(original.id, 'RETOUR', longAvant, longueur,
-          original.chantier_affectation || null, op, null, commentaireDetail || null, lieu || null);
+          original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       } else if (detailsDiff || commentaire !== (original.commentaire || '')) {
         await _enregistrerHistorique(original.id, 'MODIFICATION', longAvant, longueur,
-          affectation || original.chantier_affectation || null, op, null, commentaireDetail || null, lieu || null);
+          affectation || original.chantier_affectation || null, op, null, commentaire || null, lieu || null, detailsDiff || null);
       }
 
     } else {
@@ -6224,9 +6222,7 @@ ${hasT ? `
         ['Lieu',           original.lieu_stockage, lieu],
         ['Disponibilité',  original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
       ]);
-      const commentaireDetailT = [commentaire, detailsDiffT].filter(Boolean).join(' — ');
-
-      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaireDetailT || null, lieu || null);
+      await _enregistrerHistoriqueTole(id, 'MODIFICATION', original.quantite, qty, modif.chantier_origine || null, session?.identifiant || null, commentaire || null, lieu || null, detailsDiffT || null);
       _majAlerteSeuil();
     }
 
@@ -7400,8 +7396,10 @@ ${hasT ? `
    * @param {string|null} operateur
    * @param {string|null} validePar
    * @param {string|null} commentaire
+   * @param {string|null} lieu
+   * @param {string|null} details — résumé des champs modifiés ("Champ : avant → après"), colonne séparée
    */
-  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire, lieu = null) {
+  async function _enregistrerHistorique(barreId, typeOperation, longueurAvant, longueurApres, chantier, operateur, validePar, commentaire, lieu = null, details = null) {
     if (!barreId || !typeOperation) return;
     try {
       await window.SB.insererHistorique({
@@ -7414,6 +7412,7 @@ ${hasT ? `
         valide_par:       validePar      || null,
         commentaire:      commentaire    || null,
         lieu:             lieu           || null,
+        details:          details        || null,
       });
     } catch(e) {
       console.warn('[Stock] Impossible d\'enregistrer l\'historique :', e);
@@ -7423,8 +7422,9 @@ ${hasT ? `
   /**
    * Enregistre une entrée historique pour une tôle.
    * Réutilise lbf_barres_historique : longueur_avant/après stocke la quantité.
+   * @param {string|null} details — résumé des champs modifiés ("Champ : avant → après"), colonne séparée
    */
-  async function _enregistrerHistoriqueTole(toleId, typeOperation, qtyAvant, qtyApres, chantier, operateur, commentaire, lieu = null) {
+  async function _enregistrerHistoriqueTole(toleId, typeOperation, qtyAvant, qtyApres, chantier, operateur, commentaire, lieu = null, details = null) {
     if (!toleId || !typeOperation) return;
     try {
       await window.SB.insererHistorique({
@@ -7437,6 +7437,7 @@ ${hasT ? `
         valide_par:       commentaire || null,
         commentaire:      commentaire || null,
         lieu:             lieu       || null,
+        details:          details    || null,
       });
     } catch(e) {
       console.warn('[Stock] Impossible d\'enregistrer l\'historique tôle :', e);
@@ -7621,7 +7622,7 @@ ${hasT ? `
     let h = `<table class="hist-table">
       <thead><tr>
         <th>Date</th><th>Opération</th><th>Qté avant</th><th>Qté après</th>
-        <th>Chantier</th><th>Par</th><th>Commentaire</th>
+        <th>Chantier</th><th>Par</th><th>Commentaire</th><th>Détail</th>
       </tr></thead><tbody>`;
     lignes.forEach(l => {
       const date  = _fmtDateHeure(l.date_operation);
@@ -7636,6 +7637,7 @@ ${hasT ? `
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
         <td style="font-size:11px;color:#555">${_e(l.commentaire || '—')}</td>
+        <td style="font-size:11px;color:#888">${_e(l.details || '—')}</td>
       </tr>`;
     });
     return h + '</tbody></table>';
@@ -7781,6 +7783,7 @@ ${hasT ? `
         <th>Chantier</th>
         <th>Opérateur</th>
         <th>Commentaire</th>
+        <th>Détail</th>
       </tr></thead><tbody>`;
 
     lignes.forEach(l => {
@@ -7798,6 +7801,7 @@ ${hasT ? `
         <td>${_e(_labelChantier(l.chantier) || l.chantier || '—')}</td>
         <td>${_e(l.operateur || '—')}</td>
         <td style="font-size:12px;color:#555;max-width:220px">${_e(l.commentaire || '—')}</td>
+        <td style="font-size:11px;color:#888;max-width:220px">${_e(l.details || '—')}</td>
       </tr>`;
     });
 
@@ -9821,6 +9825,9 @@ ${hasT ? `
         const u = b.categorie === 'profil' ? ' m' : ' pcs';
         avApresLigne = `<div style="font-size:11px;color:#888;margin-top:2px">${av.toFixed(2)}${u} → ${ap.toFixed(2)}${u}</div>`;
       }
+      const detailsLigne = dernH?.details
+        ? `<div style="font-size:11px;color:#888;margin-top:2px">${_e(dernH.details)}</div>`
+        : '';
 
       const btnHist = b.categorie === 'tole'
         ? `<button class="btn-ligne" onclick="Stock.ouvrirHistoriqueTole('${_e(b.id)}')" title="Historique">📋</button>`
@@ -9829,7 +9836,7 @@ ${hasT ? `
       h += `<tr>
         <td><span style="font-family:monospace;font-size:12px">${_e(b.id)}</span></td>
         <td>${desig}</td>
-        <td>${opBadge}${commentLigne}${avApresLigne}</td>
+        <td>${opBadge}${commentLigne}${avApresLigne}${detailsLigne}</td>
         <td style="white-space:nowrap">${_e(dateAff)}</td>
         <td>${par}</td>
         <td>${btnHist}</td>
