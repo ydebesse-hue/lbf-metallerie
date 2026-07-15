@@ -4995,10 +4995,7 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    const selOrigine = document.createElement('input');
-    selOrigine.type = 'text'; selOrigine.className = 'inv-origine inv-ctrl';
-    selOrigine.setAttribute('list', 'dl-chantiers');
-    selOrigine.placeholder = 'Chantier d\'origine…';
+    const selOrigine = _creerPickerChantierCompact('inv-origine inv-ctrl');
 
     const selFourn = document.createElement('select');
     selFourn.className = 'inv-fournisseur inv-ctrl';
@@ -5103,10 +5100,7 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'cmd-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    const selChantier = document.createElement('input');
-    selChantier.type = 'text'; selChantier.className = 'cmd-chantier inv-ctrl';
-    selChantier.setAttribute('list', 'dl-chantiers');
-    selChantier.placeholder = 'Destination…';
+    const selChantier = _creerPickerChantierCompact('cmd-chantier inv-ctrl');
 
     [selClasse, inpComm, selChantier].forEach(el => row2.appendChild(el));
 
@@ -8129,6 +8123,24 @@ ${hasT ? `
       opts.unshift(`<option value="${_e(valeurCourante)}" selected>${_e(valeurCourante)}</option>`);
     }
     sel.innerHTML = opts.join('');
+  }
+
+  let _pickerIdSeq = 0;
+
+  /**
+   * Variante compacte de _monterPickerChantier utilisable dans une ligne générée
+   * dynamiquement (ajout profilé / réception) : retourne le wrap div, et ajoute les
+   * classes fournies au <select> interne pour rester lisible par le code de lecture
+   * de la ligne (ex. .inv-origine, .cmd-chantier).
+   */
+  function _creerPickerChantierCompact(classesSelect) {
+    const wrap = document.createElement('div');
+    wrap.className = 'inv-picker-chantier';
+    const selectId = `picker-chantier-${_pickerIdSeq++}`;
+    _monterPickerChantier(wrap, selectId, '');
+    const sel = wrap.querySelector('select');
+    if (sel) sel.classList.add(...classesSelect.split(' '));
+    return wrap;
   }
 
   function _monterPickerChantier(wrapId, selectId, valeurCourante = '') {
