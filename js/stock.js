@@ -4611,7 +4611,7 @@ ${hasT ? `
       const qte         = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
       const classe      = l.querySelector('.inv-classe')?.value?.trim() || '';
       const fournisseur = l.querySelector('.inv-fournisseur')?.value?.trim() || null;
-      const origine     = l.querySelector('.inv-origine')?.value?.trim() || null;
+      const origine     = _resoudreChantierSaisi(l.querySelector('.inv-origine')?.value?.trim()) || null;
       const refCmd      = l.querySelector('.inv-ref')?.value?.trim() || null;
       const commentaire = l.querySelector('.inv-commentaire')?.value?.trim() || '';
       const dims       = _getDims(type, desig);
@@ -4700,7 +4700,7 @@ ${hasT ? `
       const type     = ligne.querySelector('.inv-type')?.value?.trim();
       const desig    = ligne.querySelector('.inv-desig')?.value?.trim();
       const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
-      const chantier = ligne.querySelector('.cmd-chantier')?.value?.trim() || '';
+      const chantier = _resoudreChantierSaisi(ligne.querySelector('.cmd-chantier')?.value?.trim()) || '';
       const longueur = parseFloat(ligne.querySelector('.inv-long')?.value);
       const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
       const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu')) || '';
@@ -8020,11 +8020,25 @@ ${hasT ? `
     const tries = [..._chantiers].sort((a, b) =>
       (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
     );
-    // value = nom (ce qui est stocké) ; label/texte = "n° affaire — Ville — Nom" pour la suggestion
+    // La suggestion affiche uniquement "n° affaire — Ville — Nom" (pas de doublon nom seul) ;
+    // _resoudreChantierSaisi() retrouve le chantier correspondant à la saisie pour stocker son nom.
     dl.innerHTML = tries.map(c => {
       const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
-      return `<option value="${_e(c.nom)}" label="${_e(label)}">${_e(label)}</option>`;
+      return `<option value="${_e(label)}">`;
     }).join('');
+  }
+
+  /**
+   * Résout une valeur saisie dans un champ chantier (texte libre + datalist) : si elle
+   * correspond exactement au libellé "n° affaire — Ville — Nom" d'un chantier existant,
+   * retourne son nom (valeur stockée partout ailleurs) ; sinon retourne la saisie telle quelle.
+   */
+  function _resoudreChantierSaisi(valeur) {
+    if (!valeur) return valeur;
+    const match = _chantiers.find(c =>
+      [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ') === valeur
+    );
+    return match ? match.nom : valeur;
   }
 
   function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
