@@ -3289,10 +3289,13 @@ ${hasT ? `
 
   function _mesDemandesActives() {
     const session = Auth.getSession();
-    if (!session || session.anonyme) return [];
+    if (!session) return [];
+    // Compte visiteur : identifiant 'visiteur' partagé par tous les anonymes —
+    // on affiche donc toutes les demandes faites en tant que visiteur, pas "les miennes".
+    const identifiant = session.identifiant;
     const vus = _idsNotifsVus();
     return _demandesToutes.filter(d =>
-      d.demande_par === session.identifiant &&
+      d.demande_par === identifiant &&
       (d.statut === 'en_attente' || ((d.statut === 'valide' || d.statut === 'refuse') && !vus.includes(d.id)))
     );
   }
@@ -3316,9 +3319,12 @@ ${hasT ? `
   }
 
   function _rendreMesDemandes() {
-    const zone = document.getElementById('mdem-liste');
+    const zone   = document.getElementById('mdem-liste');
+    const btnTout = document.getElementById('mdem-btn-tout-lu');
     if (!zone) return;
-    const notifs = _mesDemandesActives();
+    const notifs   = _mesDemandesActives();
+    const traitees = notifs.filter(d => d.statut === 'valide' || d.statut === 'refuse');
+    if (btnTout) btnTout.style.display = traitees.length > 1 ? '' : 'none';
     if (!notifs.length) {
       zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande à afficher.</div>';
       return;
@@ -3345,6 +3351,13 @@ ${hasT ? `
 
   function marquerDemandeLue(id) {
     _marquerNotifsVues([id]);
+    _rendreMesDemandes();
+    _majBanniereMesDemandes();
+  }
+
+  function marquerToutesDemandesLues() {
+    const traitees = _mesDemandesActives().filter(d => d.statut === 'valide' || d.statut === 'refuse');
+    _marquerNotifsVues(traitees.map(d => d.id));
     _rendreMesDemandes();
     _majBanniereMesDemandes();
   }
@@ -10377,6 +10390,7 @@ ${hasT ? `
     refuserElement,
     fermerMesDemandes,
     marquerDemandeLue,
+    marquerToutesDemandesLues,
     getSelection,
     ouvrirHistoriqueBarre,
     ouvrirHistoriqueTole,
