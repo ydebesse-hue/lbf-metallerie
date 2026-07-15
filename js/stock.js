@@ -10149,17 +10149,21 @@ ${hasT ? `
     const ancienNom = _chantiers.find(c => c.id === id)?.nom;
     try {
       await window.SB.mettreAJour('chantiers', id, { nom, numero_affaire: affaire || null, ville: ville || null });
-      // Cascade : propager le renommage dans tout le stock
+      // Cascade : propager le renommage dans tout le stock et les demandes en cours
       if (ancienNom && ancienNom !== nom) {
         await Promise.all([
           window.SB.mettreAJourFiltre('stock',       'chantier_origine',     ancienNom, { chantier_origine:     nom }),
           window.SB.mettreAJourFiltre('stock',       'chantier_affectation', ancienNom, { chantier_affectation: nom }),
           window.SB.mettreAJourFiltre('stock_toles', 'chantier_origine',     ancienNom, { chantier_origine:     nom }),
           window.SB.mettreAJourFiltre('stock_toles', 'chantier_affectation', ancienNom, { chantier_affectation: nom }),
+          window.SB.mettreAJourFiltre('demandes',    'chantier_demande',     ancienNom, { chantier_demande:     nom }),
         ]);
         _data.barres.forEach(b => {
           if (b.chantier_origine     === ancienNom) b.chantier_origine     = nom;
           if (b.chantier_affectation === ancienNom) b.chantier_affectation = nom;
+        });
+        [..._demandes, ..._demandesToutes].forEach(d => {
+          if (d.chantier_demande === ancienNom) d.chantier_demande = nom;
         });
         _filtrer();
       }
