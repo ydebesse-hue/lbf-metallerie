@@ -8020,7 +8020,11 @@ ${hasT ? `
     const tries = [..._chantiers].sort((a, b) =>
       (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
     );
-    dl.innerHTML = tries.map(c => `<option value="${_e(c.nom)}">`).join('');
+    // value = nom (ce qui est stocké) ; label/texte = "n° affaire — Ville — Nom" pour la suggestion
+    dl.innerHTML = tries.map(c => {
+      const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+      return `<option value="${_e(c.nom)}" label="${_e(label)}">${_e(label)}</option>`;
+    }).join('');
   }
 
   function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
