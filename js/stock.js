@@ -4611,7 +4611,7 @@ ${hasT ? `
       const qte         = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
       const classe      = l.querySelector('.inv-classe')?.value?.trim() || '';
       const fournisseur = l.querySelector('.inv-fournisseur')?.value?.trim() || null;
-      const origine     = _resoudreChantierSaisi(l.querySelector('.inv-origine')?.value?.trim()) || null;
+      const origine     = await _resoudreChantierSaisi(l.querySelector('.inv-origine')?.value?.trim()) || null;
       const refCmd      = l.querySelector('.inv-ref')?.value?.trim() || null;
       const commentaire = l.querySelector('.inv-commentaire')?.value?.trim() || '';
       const dims       = _getDims(type, desig);
@@ -4700,7 +4700,7 @@ ${hasT ? `
       const type     = ligne.querySelector('.inv-type')?.value?.trim();
       const desig    = ligne.querySelector('.inv-desig')?.value?.trim();
       const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
-      const chantier = _resoudreChantierSaisi(ligne.querySelector('.cmd-chantier')?.value?.trim()) || '';
+      const chantier = await _resoudreChantierSaisi(ligne.querySelector('.cmd-chantier')?.value?.trim()) || '';
       const longueur = parseFloat(ligne.querySelector('.inv-long')?.value);
       const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
       const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu')) || '';
@@ -8031,14 +8031,27 @@ ${hasT ? `
   /**
    * Résout une valeur saisie dans un champ chantier (texte libre + datalist) : si elle
    * correspond exactement au libellé "n° affaire — Ville — Nom" d'un chantier existant,
-   * retourne son nom (valeur stockée partout ailleurs) ; sinon retourne la saisie telle quelle.
+   * retourne son nom (valeur stockée partout ailleurs). Si elle ne correspond à aucun
+   * chantier connu (nom ni libellé), crée le chantier à la volée pour qu'il apparaisse
+   * ensuite dans Administration → Chantiers et les autres listes.
    */
-  function _resoudreChantierSaisi(valeur) {
+  async function _resoudreChantierSaisi(valeur) {
     if (!valeur) return valeur;
     const match = _chantiers.find(c =>
-      [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ') === valeur
+      c.nom === valeur || [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ') === valeur
     );
-    return match ? match.nom : valeur;
+    if (match) return match.nom;
+
+    try {
+      const nouveau = await window.SB.inserer('chantiers', { nom: valeur, numero_affaire: null, ville: null, actif: true });
+      if (nouveau) {
+        _chantiers.push(nouveau);
+        _majDatalistChantiers();
+      }
+    } catch(e) {
+      console.warn('[Chantier] Création à la volée impossible :', e);
+    }
+    return valeur;
   }
 
   function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
