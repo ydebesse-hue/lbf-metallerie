@@ -1353,6 +1353,8 @@
     .inv-fournisseur { flex: 1; min-width: 120px; }
     .inv-ref       { flex: 1; min-width: 130px; }
     .inv-commentaire { flex: 1; min-width: 130px; }
+    .inv-picker-chantier { flex: 1; min-width: 200px; }
+    .inv-picker-chantier:has(.cmd-chantier) { flex: 2; }
     .cmd-chantier  { flex: 2; min-width: 165px; }
     .cmd-classe    { min-width: 110px; }
     .cmd-qte       { width: 65px; flex-shrink: 0; }
@@ -3153,6 +3155,7 @@
       <div class="modale-titre">Mes demandes en cours</div>
       <div id="mdem-liste" style="max-height:420px;overflow-y:auto"></div>
       <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" id="mdem-btn-tout-lu" onclick="Stock.marquerToutesDemandesLues()" style="display:none">Tout marquer comme lu</button>
         <button class="btn-modale btn-modale-rouge" onclick="Stock.fermerMesDemandes()">Fermer</button>
       </div>
     </div>
@@ -3428,7 +3431,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260708h"></script>
+  <script src="../js/stock.js?v=20260715g"></script>
 
 </body>
 </html>

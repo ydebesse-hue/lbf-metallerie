@@ -3289,10 +3289,13 @@ ${hasT ? `
 
   function _mesDemandesActives() {
     const session = Auth.getSession();
-    if (!session || session.anonyme) return [];
+    if (!session) return [];
+    // Compte visiteur : identifiant 'visiteur' partagé par tous les anonymes —
+    // on affiche donc toutes les demandes faites en tant que visiteur, pas "les miennes".
+    const identifiant = session.identifiant;
     const vus = _idsNotifsVus();
     return _demandesToutes.filter(d =>
-      d.demande_par === session.identifiant &&
+      d.demande_par === identifiant &&
       (d.statut === 'en_attente' || ((d.statut === 'valide' || d.statut === 'refuse') && !vus.includes(d.id)))
     );
   }
@@ -3316,9 +3319,12 @@ ${hasT ? `
   }
 
   function _rendreMesDemandes() {
-    const zone = document.getElementById('mdem-liste');
+    const zone   = document.getElementById('mdem-liste');
+    const btnTout = document.getElementById('mdem-btn-tout-lu');
     if (!zone) return;
-    const notifs = _mesDemandesActives();
+    const notifs   = _mesDemandesActives();
+    const traitees = notifs.filter(d => d.statut === 'valide' || d.statut === 'refuse');
+    if (btnTout) btnTout.style.display = traitees.length > 1 ? '' : 'none';
     if (!notifs.length) {
       zone.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa">Aucune demande à afficher.</div>';
       return;
@@ -3345,6 +3351,13 @@ ${hasT ? `
 
   function marquerDemandeLue(id) {
     _marquerNotifsVues([id]);
+    _rendreMesDemandes();
+    _majBanniereMesDemandes();
+  }
+
+  function marquerToutesDemandesLues() {
+    const traitees = _mesDemandesActives().filter(d => d.statut === 'valide' || d.statut === 'refuse');
+    _marquerNotifsVues(traitees.map(d => d.id));
     _rendreMesDemandes();
     _majBanniereMesDemandes();
   }
@@ -4611,7 +4624,7 @@ ${hasT ? `
       const qte         = Math.max(1, parseInt(l.querySelector('.inv-qte')?.value, 10) || 1);
       const classe      = l.querySelector('.inv-classe')?.value?.trim() || '';
       const fournisseur = l.querySelector('.inv-fournisseur')?.value?.trim() || null;
-      const origine     = l.querySelector('.inv-origine')?.value?.trim() || null;
+      const origine     = await _resoudreChantierSaisi(l.querySelector('.inv-origine')?.value?.trim()) || null;
       const refCmd      = l.querySelector('.inv-ref')?.value?.trim() || null;
       const commentaire = l.querySelector('.inv-commentaire')?.value?.trim() || '';
       const dims       = _getDims(type, desig);
@@ -4700,7 +4713,7 @@ ${hasT ? `
       const type     = ligne.querySelector('.inv-type')?.value?.trim();
       const desig    = ligne.querySelector('.inv-desig')?.value?.trim();
       const classe   = ligne.querySelector('.cmd-classe')?.value?.trim() || '';
-      const chantier = ligne.querySelector('.cmd-chantier')?.value?.trim() || '';
+      const chantier = await _resoudreChantierSaisi(ligne.querySelector('.cmd-chantier')?.value?.trim()) || '';
       const longueur = parseFloat(ligne.querySelector('.inv-long')?.value);
       const qte      = parseInt(ligne.querySelector('.cmd-qte')?.value) || 1;
       const lieu     = _lireLieu(ligne.querySelector('.cmd-lieu')) || '';
@@ -4982,10 +4995,7 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    const selOrigine = document.createElement('select');
-    selOrigine.className = 'inv-origine inv-ctrl';
-    _peuplerSelectAffectation(selOrigine, '');
-    selOrigine.options[0].text = '— Origine —';
+    const selOrigine = _creerPickerChantierCompact('inv-origine inv-ctrl');
 
     const selFourn = document.createElement('select');
     selFourn.className = 'inv-fournisseur inv-ctrl';
@@ -5090,10 +5100,7 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'cmd-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    const selChantier = document.createElement('select');
-    selChantier.className = 'cmd-chantier inv-ctrl';
-    _peuplerSelectAffectation(selChantier, '');
-    selChantier.options[0].text = '— Destination —';
+    const selChantier = _creerPickerChantierCompact('cmd-chantier inv-ctrl');
 
     [selClasse, inpComm, selChantier].forEach(el => row2.appendChild(el));
 
@@ -8020,7 +8027,38 @@ ${hasT ? `
     const tries = [..._chantiers].sort((a, b) =>
       (a.numero_affaire || '').localeCompare(b.numero_affaire || '', 'fr', { numeric: true })
     );
-    dl.innerHTML = tries.map(c => `<option value="${_e(c.nom)}">`).join('');
+    // La suggestion affiche uniquement "n° affaire — Ville — Nom" (pas de doublon nom seul) ;
+    // _resoudreChantierSaisi() retrouve le chantier correspondant à la saisie pour stocker son nom.
+    dl.innerHTML = tries.map(c => {
+      const label = [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ');
+      return `<option value="${_e(label)}">`;
+    }).join('');
+  }
+
+  /**
+   * Résout une valeur saisie dans un champ chantier (texte libre + datalist) : si elle
+   * correspond exactement au libellé "n° affaire — Ville — Nom" d'un chantier existant,
+   * retourne son nom (valeur stockée partout ailleurs). Si elle ne correspond à aucun
+   * chantier connu (nom ni libellé), crée le chantier à la volée pour qu'il apparaisse
+   * ensuite dans Administration → Chantiers et les autres listes.
+   */
+  async function _resoudreChantierSaisi(valeur) {
+    if (!valeur) return valeur;
+    const match = _chantiers.find(c =>
+      c.nom === valeur || [c.numero_affaire, c.ville, c.nom].filter(Boolean).join(' — ') === valeur
+    );
+    if (match) return match.nom;
+
+    try {
+      const nouveau = await window.SB.inserer('chantiers', { nom: valeur, numero_affaire: null, ville: null, actif: true });
+      if (nouveau) {
+        _chantiers.push(nouveau);
+        _majDatalistChantiers();
+      }
+    } catch(e) {
+      console.warn('[Chantier] Création à la volée impossible :', e);
+    }
+    return valeur;
   }
 
   function _monterPickerFournisseur(wrapId, selectId, valeurCourante = '') {
@@ -8085,6 +8123,24 @@ ${hasT ? `
       opts.unshift(`<option value="${_e(valeurCourante)}" selected>${_e(valeurCourante)}</option>`);
     }
     sel.innerHTML = opts.join('');
+  }
+
+  let _pickerIdSeq = 0;
+
+  /**
+   * Variante compacte de _monterPickerChantier utilisable dans une ligne générée
+   * dynamiquement (ajout profilé / réception) : retourne le wrap div, et ajoute les
+   * classes fournies au <select> interne pour rester lisible par le code de lecture
+   * de la ligne (ex. .inv-origine, .cmd-chantier).
+   */
+  function _creerPickerChantierCompact(classesSelect) {
+    const wrap = document.createElement('div');
+    wrap.className = 'inv-picker-chantier';
+    const selectId = `picker-chantier-${_pickerIdSeq++}`;
+    _monterPickerChantier(wrap, selectId, '');
+    const sel = wrap.querySelector('select');
+    if (sel) sel.classList.add(...classesSelect.split(' '));
+    return wrap;
   }
 
   function _monterPickerChantier(wrapId, selectId, valeurCourante = '') {
@@ -10118,17 +10174,21 @@ ${hasT ? `
     const ancienNom = _chantiers.find(c => c.id === id)?.nom;
     try {
       await window.SB.mettreAJour('chantiers', id, { nom, numero_affaire: affaire || null, ville: ville || null });
-      // Cascade : propager le renommage dans tout le stock
+      // Cascade : propager le renommage dans tout le stock et les demandes en cours
       if (ancienNom && ancienNom !== nom) {
         await Promise.all([
           window.SB.mettreAJourFiltre('stock',       'chantier_origine',     ancienNom, { chantier_origine:     nom }),
           window.SB.mettreAJourFiltre('stock',       'chantier_affectation', ancienNom, { chantier_affectation: nom }),
           window.SB.mettreAJourFiltre('stock_toles', 'chantier_origine',     ancienNom, { chantier_origine:     nom }),
           window.SB.mettreAJourFiltre('stock_toles', 'chantier_affectation', ancienNom, { chantier_affectation: nom }),
+          window.SB.mettreAJourFiltre('demandes',    'chantier_demande',     ancienNom, { chantier_demande:     nom }),
         ]);
         _data.barres.forEach(b => {
           if (b.chantier_origine     === ancienNom) b.chantier_origine     = nom;
           if (b.chantier_affectation === ancienNom) b.chantier_affectation = nom;
+        });
+        [..._demandes, ..._demandesToutes].forEach(d => {
+          if (d.chantier_demande === ancienNom) d.chantier_demande = nom;
         });
         _filtrer();
       }
@@ -10342,6 +10402,7 @@ ${hasT ? `
     refuserElement,
     fermerMesDemandes,
     marquerDemandeLue,
+    marquerToutesDemandesLues,
     getSelection,
     ouvrirHistoriqueBarre,
     ouvrirHistoriqueTole,

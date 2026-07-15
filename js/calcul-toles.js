@@ -134,6 +134,34 @@ function calcRetirerChantierRepartition(id) {
   calcRendreTableRepartition();
 }
 
+function calcToggleNouveauChantier(show = true) {
+  const zone = document.getElementById('rep-nouveau-chantier');
+  if (!zone) return;
+  zone.style.display = show ? '' : 'none';
+  if (show) {
+    document.getElementById('rep-new-affaire').value = '';
+    document.getElementById('rep-new-ville').value = '';
+    document.getElementById('rep-new-nom').value = '';
+    document.getElementById('rep-new-nom').focus();
+  }
+}
+
+// Chantiers ajoutés à la volée pour cet outil uniquement — jamais enregistrés
+// dans la table chantiers, juste utiles pour cette répartition/session.
+function calcConfirmerNouveauChantier() {
+  const nom     = document.getElementById('rep-new-nom')?.value.trim();
+  const affaire = document.getElementById('rep-new-affaire')?.value.trim() || null;
+  const ville   = document.getElementById('rep-new-ville')?.value.trim() || null;
+  if (!nom) return;
+
+  const local = { id: `local-${Date.now()}`, nom, numero_affaire: affaire, ville, actif: true };
+  CalcToles.chantiers.push(local);
+  calcRendreSelectChantier();
+  calcToggleNouveauChantier(false);
+  const sel = document.getElementById('rep-sel-chantier');
+  if (sel) sel.value = local.id;
+}
+
 function calcAjouterLigneRepartition() {
   CalcToles.lignesRepartition.push({ id: ++_repSeq, epaisseur: 6, qualite: 'S235', largeur: 1500, longueur: 3000, poids: {} });
   calcRendreTableRepartition();
