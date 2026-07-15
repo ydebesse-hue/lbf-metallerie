@@ -134,6 +134,38 @@ function calcRetirerChantierRepartition(id) {
   calcRendreTableRepartition();
 }
 
+function calcToggleNouveauChantier(show = true) {
+  const zone = document.getElementById('rep-nouveau-chantier');
+  if (!zone) return;
+  zone.style.display = show ? '' : 'none';
+  if (show) {
+    document.getElementById('rep-new-affaire').value = '';
+    document.getElementById('rep-new-ville').value = '';
+    document.getElementById('rep-new-nom').value = '';
+    document.getElementById('rep-new-nom').focus();
+  }
+}
+
+async function calcConfirmerNouveauChantier() {
+  const nom     = document.getElementById('rep-new-nom')?.value.trim();
+  const affaire = document.getElementById('rep-new-affaire')?.value.trim() || null;
+  const ville   = document.getElementById('rep-new-ville')?.value.trim() || null;
+  if (!nom) return;
+  try {
+    const nouveau = await window.SB.inserer('chantiers', { nom, numero_affaire: affaire, ville, actif: true });
+    const rows = await window.SB.lire('chantiers', { order: 'nom' });
+    CalcToles.chantiers = rows.filter(c => c.actif);
+    calcRendreSelectChantier();
+    calcToggleNouveauChantier(false);
+    if (nouveau?.id) {
+      const sel = document.getElementById('rep-sel-chantier');
+      if (sel) sel.value = nouveau.id;
+    }
+  } catch (e) {
+    alert('Erreur création chantier : ' + (e.message || e));
+  }
+}
+
 function calcAjouterLigneRepartition() {
   CalcToles.lignesRepartition.push({ id: ++_repSeq, epaisseur: 6, qualite: 'S235', largeur: 1500, longueur: 3000, poids: {} });
   calcRendreTableRepartition();
