@@ -4982,10 +4982,10 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'inv-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    const selOrigine = document.createElement('select');
-    selOrigine.className = 'inv-origine inv-ctrl';
-    _peuplerSelectAffectation(selOrigine, '');
-    selOrigine.options[0].text = '— Origine —';
+    const selOrigine = document.createElement('input');
+    selOrigine.type = 'text'; selOrigine.className = 'inv-origine inv-ctrl';
+    selOrigine.setAttribute('list', 'dl-chantiers');
+    selOrigine.placeholder = 'Chantier d\'origine…';
 
     const selFourn = document.createElement('select');
     selFourn.className = 'inv-fournisseur inv-ctrl';
@@ -5090,10 +5090,10 @@ ${hasT ? `
     inpComm.type = 'text'; inpComm.className = 'cmd-commentaire inv-ctrl';
     inpComm.placeholder = 'Commentaire…';
 
-    const selChantier = document.createElement('select');
-    selChantier.className = 'cmd-chantier inv-ctrl';
-    _peuplerSelectAffectation(selChantier, '');
-    selChantier.options[0].text = '— Destination —';
+    const selChantier = document.createElement('input');
+    selChantier.type = 'text'; selChantier.className = 'cmd-chantier inv-ctrl';
+    selChantier.setAttribute('list', 'dl-chantiers');
+    selChantier.placeholder = 'Destination…';
 
     [selClasse, inpComm, selChantier].forEach(el => row2.appendChild(el));
 
