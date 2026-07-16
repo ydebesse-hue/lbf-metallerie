@@ -1003,7 +1003,7 @@
     /* Fiche détail tôle — grille infos */
     .fiche-infos {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 0;
       border: 1px solid var(--gris-clair);
       border-radius: 3px;
@@ -1013,7 +1013,16 @@
     .fiche-info-item {
       padding: 8px 12px;
       border-bottom: 1px solid var(--gris-clair);
+      min-width: 0;
     }
+    .fiche-info-item select,
+    .fiche-info-item input,
+    .fiche-info-item textarea {
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .fiche-info-item .lieu-cascade { flex-wrap: wrap; min-width: 0; }
+    .fiche-info-item .lieu-cascade select { min-width: 0; }
     .fiche-info-item:nth-child(odd) { border-right: 1px solid var(--gris-clair); }
     .fiche-info-label {
       font-size: 10px;
@@ -1669,6 +1678,8 @@
       .input-recherche { width: 100%; }
       .sel-filtre { font-size: 11px; padding: 5px 6px; }
       .form-cols2, .form-cols3 { grid-template-columns: 1fr; }
+      .fiche-infos { grid-template-columns: 1fr; }
+      .fiche-info-item:nth-child(odd) { border-right: none; }
       .modale { padding: 16px; }
       .syn-kpi-grid { grid-template-columns: repeat(2, 1fr); }
       .syn-cols2    { grid-template-columns: 1fr; }
