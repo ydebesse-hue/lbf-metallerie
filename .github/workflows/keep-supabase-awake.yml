@@ -36,15 +36,25 @@ jobs:
             URL="${REST%%:*}"
             KEY="${REST#*:}"
             echo "Réveil de la base Supabase ($NAME)…"
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              -H "apikey: $KEY" \
-              -H "Authorization: Bearer $KEY" \
-              "$URL")
-            echo "  Code HTTP renvoyé : $HTTP_CODE"
-            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+
+            # Jusqu'à 3 tentatives — tolère les erreurs réseau/DNS transitoires du runner
+            # (curl peut échouer avant même de recevoir une réponse HTTP, ex. code 6 = DNS).
+            HTTP_CODE=""
+            for TRY in 1 2 3; do
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --retry 2 --retry-delay 3 --max-time 20 \
+                -H "apikey: $KEY" \
+                -H "Authorization: Bearer $KEY" \
+                "$URL" || echo "")
+              if [ -n "$HTTP_CODE" ]; then break; fi
+              echo "  ⏳ Tentative $TRY échouée (réseau/DNS), nouvel essai…"
+              sleep 5
+            done
+
+            echo "  Code HTTP renvoyé : ${HTTP_CODE:-aucun (échec réseau)}"
+            if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
               echo "  ✅ Base $NAME active, ping réussi."
             else
-              echo "  ❌ Réponse inattendue ($HTTP_CODE) pour $NAME — la base est peut-être en pause ou la table a changé."
+              echo "  ❌ Réponse inattendue (${HTTP_CODE:-échec réseau}) pour $NAME — la base est peut-être en pause ou la table a changé."
               FAIL=1
             fi
           done
