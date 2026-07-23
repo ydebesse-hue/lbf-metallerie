@@ -22,6 +22,13 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      - name: Diagnostic réseau (temporaire)
+        run: |
+          echo "--- DNS ---"
+          getent hosts guhktnlmilhcmgeecdxn.supabase.co || echo "DNS FAIL"
+          echo "--- curl -v ---"
+          curl -v --max-time 15 "https://guhktnlmilhcmgeecdxn.supabase.co/rest/v1/" 2>&1 | tail -40 || true
+
       - name: Ping des bases Supabase (production + dev)
         run: |
           PROD_URL="https://guhktnlmilhcmgeecdxn.supabase.co/rest/v1/sections?select=id&limit=1"
