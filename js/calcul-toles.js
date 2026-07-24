@@ -261,7 +261,7 @@ function calcRendreTableRepartition() {
   const tbody = CalcToles.lignesRepartition.map(l => {
     let row = `<tr data-rep-id="${l.id}">
       <td>
-        <input type="text" inputmode="decimal" list="rep-epaisseurs-dispo" value="${l.epaisseur}"
+        <input type="text" inputmode="decimal" value="${l.epaisseur}"
           onchange="calcMajRepartition(${l.id})" data-rep-field="epaisseur" style="width:60px">
       </td>
       <td>
