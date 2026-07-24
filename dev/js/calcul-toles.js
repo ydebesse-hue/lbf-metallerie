@@ -261,7 +261,7 @@ function calcRendreTableRepartition() {
   const tbody = CalcToles.lignesRepartition.map(l => {
     let row = `<tr data-rep-id="${l.id}">
       <td>
-        <input type="number" list="rep-epaisseurs-dispo" step="1" min="0" value="${l.epaisseur}"
+        <input type="text" inputmode="decimal" list="rep-epaisseurs-dispo" value="${l.epaisseur}"
           onchange="calcMajRepartition(${l.id})" data-rep-field="epaisseur" style="width:60px">
       </td>
       <td>
@@ -270,9 +270,9 @@ function calcRendreTableRepartition() {
         </select>
       </td>
       <td>
-        <input type="number" value="${l.largeur}" step="100" onchange="calcMajRepartition(${l.id})" data-rep-field="largeur" style="width:60px">
+        <input type="text" inputmode="decimal" value="${l.largeur}" onchange="calcMajRepartition(${l.id})" data-rep-field="largeur" style="width:60px">
         ×
-        <input type="number" value="${l.longueur}" step="100" onchange="calcMajRepartition(${l.id})" data-rep-field="longueur" style="width:60px">
+        <input type="text" inputmode="decimal" value="${l.longueur}" onchange="calcMajRepartition(${l.id})" data-rep-field="longueur" style="width:60px">
       </td>
       <td class="calc-cell-calc" data-rep-total-surface>0.00 m²</td>
       <td class="calc-cell-calc" data-rep-nb-toles>0</td>
@@ -281,7 +281,7 @@ function calcRendreTableRepartition() {
       <td class="calc-cell-calc" data-rep-chute>—</td>`;
     chantiers.forEach(c => {
       const poids = l.poids[c.id] || 0;
-      row += `<td><input type="number" min="0" step="5" value="${poids}" onchange="calcMajRepartition(${l.id})" data-rep-chantier="${_calcEsc(c.id)}"></td>
+      row += `<td><input type="text" inputmode="decimal" value="${poids}" onchange="calcMajRepartition(${l.id})" data-rep-chantier="${_calcEsc(c.id)}"></td>
         <td class="calc-cell-calc" data-rep-surface="${_calcEsc(c.id)}">0.00 m²</td>`;
     });
     row += `<td><button type="button" class="calc-btn-suppr" onclick="calcSupprimerLigneRepartition(${l.id})" title="Supprimer cette ligne">✕</button></td></tr>`;
