@@ -4387,6 +4387,24 @@ ${hasT ? `
         _peuplerSelectAffectation(inpAff, nom);
         if (formNouv) formNouv.style.display = 'none';
       });
+
+      // ── Zone de correction (repliable) ──
+      const btnToggleCorr = mModAff.querySelector('#mod-btn-toggle-correction');
+      const zoneCorr       = mModAff.querySelector('#mod-zone-correction');
+      if (btnToggleCorr && zoneCorr) {
+        btnToggleCorr.addEventListener('click', () => {
+          const ouvert = zoneCorr.style.display !== 'none';
+          zoneCorr.style.display = ouvert ? 'none' : '';
+          btnToggleCorr.textContent = ouvert
+            ? '✎ Corriger le profilé, la classe, le fournisseur…'
+            : '✕ Fermer la correction';
+        });
+      }
+      const selCorrType  = mModAff.querySelector('#mod-correction-type');
+      const selCorrDesig = mModAff.querySelector('#mod-correction-desig');
+      if (selCorrType) {
+        selCorrType.addEventListener('change', () => _remplirDesignationSelect(selCorrType, selCorrDesig));
+      }
     }
   }
 
@@ -5135,6 +5153,39 @@ ${hasT ? `
         }
       }
     }
+  }
+
+  /**
+   * Remplit un select de désignations pour un select type donné (hors ligne dynamique
+   * inventaire/commande) — utilisé par la zone de correction de la modale de modification.
+   */
+  function _remplirDesignationSelect(selType, selDesig, valeurCourante = '') {
+    const type = selType?.value;
+    if (!selDesig) return;
+    selDesig.innerHTML = '<option value="">— Désignation —</option>';
+    if (!type) return;
+    let desigs = [];
+    if (_sections?.standard) {
+      _sections.standard.forEach(f => {
+        f.sections.forEach(s => {
+          if (s.serie === type) {
+            const t = s.desig.startsWith(type + ' ') ? s.desig.slice(type.length + 1) : s.desig;
+            if (!desigs.includes(t)) desigs.push(t);
+          }
+        });
+      });
+    }
+    if (!desigs.length) {
+      desigs = [...new Set(
+        _data.barres.filter(b => b.categorie === 'profil' && b.section_type === type).map(b => b.designation)
+      )].sort((a, b) => parseFloat(a) - parseFloat(b));
+    }
+    desigs.forEach(d => {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      if (d === valeurCourante) o.selected = true;
+      selDesig.appendChild(o);
+    });
   }
 
   function _apMajDesigLigneInv(ligne) {
@@ -6067,6 +6118,31 @@ ${hasT ? `
     const formNouvMod = m.querySelector('#mod-nouveau-chantier-form');
     if (formNouvMod) formNouvMod.style.display = 'none';
 
+    // ── Zone de correction (repliée par défaut) ──
+    const zoneCorr = m.querySelector('#mod-zone-correction');
+    const btnCorr  = m.querySelector('#mod-btn-toggle-correction');
+    if (zoneCorr) zoneCorr.style.display = 'none';
+    if (btnCorr)  btnCorr.textContent = '✎ Corriger le profilé, la classe, le fournisseur…';
+
+    const selCorrType  = m.querySelector('#mod-correction-type');
+    const selCorrDesig = m.querySelector('#mod-correction-desig');
+    if (selCorrType) {
+      _remplirSelectType(selCorrType);
+      selCorrType.value = barre.section_type || '';
+      _remplirDesignationSelect(selCorrType, selCorrDesig, barre.designation || '');
+    }
+    _setVal(m, '#mod-correction-classe', barre.classe_acier || '');
+    _setVal(m, '#mod-correction-ref',    barre.ref_commande || '');
+
+    const selCorrFourn = m.querySelector('#mod-correction-fournisseur');
+    if (selCorrFourn) {
+      const fopts = `<option value="">— Fournisseur —</option>` +
+        [..._fournisseurs].sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr', { sensitivity: 'base' }))
+          .map(f => `<option value="${_e(f.nom)}"${f.nom === barre.fournisseur ? ' selected' : ''}>${_e(f.nom)}</option>`).join('');
+      selCorrFourn.innerHTML = fopts;
+    }
+    _monterPickerChantier(m.querySelector('#mod-correction-origine-picker'), 'mod-correction-origine', barre.chantier_origine || '');
+
     // Stocker l'id et les données immuables
     m.dataset.idEnCours         = barre.id;
     m.dataset.categorieEnCours  = 'profil';
@@ -6128,16 +6204,33 @@ ${hasT ? `
       const affectation = dispo === 'affecte' ? (m.querySelector('#mod-affectation')?.value?.trim() || null) : null;
       const commentaire = m.querySelector('#mod-commentaire')?.value?.trim() || '';
 
+      // Zone de correction (type/désignation, classe, origine, fournisseur, réf.)
+      const corrType   = m.querySelector('#mod-correction-type')?.value?.trim() || original.section_type;
+      const corrDesig  = m.querySelector('#mod-correction-desig')?.value?.trim() || original.designation;
+      const corrClasse = m.querySelector('#mod-correction-classe')?.value?.trim() || null;
+      const corrOrigine = m.querySelector('#mod-correction-origine')?.value?.trim() || null;
+      const corrFourn  = m.querySelector('#mod-correction-fournisseur')?.value?.trim() || null;
+      const corrRef    = m.querySelector('#mod-correction-ref')?.value?.trim() || null;
+
       // La longueur 0 est autorisée (déclenchera un archivage)
       if (isNaN(longueur) || longueur < 0) return _signalerErreur(m, '#mod-longueur', 'La longueur est obligatoire');
       if (dispo === 'affecte' && !affectation) return _signalerErreur(m, '#mod-affectation', 'Le chantier d\'affectation est obligatoire');
 
-      const poidsml    = parseFloat(m.dataset.poidsml) || original.poids_ml || 0;
+      const sectionChangee = corrType !== original.section_type || corrDesig !== original.designation;
+      const dims       = sectionChangee ? _getDims(corrType, corrDesig) : null;
+      const poidsml    = sectionChangee ? (dims?.pml || 0) : (parseFloat(m.dataset.poidsml) || original.poids_ml || 0);
       const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
       const estArchivage = longueur === 0;
 
       const modif = {
         ...original,
+        section_type: corrType,
+        designation: corrDesig,
+        classe_acier: corrClasse,
+        chantier_origine: corrOrigine,
+        fournisseur: corrFourn,
+        ref_commande: corrRef,
+        poids_ml: poidsml || original.poids_ml,
         longueur_m: longueur,
         poids_barre_kg: poidsBarre,
         lieu_stockage: lieu,
@@ -6160,6 +6253,12 @@ ${hasT ? `
         ['Lieu',            original.lieu_stockage,  lieu],
         ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(affectation) || affectation],
         ['Disponibilité',   original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+        ['Type',            original.section_type,  corrType],
+        ['Désignation',     original.designation,   corrDesig],
+        ['Classe',          original.classe_acier,  corrClasse],
+        ['Chantier origine', _labelChantier(original.chantier_origine) || original.chantier_origine, _labelChantier(corrOrigine) || corrOrigine],
+        ['Fournisseur',     original.fournisseur,   corrFourn],
+        ['Réf. commande',   original.ref_commande,  corrRef],
       ]);
       if (estArchivage) {
         await _enregistrerHistorique(original.id, 'ARCHIVAGE', longAvant, 0,
@@ -6658,10 +6757,11 @@ ${hasT ? `
     if (btnEnreg) { btnEnreg.style.display = ''; btnEnreg.onclick = () => _enregistrerEditionFicheProfil(id, m); }
     if (btnAnn)   { btnAnn.style.display   = ''; btnAnn.onclick   = () => ouvrirDetailProfil(id); }
 
+    const styleCtrl = 'width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;font-size:13px;box-sizing:border-box';
+
     // Longueur → input number
     const longEl = m.querySelector('#dprofil-longueur');
-    if (longEl) longEl.innerHTML = `<input type="number" min="0" step="0.01" value="${b.longueur_m ?? ''}"
-      style="width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;font-size:13px;box-sizing:border-box">`;
+    if (longEl) longEl.innerHTML = `<input type="number" min="0" step="0.01" value="${b.longueur_m ?? ''}" style="${styleCtrl}">`;
 
     // Lieu stockage → sélecteurs cascade
     const lieuEl = m.querySelector('#dprofil-lieu');
@@ -6678,7 +6778,7 @@ ${hasT ? `
     const chAffEl = m.querySelector('#dprofil-chantier-aff');
     if (chAffEl) {
       const sel = document.createElement('select');
-      sel.style.cssText = 'width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;font-size:13px';
+      sel.style.cssText = styleCtrl;
       chAffEl.innerHTML = '';
       chAffEl.appendChild(sel);
       _peuplerSelectAffectation(sel, b.chantier_affectation || '');
@@ -6686,7 +6786,62 @@ ${hasT ? `
 
     // Commentaire → textarea
     const commEl = m.querySelector('#dprofil-commentaire');
-    if (commEl) commEl.innerHTML = `<textarea style="width:100%;padding:4px 6px;border:1px solid #bbb;border-radius:3px;resize:vertical;min-height:52px;font-size:13px;box-sizing:border-box;font-family:inherit">${_e(b.commentaire || '')}</textarea>`;
+    if (commEl) commEl.innerHTML = `<textarea style="${styleCtrl};resize:vertical;min-height:52px;font-family:inherit">${_e(b.commentaire || '')}</textarea>`;
+
+    // Type / Désignation → selects en cascade
+    const typeEl  = m.querySelector('#dprofil-type');
+    const desigEl = m.querySelector('#dprofil-designation');
+    if (typeEl && desigEl) {
+      const selType  = document.createElement('select');
+      const selDesig = document.createElement('select');
+      selType.style.cssText  = styleCtrl;
+      selDesig.style.cssText = styleCtrl;
+      typeEl.innerHTML = ''; typeEl.appendChild(selType);
+      desigEl.innerHTML = ''; desigEl.appendChild(selDesig);
+      _remplirSelectType(selType);
+      selType.value = b.section_type || '';
+      _remplirDesignationSelect(selType, selDesig, b.designation || '');
+      selType.addEventListener('change', () => _remplirDesignationSelect(selType, selDesig));
+    }
+
+    // Classe d'acier → select
+    const classeEl = m.querySelector('#dprofil-classe');
+    if (classeEl) {
+      const sel = document.createElement('select');
+      sel.style.cssText = styleCtrl;
+      ['', 'S235', 'S275', 'S355', 'S420', 'S460', 'S690'].forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = v || '— Classe —';
+        if (v === (b.classe_acier || '')) o.selected = true;
+        sel.appendChild(o);
+      });
+      classeEl.innerHTML = '';
+      classeEl.appendChild(sel);
+    }
+
+    // Chantier d'origine → picker (select + Nouveau)
+    const origEl = m.querySelector('#dprofil-chantier-orig');
+    if (origEl) {
+      origEl.innerHTML = '';
+      _monterPickerChantier(origEl, 'dprofil-origine-sel', b.chantier_origine || '');
+    }
+
+    // Fournisseur → select
+    const fournEl = m.querySelector('#dprofil-fournisseur');
+    if (fournEl) {
+      const sel = document.createElement('select');
+      sel.style.cssText = styleCtrl;
+      const fopts = `<option value="">— Fournisseur —</option>` +
+        [..._fournisseurs].sort((a, b2) => (a.nom || '').localeCompare(b2.nom || '', 'fr', { sensitivity: 'base' }))
+          .map(f => `<option value="${_e(f.nom)}"${f.nom === b.fournisseur ? ' selected' : ''}>${_e(f.nom)}</option>`).join('');
+      sel.innerHTML = fopts;
+      fournEl.innerHTML = '';
+      fournEl.appendChild(sel);
+    }
+
+    // Réf. commande → input texte
+    const refEl = m.querySelector('#dprofil-ref');
+    if (refEl) refEl.innerHTML = `<input type="text" value="${_e(b.ref_commande || '')}" style="${styleCtrl}">`;
   }
 
   async function _enregistrerEditionFicheProfil(id, m) {
@@ -6699,6 +6854,13 @@ ${hasT ? `
     const commentaire = (m.querySelector('#dprofil-commentaire textarea')?.value || '').trim();
     const dispo       = chAff ? 'affecte' : 'disponible';
 
+    const corrType    = m.querySelector('#dprofil-type select')?.value?.trim() || original.section_type;
+    const corrDesig   = m.querySelector('#dprofil-designation select')?.value?.trim() || original.designation;
+    const corrClasse  = m.querySelector('#dprofil-classe select')?.value?.trim() || null;
+    const corrOrigine = m.querySelector('#dprofil-chantier-orig select')?.value?.trim() || null;
+    const corrFourn   = m.querySelector('#dprofil-fournisseur select')?.value?.trim() || null;
+    const corrRef     = m.querySelector('#dprofil-ref input')?.value?.trim() || null;
+
     if (isNaN(longueur) || longueur < 0) {
       const inp = m.querySelector('#dprofil-longueur input');
       if (inp) { inp.style.outline = '2px solid var(--rouge)'; inp.focus(); }
@@ -6706,7 +6868,9 @@ ${hasT ? `
     }
 
     const session    = Auth.getSession();
-    const poidsml    = original.poids_ml || 0;
+    const sectionChangee = corrType !== original.section_type || corrDesig !== original.designation;
+    const dims       = sectionChangee ? _getDims(corrType, corrDesig) : null;
+    const poidsml    = sectionChangee ? (dims?.pml || 0) : (original.poids_ml || 0);
     const poidsBarre = poidsml > 0 ? Math.round(longueur * poidsml * 10) / 10 : original.poids_barre_kg;
     const estArch    = longueur === 0;
     const longAvant  = original.longueur_m;
@@ -6714,6 +6878,9 @@ ${hasT ? `
 
     const modif = {
       ...original,
+      section_type: corrType, designation: corrDesig, classe_acier: corrClasse,
+      chantier_origine: corrOrigine, fournisseur: corrFourn, ref_commande: corrRef,
+      poids_ml: poidsml || original.poids_ml,
       longueur_m: longueur, poids_barre_kg: poidsBarre,
       lieu_stockage: lieu, disponibilite: dispo, chantier_affectation: chAff,
       commentaire,
@@ -6728,6 +6895,12 @@ ${hasT ? `
       ['Lieu',             original.lieu_stockage, lieu],
       ['Chantier affect.', _labelChantier(original.chantier_affectation) || original.chantier_affectation, _labelChantier(chAff) || chAff],
       ['Disponibilité',    original.disponibilite === 'affecte' ? 'Affecté' : 'Disponible', dispo === 'affecte' ? 'Affecté' : 'Disponible'],
+      ['Type',             original.section_type, corrType],
+      ['Désignation',      original.designation,  corrDesig],
+      ['Classe',           original.classe_acier, corrClasse],
+      ['Chantier origine', _labelChantier(original.chantier_origine) || original.chantier_origine, _labelChantier(corrOrigine) || corrOrigine],
+      ['Fournisseur',      original.fournisseur,  corrFourn],
+      ['Réf. commande',    original.ref_commande, corrRef],
     ]);
 
     if (estArch) {
