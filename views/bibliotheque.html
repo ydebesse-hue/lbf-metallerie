@@ -883,7 +883,7 @@ header {
 /* ══════════════════════════════════════════════
    CALCUL TÔLES
 ══════════════════════════════════════════════ */
-.calc-wrap { padding: 20px 24px 40px; max-width: 1100px; margin: 0 auto; }
+.calc-wrap { padding: 20px 24px 40px; width: 100%; margin: 0 auto; }
 .calc-bloc {
   background: #fff;
   border: 1px solid var(--gris-cl);
@@ -923,10 +923,23 @@ header {
 .calc-table td { padding: 4px 6px; border-bottom: 1px solid #eee; text-align: right; white-space: nowrap; }
 .calc-table td:first-child { text-align: left; font-weight: bold; }
 .calc-table tbody tr:hover { background: #fafafa; }
-.calc-table input[type="number"] {
+.calc-table input[type="number"],
+.calc-table input[type="text"] {
   width: 74px; padding: 3px 5px; border: 1px solid #ccc; border-radius: 3px;
   text-align: right; font-size: 12px; font-family: inherit;
 }
+
+/* Colonne Épaisseur figée au défilement horizontal */
+#rep-table th:first-child,
+#rep-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--noir);
+}
+#rep-table td:first-child { background: #fff; box-shadow: 2px 0 4px rgba(0,0,0,.08); }
+#rep-table tbody tr:hover td:first-child { background: #fafafa; }
+#rep-table tr.calc-ligne-alerte td:first-child { background: #fdecea; }
 .calc-conv-grille input[readonly],
 .calc-table input[readonly] {
   background: #eee;
@@ -1285,7 +1298,7 @@ header {
 <script src="../auth/auth.js?v=20260413"></script>
 <script src="../js/profils-utils.js?v=20260413"></script>
 <script src="../js/bibliotheque.js?v=20260703"></script>
-<script src="../js/calcul-toles.js?v=20260715b"></script>
+<script src="../js/calcul-toles.js?v=20260723b"></script>
 <script src="../js/comparateur-profils.js?v=20260705b"></script>
 <script>
 /* ══════════════════════════════════════════════

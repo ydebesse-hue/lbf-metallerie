@@ -1003,7 +1003,7 @@
     /* Fiche détail tôle — grille infos */
     .fiche-infos {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 0;
       border: 1px solid var(--gris-clair);
       border-radius: 3px;
@@ -1013,7 +1013,16 @@
     .fiche-info-item {
       padding: 8px 12px;
       border-bottom: 1px solid var(--gris-clair);
+      min-width: 0;
     }
+    .fiche-info-item select,
+    .fiche-info-item input,
+    .fiche-info-item textarea {
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .fiche-info-item .lieu-cascade { flex-wrap: wrap; min-width: 0; }
+    .fiche-info-item .lieu-cascade select { min-width: 0; }
     .fiche-info-item:nth-child(odd) { border-right: 1px solid var(--gris-clair); }
     .fiche-info-label {
       font-size: 10px;
@@ -1424,6 +1433,19 @@
     }
     .mod-meta-chip strong { color: #333; font-size: 11px; }
 
+    .btn-lien-toggle {
+      display: block;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 6px 0;
+      margin: 2px 0 4px;
+      text-align: left;
+    }
+    .btn-lien-toggle:hover { color: var(--rouge); }
+
     /* ── BADGE CLASSE ACIER ──────────────────────────────────── */
     .badge-classe-acier {
       display: inline-block;
@@ -1656,6 +1678,8 @@
       .input-recherche { width: 100%; }
       .sel-filtre { font-size: 11px; padding: 5px 6px; }
       .form-cols2, .form-cols3 { grid-template-columns: 1fr; }
+      .fiche-infos { grid-template-columns: 1fr; }
+      .fiche-info-item:nth-child(odd) { border-right: none; }
       .modale { padding: 16px; }
       .syn-kpi-grid { grid-template-columns: repeat(2, 1fr); }
       .syn-cols2    { grid-template-columns: 1fr; }
@@ -2596,6 +2620,49 @@
           <div class="mod-barre-meta" id="mod-barre-meta"></div>
         </div>
 
+        <!-- Correction des informations de base (repli, usage rare) ─ -->
+        <button type="button" id="mod-btn-toggle-correction" class="btn-lien-toggle">✎ Corriger le profilé, la classe, le fournisseur…</button>
+        <div id="mod-zone-correction" style="display:none">
+          <div class="form-cols2">
+            <div class="fr">
+              <label>Type de profilé</label>
+              <select id="mod-correction-type"></select>
+            </div>
+            <div class="fr">
+              <label>Désignation</label>
+              <select id="mod-correction-desig"></select>
+            </div>
+          </div>
+          <div class="form-cols2">
+            <div class="fr">
+              <label>Classe d'acier</label>
+              <select id="mod-correction-classe">
+                <option value="">— Classe —</option>
+                <option value="S235">S235</option>
+                <option value="S275">S275</option>
+                <option value="S355">S355</option>
+                <option value="S420">S420</option>
+                <option value="S460">S460</option>
+                <option value="S690">S690</option>
+              </select>
+            </div>
+            <div class="fr">
+              <label>Chantier d'origine</label>
+              <div id="mod-correction-origine-picker"></div>
+            </div>
+          </div>
+          <div class="form-cols2">
+            <div class="fr">
+              <label>Fournisseur</label>
+              <select id="mod-correction-fournisseur"></select>
+            </div>
+            <div class="fr">
+              <label>Réf. commande / BL</label>
+              <input type="text" id="mod-correction-ref" placeholder="CMD-2024-XXX">
+            </div>
+          </div>
+        </div>
+
         <!-- Modification principale ────────────────────────── -->
         <div class="form-cols2">
           <div class="fr">
@@ -3431,7 +3498,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260715g"></script>
+  <script src="../js/stock.js?v=20260715i"></script>
 
 </body>
 </html>
