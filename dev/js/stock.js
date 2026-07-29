@@ -232,6 +232,9 @@ const Stock = (() => {
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
   let _fournisseurs = [];  // { id, nom } depuis Supabase
+  let _consommables    = [];  // { id, categorie, reference, description, qte, seuil_alerte } depuis Supabase
+  let _consoFiltreCat  = '';  // catégorie active du filtre ('' = toutes)
+  let _consoRecherche  = '';
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis Supabase (Conv. 6)
@@ -363,6 +366,9 @@ const Stock = (() => {
         const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
         _fournisseurs = rows.filter(f => f.actif);
       } catch(e) {}
+      try {
+        _consommables = await window.SB.lire('consommables', { order: 'description' });
+      } catch(e) { _consommables = []; }
 
       // Charger les données du plan (positions + image) depuis Supabase
       await _chargerDonnesPlan();
@@ -3014,23 +3020,29 @@ ${hasT ? `
     const ttol = document.getElementById('toolbar-toles');
     const tarc = document.getElementById('toolbar-archivees');
     const tsyn = document.getElementById('toolbar-synthese');
-    if (tpro) tpro.style.display = onglet === 'profils'   ? '' : 'none';
-    if (ttol) ttol.style.display = onglet === 'toles'     ? '' : 'none';
-    if (tarc) tarc.style.display = onglet === 'archivees' ? '' : 'none';
-    if (tsyn) tsyn.style.display = onglet === 'synthese'  ? '' : 'none';
+    const tcon = document.getElementById('toolbar-consommables');
+    if (tpro) tpro.style.display = onglet === 'profils'      ? '' : 'none';
+    if (ttol) ttol.style.display = onglet === 'toles'        ? '' : 'none';
+    if (tarc) tarc.style.display = onglet === 'archivees'    ? '' : 'none';
+    if (tsyn) tsyn.style.display = onglet === 'synthese'     ? '' : 'none';
+    if (tcon) tcon.style.display = onglet === 'consommables' ? '' : 'none';
 
-    // Basculer entre tableau, zone synthèse et zone plan
+    // Basculer entre tableau, zone synthèse, zone plan et zone consommables
     const ztab  = document.getElementById('tableau-stock');
     const zpied = document.querySelector('.pied-tableau');
     const zsyn  = document.getElementById('zone-synthese');
     const zplan = document.getElementById('zone-plan');
+    const zcon  = document.getElementById('zone-consommables');
     const estSyn  = onglet === 'synthese';
     const estPlan = onglet === 'plan';
-    if (ztab)  ztab.style.display  = (estSyn || estPlan) ? 'none' : '';
-    if (zpied) zpied.style.display = (estSyn || estPlan) ? 'none' : '';
+    const estCon  = onglet === 'consommables';
+    if (ztab)  ztab.style.display  = (estSyn || estPlan || estCon) ? 'none' : '';
+    if (zpied) zpied.style.display = (estSyn || estPlan || estCon) ? 'none' : '';
     if (zsyn)  zsyn.style.display  = estSyn  ? '' : 'none';
     if (zplan) zplan.style.display = estPlan ? '' : 'none';
+    if (zcon)  zcon.style.display  = estCon  ? '' : 'none';
     if (estPlan) _rendrePlanStock();
+    if (estCon)  _rendreConsommables();
 
     requestAnimationFrame(_ajusterStickyTop);
 
@@ -3038,7 +3050,7 @@ ${hasT ? `
     const titres = {
       profils: 'Stock Profilés — LBF', toles: 'Stock Tôles — LBF',
       archivees: 'Stock Archivées — LBF', synthese: 'Synthèse Stock — LBF',
-      plan: 'Plan stock — LBF'
+      plan: 'Plan stock — LBF', consommables: 'Consommables — LBF'
     };
     document.title = titres[onglet] || 'Stock — LBF';
 
@@ -3071,6 +3083,12 @@ ${hasT ? `
       ['a-type','a-desig','a-epaisseur','a-type-tole','a-chantier','a-recherche'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
+    } else if (onglet === 'consommables') {
+      _consoFiltreCat = '';
+      _consoRecherche = '';
+      const el = document.getElementById('conso-recherche');
+      if (el) el.value = '';
+      document.querySelectorAll('.conso-cat-btn').forEach(b => b.classList.toggle('actif', b.dataset.consoCat === ''));
     }
   }
 
@@ -3567,6 +3585,8 @@ ${hasT ? `
     document.querySelectorAll('.sous-onglet').forEach(b => {
       b.addEventListener('click', () => _basculerOnglet(b.dataset.onglet));
     });
+
+    _attacherEvenementsConsommables();
 
     // Bannière admin : clic pour ouvrir le panneau modifications récentes
     document.getElementById('stock-alerte-attente')?.addEventListener('click', () => {
@@ -8807,6 +8827,154 @@ ${hasT ? `
 
     if (noPlan) noPlan.style.display = 'none';
     if (planImg) planImg.src = img || PLAN_PROVISOIRE_SRC;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     CONSOMMABLES (Plasma / Finitions / Soudure)
+     ────────────────────────────────────────────────────────────── */
+
+  function _consoCatClasse(cat) {
+    return 'cat-' + (cat || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function _rendreConsommables() {
+    const tbody = document.getElementById('conso-tbody');
+    if (!tbody) return;
+
+    const recherche = _consoRecherche.trim().toLowerCase();
+    const lignes = _consommables.filter(c => {
+      if (_consoFiltreCat && c.categorie !== _consoFiltreCat) return false;
+      if (recherche && !`${c.description} ${c.reference || ''}`.toLowerCase().includes(recherche)) return false;
+      return true;
+    }).sort((a, b) => (a.description || '').localeCompare(b.description || ''));
+
+    if (!lignes.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Aucun consommable</td></tr>`;
+    } else {
+      tbody.innerHTML = lignes.map(c => {
+        const bas = (c.seuil_alerte > 0 && c.qte <= c.seuil_alerte);
+        return `<tr data-conso-id="${c.id}" class="${bas ? 'conso-ligne-alerte' : ''}">
+          <td><span class="conso-badge-cat ${_consoCatClasse(c.categorie)}">${c.categorie || ""}</span></td>
+          <td>${c.reference || '—'}</td>
+          <td>${c.description || ''}</td>
+          <td><input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte"></td>
+          <td>${c.seuil_alerte ?? 0}</td>
+          <td style="text-align:center; white-space:nowrap">
+            <button class="conso-btn-icone" title="Modifier" data-conso-action="editer">✎</button>
+            <button class="conso-btn-icone" title="Supprimer" data-conso-action="supprimer">🗑</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    const nbBas = _consommables.filter(c => c.seuil_alerte > 0 && c.qte <= c.seuil_alerte).length;
+    const badge = document.getElementById('badge-conso-bas');
+    if (badge) {
+      badge.style.display = nbBas ? 'inline-flex' : 'none';
+      const nb = badge.querySelector('.conso-bas-nb');
+      if (nb) nb.textContent = nbBas;
+    }
+  }
+
+  function _ouvrirModaleConsommable(id = null) {
+    const m = document.getElementById('m-consommable');
+    if (!m) return;
+    const c = id ? _consommables.find(x => x.id === id) : null;
+
+    document.getElementById('conso-modale-titre').textContent = c ? 'Modifier le consommable' : 'Ajouter un consommable';
+    document.getElementById('conso-id').value          = c ? c.id : '';
+    document.getElementById('conso-categorie').value    = c ? c.categorie    : 'Plasma';
+    document.getElementById('conso-reference').value    = c ? (c.reference || '') : '';
+    document.getElementById('conso-description').value  = c ? c.description  : '';
+    document.getElementById('conso-qte').value          = c ? c.qte          : 0;
+    document.getElementById('conso-seuil').value        = c ? c.seuil_alerte : 0;
+
+    m.classList.add('open');
+  }
+
+  async function _enregistrerConsommable() {
+    const id          = document.getElementById('conso-id').value.trim();
+    const categorie   = document.getElementById('conso-categorie').value;
+    const reference   = document.getElementById('conso-reference').value.trim() || null;
+    const description = document.getElementById('conso-description').value.trim();
+    const qte         = parseInt(document.getElementById('conso-qte').value, 10) || 0;
+    const seuil       = parseInt(document.getElementById('conso-seuil').value, 10) || 0;
+
+    if (!description) { _notif('La description est obligatoire', 'erreur'); return; }
+
+    const data = { categorie, reference, description, qte, seuil_alerte: seuil };
+
+    try {
+      if (id) {
+        const maj = await window.SB.mettreAJour('consommables', id, data);
+        const i = _consommables.findIndex(c => c.id === id);
+        if (i !== -1) _consommables[i] = maj;
+      } else {
+        const cree = await window.SB.inserer('consommables', data);
+        _consommables.push(cree);
+      }
+      document.getElementById('m-consommable').classList.remove('open');
+      _rendreConsommables();
+      _notif('Consommable enregistré', 'ok');
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  async function _supprimerConsommable(id) {
+    if (!confirm('Supprimer définitivement ce consommable ?')) return;
+    try {
+      await window.SB.supprimer('consommables', id);
+      _consommables = _consommables.filter(c => c.id !== id);
+      _rendreConsommables();
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  async function _majQteConsommable(id, qte) {
+    try {
+      const maj = await window.SB.mettreAJour('consommables', id, { qte });
+      const i = _consommables.findIndex(c => c.id === id);
+      if (i !== -1) _consommables[i] = maj;
+      _rendreConsommables();
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  function _attacherEvenementsConsommables() {
+    document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
+
+    document.querySelectorAll('.conso-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _consoFiltreCat = btn.dataset.consoCat;
+        document.querySelectorAll('.conso-cat-btn').forEach(b => b.classList.toggle('actif', b === btn));
+        _rendreConsommables();
+      });
+    });
+
+    document.getElementById('conso-recherche')?.addEventListener('input', e => {
+      _consoRecherche = e.target.value;
+      _rendreConsommables();
+    });
+
+    const tbody = document.getElementById('conso-tbody');
+    if (tbody) {
+      tbody.addEventListener('change', e => {
+        const tr = e.target.closest('tr[data-conso-id]');
+        if (!tr || e.target.dataset.consoField !== 'qte') return;
+        _majQteConsommable(tr.dataset.consoId, parseInt(e.target.value, 10) || 0);
+      });
+      tbody.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-conso-action]');
+        if (!btn) return;
+        const tr = e.target.closest('tr[data-conso-id]');
+        if (!tr) return;
+        if (btn.dataset.consoAction === 'editer')    _ouvrirModaleConsommable(tr.dataset.consoId);
+        if (btn.dataset.consoAction === 'supprimer') _supprimerConsommable(tr.dataset.consoId);
+      });
+    }
   }
 
   async function _imprimerPlanStock() {
