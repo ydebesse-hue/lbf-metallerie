@@ -369,6 +369,9 @@ const Stock = (() => {
       try {
         _consommables = await window.SB.lire('consommables', { order: 'description' });
       } catch(e) { _consommables = []; }
+      try {
+        _consoMouvements = await window.SB.lire('consommables_mouvements', { order: 'date_mouvement' });
+      } catch(e) { _consoMouvements = []; }
 
       // Charger les données du plan (positions + image) depuis Supabase
       await _chargerDonnesPlan();
@@ -8833,8 +8836,22 @@ ${hasT ? `
      CONSOMMABLES (Plasma / Finitions / Soudure)
      ────────────────────────────────────────────────────────────── */
 
+  let _consoMouvements = [];  // { id, consommable_id, type, quantite, prix_unitaire, date_mouvement, commentaire }
+
   function _consoCatClasse(cat) {
     return 'cat-' + (cat || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function _consoMouvementsDe(id) {
+    return _consoMouvements
+      .filter(m => m.consommable_id === id)
+      .sort((a, b) => new Date(a.date_mouvement) - new Date(b.date_mouvement));
+  }
+
+  /** Dernier prix unitaire payé pour un consommable (dernier achat connu). */
+  function _consoDernierPrix(id) {
+    const achats = _consoMouvementsDe(id).filter(m => m.type === 'achat' && m.prix_unitaire != null);
+    return achats.length ? achats[achats.length - 1].prix_unitaire : null;
   }
 
   function _rendreConsommables() {
@@ -8849,17 +8866,22 @@ ${hasT ? `
     }).sort((a, b) => (a.description || '').localeCompare(b.description || ''));
 
     if (!lignes.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Aucun consommable</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Aucun consommable</td></tr>`;
     } else {
       tbody.innerHTML = lignes.map(c => {
         const bas = (c.seuil_alerte > 0 && c.qte <= c.seuil_alerte);
-        return `<tr data-conso-id="${c.id}" class="${bas ? 'conso-ligne-alerte' : ''}">
-          <td><span class="conso-badge-cat ${_consoCatClasse(c.categorie)}">${c.categorie || ""}</span></td>
-          <td>${c.reference || '—'}</td>
-          <td>${c.description || ''}</td>
+        const dernierPrix = _consoDernierPrix(c.id);
+        return `<tr data-conso-id="${_e(c.id)}" class="${bas ? 'conso-ligne-alerte' : ''}">
+          <td><span class="conso-badge-cat ${_consoCatClasse(c.categorie)}">${_e(c.categorie)}</span></td>
+          <td>${_e(c.reference || '—')}</td>
+          <td>${_e(c.description)}</td>
           <td><input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte"></td>
           <td>${c.seuil_alerte ?? 0}</td>
+          <td>${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
           <td style="text-align:center; white-space:nowrap">
+            <button class="conso-btn-icone" title="Enregistrer un achat" data-conso-action="achat">🛒</button>
+            <button class="conso-btn-icone" title="Enregistrer une consommation" data-conso-action="consommation">↓</button>
+            <button class="conso-btn-icone" title="Tendances" data-conso-action="tendances">📈</button>
             <button class="conso-btn-icone" title="Modifier" data-conso-action="editer">✎</button>
             <button class="conso-btn-icone" title="Supprimer" data-conso-action="supprimer">🗑</button>
           </td>
@@ -8889,6 +8911,13 @@ ${hasT ? `
     document.getElementById('conso-qte').value          = c ? c.qte          : 0;
     document.getElementById('conso-seuil').value        = c ? c.seuil_alerte : 0;
 
+    // La zone "1er achat" ne sert qu'à la création (le stock initial n'a pas
+    // encore d'historique de mouvement) — masquée en modification.
+    const zone1erAchat = document.getElementById('conso-zone-1er-achat');
+    if (zone1erAchat) zone1erAchat.style.display = c ? 'none' : '';
+    document.getElementById('conso-date-achat').value = c ? '' : new Date().toISOString().slice(0, 10);
+    document.getElementById('conso-prix-achat').value = '';
+
     m.classList.add('open');
   }
 
@@ -8905,6 +8934,7 @@ ${hasT ? `
     const data = { categorie, reference, description, qte, seuil_alerte: seuil };
 
     try {
+      let consoId = id;
       if (id) {
         const maj = await window.SB.mettreAJour('consommables', id, data);
         const i = _consommables.findIndex(c => c.id === id);
@@ -8912,6 +8942,18 @@ ${hasT ? `
       } else {
         const cree = await window.SB.inserer('consommables', data);
         _consommables.push(cree);
+        consoId = cree.id;
+
+        // Trace le stock initial comme premier achat si un prix a été renseigné
+        const dateAchat = document.getElementById('conso-date-achat').value;
+        const prixAchat = parseFloat(document.getElementById('conso-prix-achat').value);
+        if (qte > 0 && !isNaN(prixAchat)) {
+          const mvt = await window.SB.inserer('consommables_mouvements', {
+            consommable_id: consoId, type: 'achat', quantite: qte,
+            prix_unitaire: prixAchat, date_mouvement: dateAchat || new Date().toISOString().slice(0, 10),
+          });
+          _consoMouvements.push(mvt);
+        }
       }
       document.getElementById('m-consommable').classList.remove('open');
       _rendreConsommables();
@@ -8922,10 +8964,11 @@ ${hasT ? `
   }
 
   async function _supprimerConsommable(id) {
-    if (!confirm('Supprimer définitivement ce consommable ?')) return;
+    if (!confirm('Supprimer définitivement ce consommable ? (son historique d\'achats/consommations sera aussi supprimé)')) return;
     try {
       await window.SB.supprimer('consommables', id);
       _consommables = _consommables.filter(c => c.id !== id);
+      _consoMouvements = _consoMouvements.filter(m => m.consommable_id !== id);
       _rendreConsommables();
     } catch (e) {
       _notif('Erreur : ' + e.message, 'erreur');
@@ -8943,8 +8986,156 @@ ${hasT ? `
     }
   }
 
+  function _ouvrirModaleAchat(id) {
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('ca-conso-id').value = id;
+    document.getElementById('ca-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('ca-qte').value = 1;
+    document.getElementById('ca-prix').value = '';
+    document.getElementById('ca-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('ca-commentaire').value = '';
+    document.getElementById('m-conso-achat').classList.add('open');
+  }
+
+  async function _enregistrerAchat() {
+    const id  = document.getElementById('ca-conso-id').value;
+    const qte = parseInt(document.getElementById('ca-qte').value, 10);
+    const prix = parseFloat(document.getElementById('ca-prix').value);
+    const date = document.getElementById('ca-date').value || new Date().toISOString().slice(0, 10);
+    const commentaire = document.getElementById('ca-commentaire').value.trim() || null;
+
+    if (!qte || qte <= 0)   { _notif('Quantité invalide', 'erreur'); return; }
+    if (isNaN(prix) || prix < 0) { _notif('Prix unitaire invalide', 'erreur'); return; }
+
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+
+    try {
+      const mvt = await window.SB.inserer('consommables_mouvements', {
+        consommable_id: id, type: 'achat', quantite: qte, prix_unitaire: prix,
+        date_mouvement: date, commentaire,
+      });
+      _consoMouvements.push(mvt);
+
+      const maj = await window.SB.mettreAJour('consommables', id, { qte: (c.qte || 0) + qte });
+      const i = _consommables.findIndex(x => x.id === id);
+      if (i !== -1) _consommables[i] = maj;
+
+      document.getElementById('m-conso-achat').classList.remove('open');
+      _rendreConsommables();
+      _notif('Achat enregistré', 'ok');
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  function _ouvrirModaleConsommation(id) {
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('cc-conso-id').value = id;
+    document.getElementById('cc-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('cc-qte').value = 1;
+    document.getElementById('cc-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('cc-commentaire').value = '';
+    document.getElementById('m-conso-consommation').classList.add('open');
+  }
+
+  async function _enregistrerConsommation() {
+    const id  = document.getElementById('cc-conso-id').value;
+    const qte = parseInt(document.getElementById('cc-qte').value, 10);
+    const date = document.getElementById('cc-date').value || new Date().toISOString().slice(0, 10);
+    const commentaire = document.getElementById('cc-commentaire').value.trim() || null;
+
+    if (!qte || qte <= 0) { _notif('Quantité invalide', 'erreur'); return; }
+
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+
+    try {
+      const mvt = await window.SB.inserer('consommables_mouvements', {
+        consommable_id: id, type: 'consommation', quantite: qte,
+        date_mouvement: date, commentaire,
+      });
+      _consoMouvements.push(mvt);
+
+      const maj = await window.SB.mettreAJour('consommables', id, { qte: Math.max(0, (c.qte || 0) - qte) });
+      const i = _consommables.findIndex(x => x.id === id);
+      if (i !== -1) _consommables[i] = maj;
+
+      document.getElementById('m-conso-consommation').classList.remove('open');
+      _rendreConsommables();
+      _notif('Consommation enregistrée', 'ok');
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  function _ouvrirModaleTendances(id) {
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+    const mouvements = _consoMouvementsDe(id);
+    const achats = mouvements.filter(m => m.type === 'achat');
+    const consos = mouvements.filter(m => m.type === 'consommation');
+
+    document.getElementById('ct-titre').textContent = `Tendances — ${c.description}`;
+
+    // Prix : dernier, moyen, fréquence d'achat moyenne
+    const prixConnus = achats.filter(m => m.prix_unitaire != null);
+    const dernierPrix = prixConnus.length ? prixConnus[prixConnus.length - 1].prix_unitaire : null;
+    const prixMoyen = prixConnus.length ? prixConnus.reduce((s, m) => s + Number(m.prix_unitaire), 0) / prixConnus.length : null;
+    let freqAchatJours = null;
+    if (achats.length > 1) {
+      const premiere = new Date(achats[0].date_mouvement);
+      const derniere = new Date(achats[achats.length - 1].date_mouvement);
+      freqAchatJours = Math.round((derniere - premiere) / 86400000 / (achats.length - 1));
+    }
+
+    // Consommation : total, moyenne mensuelle (sur la période couverte)
+    const totalConso = consos.reduce((s, m) => s + Number(m.quantite), 0);
+    let consoMoisMoyenne = null;
+    if (consos.length) {
+      const premiere = new Date(consos[0].date_mouvement);
+      const derniere = new Date(consos[consos.length - 1].date_mouvement);
+      const moisEcoules = Math.max(1, (derniere - premiere) / 86400000 / 30);
+      consoMoisMoyenne = (totalConso / moisEcoules).toFixed(1);
+    }
+
+    const carte = (label, val) => `<div class="ct-carte"><div class="ct-label">${label}</div><div class="ct-val">${val}</div></div>`;
+    document.getElementById('ct-stats').innerHTML = [
+      carte('Stock actuel', c.qte ?? 0),
+      carte('Dernier prix payé', dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'),
+      carte('Prix moyen', prixMoyen != null ? prixMoyen.toFixed(2) + ' €' : '—'),
+      carte('Fréquence d\'achat', freqAchatJours != null ? freqAchatJours + ' j' : '—'),
+      carte('Conso. totale', totalConso),
+      carte('Conso. moyenne / mois', consoMoisMoyenne != null ? consoMoisMoyenne : '—'),
+    ].join('');
+
+    if (!mouvements.length) {
+      document.getElementById('ct-historique').innerHTML = '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px">Aucun mouvement enregistré</p>';
+    } else {
+      const lignes = [...mouvements].reverse().map(m => `<tr>
+        <td>${new Date(m.date_mouvement).toLocaleDateString('fr-FR')}</td>
+        <td class="ct-type-${m.type}">${m.type === 'achat' ? 'Achat' : 'Consommation'}</td>
+        <td>${m.quantite}</td>
+        <td>${m.prix_unitaire != null ? Number(m.prix_unitaire).toFixed(2) + ' €' : '—'}</td>
+        <td>${_e(m.commentaire || '')}</td>
+      </tr>`).join('');
+      document.getElementById('ct-historique').innerHTML = `<table>
+        <thead><tr><th>Date</th><th>Type</th><th>Qté</th><th>Prix unit.</th><th>Commentaire</th></tr></thead>
+        <tbody>${lignes}</tbody>
+      </table>`;
+    }
+
+    document.getElementById('m-conso-tendances').classList.add('open');
+  }
+
   function _attacherEvenementsConsommables() {
     document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
+
+    document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
+    document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
+    document.querySelector('#m-conso-consommation .btn-soumettre-consommation')?.addEventListener('click', _enregistrerConsommation);
 
     document.querySelectorAll('.conso-cat-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -8971,8 +9162,12 @@ ${hasT ? `
         if (!btn) return;
         const tr = e.target.closest('tr[data-conso-id]');
         if (!tr) return;
-        if (btn.dataset.consoAction === 'editer')    _ouvrirModaleConsommable(tr.dataset.consoId);
-        if (btn.dataset.consoAction === 'supprimer') _supprimerConsommable(tr.dataset.consoId);
+        const id = tr.dataset.consoId;
+        if (btn.dataset.consoAction === 'editer')       _ouvrirModaleConsommable(id);
+        if (btn.dataset.consoAction === 'supprimer')    _supprimerConsommable(id);
+        if (btn.dataset.consoAction === 'achat')        _ouvrirModaleAchat(id);
+        if (btn.dataset.consoAction === 'consommation') _ouvrirModaleConsommation(id);
+        if (btn.dataset.consoAction === 'tendances')    _ouvrirModaleTendances(id);
       });
     }
   }
