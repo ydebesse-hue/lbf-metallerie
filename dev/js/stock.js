@@ -8837,6 +8837,8 @@ ${hasT ? `
      ────────────────────────────────────────────────────────────── */
 
   let _consoMouvements = [];  // { id, consommable_id, type, quantite, prix_unitaire, date_mouvement, commentaire }
+  let _consoTriCol = 'description';
+  let _consoTriDir = 'asc';
 
   function _consoCatClasse(cat) {
     return 'cat-' + (cat || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -8854,30 +8856,62 @@ ${hasT ? `
     return achats.length ? achats[achats.length - 1].prix_unitaire : null;
   }
 
+  const _CONSO_COLONNES = [
+    { col: 'categorie',    label: 'Catégorie',    num: false },
+    { col: 'description',  label: 'Description',  num: false },
+    { col: 'reference',    label: 'Référence',    num: false },
+    { col: 'qte',          label: 'Qté',          num: true  },
+    { col: 'seuil_alerte', label: 'Seuil alerte', num: true  },
+    { col: 'dernier_prix', label: 'Dernier prix', num: true  },
+  ];
+
+  function _consoValeurTri(c, col) {
+    if (col === 'dernier_prix') return _consoDernierPrix(c.id) ?? -1;
+    if (col === 'qte' || col === 'seuil_alerte') return c[col] ?? 0;
+    return (c[col] || '').toString().toLowerCase();
+  }
+
   function _rendreConsommables() {
-    const tbody = document.getElementById('conso-tbody');
-    if (!tbody) return;
+    const wrap = document.getElementById('conso-tableau-wrap');
+    if (!wrap) return;
 
     const recherche = _consoRecherche.trim().toLowerCase();
     const lignes = _consommables.filter(c => {
       if (_consoFiltreCat && c.categorie !== _consoFiltreCat) return false;
       if (recherche && !`${c.description} ${c.reference || ''}`.toLowerCase().includes(recherche)) return false;
       return true;
-    }).sort((a, b) => (a.description || '').localeCompare(b.description || ''));
+    }).sort((a, b) => {
+      const va = _consoValeurTri(a, _consoTriCol);
+      const vb = _consoValeurTri(b, _consoTriCol);
+      if (va < vb) return _consoTriDir === 'asc' ? -1 : 1;
+      if (va > vb) return _consoTriDir === 'asc' ?  1 : -1;
+      return 0;
+    });
 
+    const ind = col => {
+      if (_consoTriCol !== col) return '<span class="tri-ind">↕</span>';
+      return `<span class="tri-ind">${_consoTriDir === 'asc' ? '↑' : '↓'}</span>`;
+    };
+
+    const thead = `<thead><tr>
+      ${_CONSO_COLONNES.map(c => `<th data-conso-tri="${c.col}"${c.num ? ' class="conso-num"' : ''}>${c.label} ${ind(c.col)}</th>`).join('')}
+      <th></th>
+    </tr></thead>`;
+
+    let tbodyHtml;
     if (!lignes.length) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Aucun consommable</td></tr>`;
+      tbodyHtml = `<tbody><tr><td colspan="7" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Aucun consommable</td></tr></tbody>`;
     } else {
-      tbody.innerHTML = lignes.map(c => {
+      tbodyHtml = '<tbody>' + lignes.map(c => {
         const bas = (c.seuil_alerte > 0 && c.qte <= c.seuil_alerte);
         const dernierPrix = _consoDernierPrix(c.id);
         return `<tr data-conso-id="${_e(c.id)}" class="${bas ? 'conso-ligne-alerte' : ''}">
           <td><span class="conso-badge-cat ${_consoCatClasse(c.categorie)}">${_e(c.categorie)}</span></td>
-          <td>${_e(c.reference || '—')}</td>
           <td>${_e(c.description)}</td>
-          <td><input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte"></td>
-          <td>${c.seuil_alerte ?? 0}</td>
-          <td>${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
+          <td>${_e(c.reference || '—')}</td>
+          <td class="conso-num"><input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte"></td>
+          <td class="conso-num">${c.seuil_alerte ?? 0}</td>
+          <td class="conso-num">${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
           <td style="text-align:center; white-space:nowrap">
             <button class="conso-btn-icone" title="Enregistrer un achat" data-conso-action="achat">🛒</button>
             <button class="conso-btn-icone" title="Enregistrer une consommation" data-conso-action="consommation">↓</button>
@@ -8886,8 +8920,23 @@ ${hasT ? `
             <button class="conso-btn-icone" title="Supprimer" data-conso-action="supprimer">🗑</button>
           </td>
         </tr>`;
-      }).join('');
+      }).join('') + '</tbody>';
     }
+
+    wrap.innerHTML = `<table class="tableau" id="conso-tableau">${thead}${tbodyHtml}</table>`;
+
+    wrap.querySelectorAll('th[data-conso-tri]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.consoTri;
+        if (_consoTriCol === col) {
+          _consoTriDir = _consoTriDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          _consoTriCol = col;
+          _consoTriDir = 'asc';
+        }
+        _rendreConsommables();
+      });
+    });
 
     const nbBas = _consommables.filter(c => c.seuil_alerte > 0 && c.qte <= c.seuil_alerte).length;
     const badge = document.getElementById('badge-conso-bas');
@@ -9150,14 +9199,14 @@ ${hasT ? `
       _rendreConsommables();
     });
 
-    const tbody = document.getElementById('conso-tbody');
-    if (tbody) {
-      tbody.addEventListener('change', e => {
+    const wrap = document.getElementById('conso-tableau-wrap');
+    if (wrap) {
+      wrap.addEventListener('change', e => {
         const tr = e.target.closest('tr[data-conso-id]');
         if (!tr || e.target.dataset.consoField !== 'qte') return;
         _majQteConsommable(tr.dataset.consoId, parseInt(e.target.value, 10) || 0);
       });
-      tbody.addEventListener('click', e => {
+      wrap.addEventListener('click', e => {
         const btn = e.target.closest('button[data-conso-action]');
         if (!btn) return;
         const tr = e.target.closest('tr[data-conso-id]');

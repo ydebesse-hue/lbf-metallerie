@@ -720,8 +720,9 @@
     .conso-cat-btn:hover { background:#f5f5f5; }
     .conso-cat-btn.actif { background:var(--rouge); border-color:var(--rouge); color:#fff; }
     #conso-tableau td, #conso-tableau th { text-align:left; }
-    #conso-tableau td:nth-child(4), #conso-tableau td:nth-child(5), #conso-tableau td:nth-child(6),
-    #conso-tableau th:nth-child(4), #conso-tableau th:nth-child(5), #conso-tableau th:nth-child(6) { text-align:right; }
+    #conso-tableau td.conso-num, #conso-tableau th.conso-num { text-align:right; }
+    #conso-tableau th[data-conso-tri] { cursor:pointer; user-select:none; }
+    #conso-tableau th[data-conso-tri]:hover { background:#3a3a42; }
     #conso-tableau input.conso-inline { width:64px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; text-align:right; font-size:12px; font-family:inherit; }
     tr.conso-ligne-alerte td { background:#fdecea; }
     .conso-badge-cat { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
@@ -2160,22 +2161,9 @@
       </div>
     </div>
     <div id="zone-consommables" style="display:none">
-      <table class="tableau" id="conso-tableau">
-        <thead>
-          <tr>
-            <th>Catégorie</th>
-            <th>Référence</th>
-            <th>Description</th>
-            <th>Qté</th>
-            <th>Seuil alerte</th>
-            <th>Dernier prix</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="conso-tbody">
-          <tr><td colspan="7" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Chargement…</td></tr>
-        </tbody>
-      </table>
+      <div id="conso-tableau-wrap">
+        <div style="text-align:center; color:#aaa; font-style:italic; padding:30px">Chargement…</div>
+      </div>
     </div>
   </div>
 
@@ -3697,7 +3685,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260729b"></script>
+  <script src="../js/stock.js?v=20260729c"></script>
 
 </body>
 </html>
