@@ -715,6 +715,21 @@
     .syn-reappro { background:#fff5f5; border:1px solid #e74c3c; border-radius:4px; padding:10px 14px; margin-bottom:16px; }
     .syn-reappro-titre { color:#c0392b; font-weight:bold; font-size:13px; margin-bottom:6px; }
     tr.ligne-stock-bas td { background: #fff0f0; border-bottom-color: #fcc; }
+    .conso-filtre-cat { display:flex; gap:4px; }
+    .conso-cat-btn { background:#fff; border:1px solid var(--gris-bord); border-radius:14px; padding:4px 12px; font-size:12px; cursor:pointer; color:#555; }
+    .conso-cat-btn:hover { background:#f5f5f5; }
+    .conso-cat-btn.actif { background:var(--rouge); border-color:var(--rouge); color:#fff; }
+    #conso-tableau td, #conso-tableau th { text-align:left; }
+    #conso-tableau td:nth-child(4), #conso-tableau td:nth-child(5),
+    #conso-tableau th:nth-child(4), #conso-tableau th:nth-child(5) { text-align:right; }
+    #conso-tableau input.conso-inline { width:64px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; text-align:right; font-size:12px; font-family:inherit; }
+    tr.conso-ligne-alerte td { background:#fdecea; }
+    .conso-badge-cat { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+    .conso-badge-cat.cat-plasma    { background:#e3f2fd; color:#1565c0; }
+    .conso-badge-cat.cat-finitions { background:#f3e5f5; color:#7b1fa2; }
+    .conso-badge-cat.cat-soudure   { background:#fff3e0; color:#e65100; }
+    .conso-btn-icone { background:none; border:none; cursor:pointer; font-size:14px; padding:2px 5px; color:#555; }
+    .conso-btn-icone:hover { color:var(--rouge); }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
     tr.ligne-stock-bas td:first-child { border-left: 3px solid #e74c3c; }
     tr.ligne-chute td { background: #e8f4f8; border-bottom-color: #aed6f1; }
@@ -1992,6 +2007,7 @@
     <button class="sous-onglet"       data-onglet="profils">Profilés</button>
     <button class="sous-onglet"       data-onglet="toles">Tôles</button>
     <button class="sous-onglet"       data-onglet="plan">Plan stock</button>
+    <button class="sous-onglet"       data-onglet="consommables">Consommables</button>
     <button class="sous-onglet"       data-onglet="archivees" data-require="can_validate">Archivées</button>
   </div>
 
@@ -2038,6 +2054,22 @@
     </div>
     <button id="btn-imprimer-toles" class="btn-action btn-gris" title="Imprimer / PDF">🖨</button>
     <button id="btn-exporter-toles" class="btn-action btn-gris" title="Exporter en CSV (Excel)">⬇<span class="csv-txt"> CSV</span></button>
+  </div>
+
+  <!-- ── TOOLBAR CONSOMMABLES ─────────────────────────────────── -->
+  <div class="toolbar" id="toolbar-consommables" style="display:none">
+    <button id="btn-ajout-consommable" class="btn-action btn-rouge" data-require="can_add">+ Consommable</button>
+    <div class="toolbar-sep"></div>
+    <div class="conso-filtre-cat">
+      <button class="conso-cat-btn actif" data-conso-cat="">Tous</button>
+      <button class="conso-cat-btn" data-conso-cat="Plasma">Plasma</button>
+      <button class="conso-cat-btn" data-conso-cat="Finitions">Finitions</button>
+      <button class="conso-cat-btn" data-conso-cat="Soudure">Soudure</button>
+    </div>
+    <input id="conso-recherche" class="input-recherche" type="text" placeholder="🔍 Rechercher…" autocomplete="off">
+    <div id="badge-conso-bas" class="badge-stock-bas" style="display:none">
+      ⚠ <span class="conso-bas-nb">0</span> sous le seuil d'alerte
+    </div>
   </div>
 
   <!-- ── TOOLBAR SYNTHÈSE ─────────────────────────────────────── -->
@@ -2117,6 +2149,23 @@
       <div id="plan-stock-wrap" style="display:block; width:100%; max-width:297mm; margin:0 auto; border:1px solid var(--gris-bord); border-radius:4px; background:#f7f7f7; line-height:0">
         <img id="plan-stock-img" style="display:block; width:100%; height:auto; border-radius:4px" alt="Plan de stockage">
       </div>
+    </div>
+    <div id="zone-consommables" style="display:none">
+      <table class="tableau" id="conso-tableau">
+        <thead>
+          <tr>
+            <th>Catégorie</th>
+            <th>Référence</th>
+            <th>Description</th>
+            <th>Qté</th>
+            <th>Seuil alerte</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="conso-tbody">
+          <tr><td colspan="6" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Chargement…</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -2532,6 +2581,52 @@
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-ajout-tole').classList.remove('open')">Annuler</button>
         <button class="btn-modale btn-modale-rouge btn-soumettre">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — AJOUT / MODIFICATION CONSOMMABLE
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-consommable" class="modale-bg" role="dialog" aria-modal="true" aria-label="Consommable">
+    <div class="modale">
+      <div class="modale-titre" id="conso-modale-titre">Ajouter un consommable</div>
+      <input type="hidden" id="conso-id">
+
+      <div class="form-cols2">
+        <div class="fr">
+          <label>Catégorie <span style="color:var(--rouge)">*</span></label>
+          <select id="conso-categorie">
+            <option value="Plasma">Plasma</option>
+            <option value="Finitions">Finitions</option>
+            <option value="Soudure">Soudure</option>
+          </select>
+        </div>
+        <div class="fr">
+          <label>Référence</label>
+          <input type="text" id="conso-reference" placeholder="ex: BUS-45-P70">
+        </div>
+      </div>
+
+      <div class="fr">
+        <label>Description <span style="color:var(--rouge)">*</span></label>
+        <input type="text" id="conso-description" placeholder="ex: Buse plasma 45A">
+      </div>
+
+      <div class="form-cols2">
+        <div class="fr">
+          <label>Quantité en stock <span style="color:var(--rouge)">*</span></label>
+          <input type="number" id="conso-qte" min="0" step="1" value="0">
+        </div>
+        <div class="fr">
+          <label>Seuil d'alerte</label>
+          <input type="number" id="conso-seuil" min="0" step="1" value="0">
+        </div>
+      </div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-consommable').classList.remove('open')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge" onclick="_enregistrerConsommable()">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -3498,7 +3593,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260715i"></script>
+  <script src="../js/stock.js?v=20260729a"></script>
 
 </body>
 </html>
