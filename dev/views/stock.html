@@ -719,12 +719,38 @@
     .conso-cat-btn { background:#fff; border:1px solid var(--gris-bord); border-radius:14px; padding:4px 12px; font-size:12px; cursor:pointer; color:#555; }
     .conso-cat-btn:hover { background:#f5f5f5; }
     .conso-cat-btn.actif { background:var(--rouge); border-color:var(--rouge); color:#fff; }
-    #conso-tableau td, #conso-tableau th { text-align:left; }
-    #conso-tableau td.conso-num, #conso-tableau th.conso-num { text-align:right; }
-    #conso-tableau th[data-conso-tri] { cursor:pointer; user-select:none; }
-    #conso-tableau th[data-conso-tri]:hover { background:#3a3a42; }
-    #conso-tableau input.conso-inline { width:64px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; text-align:right; font-size:12px; font-family:inherit; }
-    tr.conso-ligne-alerte td { background:#fdecea; }
+    #conso-tableau-wrap table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid var(--gris-clair);
+      font-size: 13px;
+    }
+    #conso-tableau-wrap thead th {
+      background: var(--noir);
+      color: white;
+      font-family: Impact, sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 9px 10px;
+      text-align: left;
+      white-space: nowrap;
+      user-select: none;
+      cursor: default;
+      transition: background .15s;
+    }
+    #conso-tableau-wrap thead th[data-conso-tri] { cursor: pointer; }
+    #conso-tableau-wrap thead th[data-conso-tri]:hover { background: #3a3a42; }
+    #conso-tableau-wrap thead th.conso-tri-actif { background: #111116; }
+    #conso-tableau-wrap td.conso-num, #conso-tableau-wrap th.conso-num { text-align: right; }
+    #conso-tableau-wrap tbody tr       { border-bottom: 1px solid #eaeaea; transition: background .1s; }
+    #conso-tableau-wrap tbody tr:hover { background: #fafafa; }
+    #conso-tableau-wrap tbody td       { padding: 8px 10px; vertical-align: middle; }
+    #conso-tableau-wrap tr.conso-ligne-alerte       { background: #fdecea !important; }
+    #conso-tableau-wrap tr.conso-ligne-alerte:hover { background: #fbdad6 !important; }
+    #conso-tableau-wrap .vide { text-align: center; color: #aaa; padding: 30px !important; font-style: italic; }
+    #conso-tableau-wrap input.conso-inline { width:64px; padding:3px 5px; border:1px solid #ccc; border-radius:3px; text-align:right; font-size:12px; font-family:inherit; }
     .conso-badge-cat { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
     .conso-badge-cat.cat-plasma    { background:#e3f2fd; color:#1565c0; }
     .conso-badge-cat.cat-finitions { background:#f3e5f5; color:#7b1fa2; }
@@ -3685,7 +3711,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260729c"></script>
+  <script src="../js/stock.js?v=20260729d"></script>
 
 </body>
 </html>

@@ -8889,18 +8889,21 @@ ${hasT ? `
     });
 
     const ind = col => {
-      if (_consoTriCol !== col) return '<span class="tri-ind">↕</span>';
-      return `<span class="tri-ind">${_consoTriDir === 'asc' ? '↑' : '↓'}</span>`;
+      if (_consoTriCol !== col) return '<span class="tri-ind">⇅</span>';
+      return `<span class="tri-ind">${_consoTriDir === 'asc' ? '▲' : '▼'}</span>`;
     };
 
     const thead = `<thead><tr>
-      ${_CONSO_COLONNES.map(c => `<th data-conso-tri="${c.col}"${c.num ? ' class="conso-num"' : ''}>${c.label} ${ind(c.col)}</th>`).join('')}
+      ${_CONSO_COLONNES.map(c => {
+        const actif = _consoTriCol === c.col;
+        return `<th data-conso-tri="${c.col}" class="${c.num ? 'conso-num' : ''}${actif ? ' conso-tri-actif' : ''}"><span class="th-label">${c.label} ${ind(c.col)}</span></th>`;
+      }).join('')}
       <th></th>
     </tr></thead>`;
 
     let tbodyHtml;
     if (!lignes.length) {
-      tbodyHtml = `<tbody><tr><td colspan="7" style="text-align:center; color:#aaa; font-style:italic; padding:30px">Aucun consommable</td></tr></tbody>`;
+      tbodyHtml = `<tbody><tr><td colspan="7" class="vide">Aucun consommable</td></tr></tbody>`;
     } else {
       tbodyHtml = '<tbody>' + lignes.map(c => {
         const bas = (c.seuil_alerte > 0 && c.qte <= c.seuil_alerte);
