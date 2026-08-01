@@ -9059,9 +9059,23 @@ ${hasT ? `
     }
   }
 
+  /** Alimente les datalists Description/Référence à partir des consommables existants. */
+  function _majDatalistsConsommables() {
+    const dlDesc = document.getElementById('dl-conso-description');
+    const dlRef  = document.getElementById('dl-conso-reference');
+    if (!dlDesc || !dlRef) return;
+
+    const descriptions = [...new Set(_consommables.map(c => c.description).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+    const references   = [...new Set(_consommables.map(c => c.reference).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+
+    dlDesc.innerHTML = descriptions.map(d => `<option value="${_e(d)}">`).join('');
+    dlRef.innerHTML  = references.map(r => `<option value="${_e(r)}">`).join('');
+  }
+
   function _ouvrirModaleConsommable(id = null) {
     const m = document.getElementById('m-consommable');
     if (!m) return;
+    _majDatalistsConsommables();
     const c = id ? _consommables.find(x => x.id === id) : null;
 
     document.getElementById('conso-modale-titre').textContent = c ? 'Modifier le consommable' : 'Ajouter un consommable';
