@@ -8857,12 +8857,12 @@ ${hasT ? `
   }
 
   const _CONSO_COLONNES = [
-    { col: 'categorie',    label: 'Catégorie',    num: false },
-    { col: 'description',  label: 'Description',  num: false },
-    { col: 'reference',    label: 'Référence',    num: false },
-    { col: 'qte',          label: 'Qté',          num: true  },
-    { col: 'seuil_alerte', label: 'Seuil alerte', num: true  },
-    { col: 'dernier_prix', label: 'Dernier prix', num: true  },
+    { col: 'categorie',    label: 'Catégorie',    num: false, cls: 'conso-col-cat'   },
+    { col: 'description',  label: 'Description',  num: false, cls: 'conso-col-desc'  },
+    { col: 'reference',    label: 'Référence',    num: false, cls: 'conso-col-ref'   },
+    { col: 'qte',          label: 'Qté',          num: true,  cls: 'conso-col-qte'   },
+    { col: 'seuil_alerte', label: 'Seuil alerte', num: true,  cls: 'conso-col-seuil' },
+    { col: 'dernier_prix', label: 'Dernier prix', num: true,  cls: 'conso-col-prix'  },
   ];
 
   function _consoValeurTri(c, col) {
@@ -9005,9 +9005,9 @@ ${hasT ? `
     const thead = `<thead><tr>
       ${_CONSO_COLONNES.map(c => {
         const actif = _consoTriCol === c.col;
-        return `<th data-conso-tri="${c.col}" class="${c.num ? 'conso-num' : ''}${actif ? ' conso-tri-actif' : ''}"><span class="th-label">${c.label} ${ind(c.col)}</span></th>`;
+        return `<th data-conso-tri="${c.col}" class="${c.cls}${c.num ? ' conso-num' : ''}${actif ? ' conso-tri-actif' : ''}"><span class="th-label">${c.label} ${ind(c.col)}</span></th>`;
       }).join('')}
-      <th></th>
+      <th class="conso-col-actions"></th>
     </tr></thead>`;
 
     let tbodyHtml;
@@ -9019,12 +9019,18 @@ ${hasT ? `
         const dernierPrix = _consoDernierPrix(c.id);
         return `<tr data-conso-id="${_e(c.id)}" class="${bas ? 'conso-ligne-alerte' : ''}">
           <td><span class="conso-badge-cat ${_consoCatClasse(c.categorie)}">${_e(c.categorie)}</span></td>
-          <td>${_e(c.description)}</td>
-          <td>${_e(c.reference || '—')}</td>
-          <td class="conso-num"><input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte"></td>
-          <td class="conso-num">${c.seuil_alerte ?? 0}</td>
+          <td class="conso-col-desc">
+            ${_e(c.description)}
+            <div class="conso-sub-mobile">${_e(c.reference || '')}</div>
+          </td>
+          <td class="conso-col-ref">${_e(c.reference || '—')}</td>
+          <td class="conso-num conso-col-qte">
+            <input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte">
+            <div class="conso-sub-mobile">seuil ${c.seuil_alerte ?? 0}</div>
+          </td>
+          <td class="conso-num conso-col-seuil">${c.seuil_alerte ?? 0}</td>
           <td class="conso-num">${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
-          <td style="text-align:center; white-space:nowrap">
+          <td class="conso-col-actions" style="text-align:center; white-space:nowrap">
             <button class="conso-btn-icone" title="Enregistrer un achat" data-conso-action="achat">🛒</button>
             <button class="conso-btn-icone" title="Enregistrer une consommation" data-conso-action="consommation">↓</button>
             <button class="conso-btn-icone" title="Tendances" data-conso-action="tendances">📈</button>

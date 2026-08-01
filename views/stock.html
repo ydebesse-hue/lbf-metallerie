@@ -766,6 +766,7 @@
     #ct-historique td { padding:4px 8px; border-bottom:1px solid #eee; }
     #ct-historique .ct-type-achat { color:#1565c0; font-weight:600; }
     #ct-historique .ct-type-consommation { color:#e65100; font-weight:600; }
+    .conso-sub-mobile { display:none; }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
     tr.ligne-stock-bas td:first-child { border-left: 3px solid #e74c3c; }
     tr.ligne-chute td { background: #e8f4f8; border-bottom-color: #aed6f1; }
@@ -1774,6 +1775,20 @@
 
       .modale-footer { flex-wrap: wrap; justify-content: flex-start; gap: 6px; }
       .modale-footer .btn-modale { flex: 1 1 calc(50% - 3px); text-align: center; }
+
+      /* ─ Consommables : condensé pour limiter le scroll horizontal ─ */
+      #conso-tableau-wrap table { font-size: 11px; }
+      #conso-tableau-wrap thead th { padding: 6px 5px; font-size: 10px; }
+      #conso-tableau-wrap tbody td { padding: 5px; }
+      .conso-col-ref, .conso-col-seuil { display: none; }
+      .conso-sub-mobile { display: block; font-size: 10px; color: #888; white-space: nowrap; }
+      .conso-badge-cat { padding: 1px 5px; font-size: 10px; }
+      #conso-tableau-wrap input.conso-inline { width: 42px; padding: 2px 3px; font-size: 11px; }
+      .conso-col-actions, td.conso-col-actions { padding-left: 2px !important; padding-right: 2px !important; }
+      .conso-btn-icone { font-size: 13px; padding: 1px 3px; }
+      .conso-filtre-cat { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap; }
+      .conso-filtre-cat::-webkit-scrollbar { display: none; }
+      .conso-cat-btn { flex-shrink: 0; }
     }
 
     /* ── SYNTHÈSE ──────────────────────────────────────────────── */
@@ -3716,7 +3731,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260729f"></script>
+  <script src="../js/stock.js?v=20260729g"></script>
 
 </body>
 </html>
