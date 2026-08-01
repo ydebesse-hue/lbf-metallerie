@@ -8871,12 +8871,10 @@ ${hasT ? `
     return (c[col] || '').toString().toLowerCase();
   }
 
-  function _rendreConsommables() {
-    const wrap = document.getElementById('conso-tableau-wrap');
-    if (!wrap) return;
-
+  /** Liste des consommables filtrés (catégorie + recherche) et triés selon l'état courant. */
+  function _consommablesFiltresTries() {
     const recherche = _consoRecherche.trim().toLowerCase();
-    const lignes = _consommables.filter(c => {
+    return _consommables.filter(c => {
       if (_consoFiltreCat && c.categorie !== _consoFiltreCat) return false;
       if (recherche && !`${c.description} ${c.reference || ''}`.toLowerCase().includes(recherche)) return false;
       return true;
@@ -8887,6 +8885,117 @@ ${hasT ? `
       if (va > vb) return _consoTriDir === 'asc' ?  1 : -1;
       return 0;
     });
+  }
+
+  function _exporterConsommablesCSV() {
+    const SEP = ';';
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return (s.includes(SEP) || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    };
+
+    const champs = ['categorie', 'description', 'reference', 'qte', 'seuil_alerte', 'dernier_prix'];
+    const entetes = ['Catégorie', 'Description', 'Référence', 'Qté', 'Seuil alerte', 'Dernier prix (€)'];
+
+    const lignesData = _consommablesFiltresTries().map(c => {
+      const dp = _consoDernierPrix(c.id);
+      const row = { ...c, dernier_prix: dp != null ? dp.toFixed(2) : '' };
+      return champs.map(f => esc(row[f])).join(SEP);
+    });
+
+    const lignes = [entetes.join(SEP), ...lignesData];
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const blob = new Blob(['﻿' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const lien = Object.assign(document.createElement('a'), { href: url, download: `consommables-${dateStr}.csv` });
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+    URL.revokeObjectURL(url);
+
+    _notif(`Export réussi — ${lignesData.length} élément(s) téléchargé(s)`, 'succes');
+  }
+
+  function _imprimerConsommables() {
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
+    const resultats = _consommablesFiltresTries();
+
+    const filtresActifs = [];
+    if (_consoFiltreCat)      filtresActifs.push(`Catégorie : ${_consoFiltreCat}`);
+    if (_consoRecherche.trim()) filtresActifs.push(`Recherche : "${_consoRecherche.trim()}"`);
+
+    const dateStr = new Date().toLocaleDateString('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+
+    const enTetes = `<tr><th>Catégorie</th><th>Description</th><th>Référence</th><th>Qté</th><th>Seuil alerte</th><th>Dernier prix</th></tr>`;
+    const lignes = resultats.map(c => {
+      const dp = _consoDernierPrix(c.id);
+      return `<tr>
+        <td>${_e(c.categorie)}</td>
+        <td>${_e(c.description)}</td>
+        <td>${_e(c.reference || '—')}</td>
+        <td>${c.qte ?? 0}</td>
+        <td>${c.seuil_alerte ?? 0}</td>
+        <td>${dp != null ? dp.toFixed(2) + ' €' : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Consommables — Le Bras Frères</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 16px; }
+    .entete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 3px solid #d22323; padding-bottom: 10px; }
+    .entete > div { flex: 1; }
+    .entete > div:nth-child(2) { text-align: center; }
+    .entete .hdr-titre { font-size: 15px; font-weight: bold; color: #222; }
+    .entete .hdr-sous  { font-size: 11px; color: #666; margin-top: 2px; }
+    .entete .meta { font-size: 10px; color: #888; margin-top: 2px; }
+    .entete .edate { font-size: 10px; color: #888; text-align: right; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
+    td { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f7f7f7; }
+    @page { margin: 1.2cm; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="entete">
+    <div><img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block"></div>
+    <div>
+      <div class="hdr-titre">Stock Métallerie</div>
+      <div class="hdr-sous">Consommables</div>
+      <div class="meta">${resultats.length} élément(s)${filtresActifs.length ? ` · Filtres : ${filtresActifs.join(' · ')}` : ''}</div>
+    </div>
+    <div class="edate">Imprimé le<br>${dateStr}</div>
+  </div>
+  <table>
+    <thead>${enTetes}</thead>
+    <tbody>${lignes || '<tr><td colspan="6" style="text-align:center;padding:12px;color:#aaa">Aucun élément</td></tr>'}</tbody>
+  </table>
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) { _notif('Popup bloquée — autoriser les popups pour ce site', 'erreur'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function _rendreConsommables() {
+    const wrap = document.getElementById('conso-tableau-wrap');
+    if (!wrap) return;
+
+    const lignes = _consommablesFiltresTries();
 
     const ind = col => {
       if (_consoTriCol !== col) return '<span class="tri-ind">⇅</span>';
@@ -9184,6 +9293,8 @@ ${hasT ? `
 
   function _attacherEvenementsConsommables() {
     document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
+    document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
+    document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
 
     document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
     document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
