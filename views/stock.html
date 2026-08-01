@@ -767,6 +767,16 @@
     #ct-historique .ct-type-achat { color:#1565c0; font-weight:600; }
     #ct-historique .ct-type-consommation { color:#e65100; font-weight:600; }
     .conso-sub-mobile { display:none; }
+    .conso-autocomplete-zone { position:relative; }
+    .conso-suggest {
+      display:none; position:absolute; left:0; right:0; top:100%; z-index:50;
+      background:#fff; border:1px solid var(--gris-bord); border-top:none;
+      border-radius:0 0 3px 3px; max-height:180px; overflow-y:auto;
+      box-shadow:0 4px 10px rgba(0,0,0,.12);
+    }
+    .conso-suggest.open { display:block; }
+    .conso-suggest-item { padding:7px 10px; font-size:13px; cursor:pointer; }
+    .conso-suggest-item:hover, .conso-suggest-item.actif { background:#f5f5f5; }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
     tr.ligne-stock-bas td:first-child { border-left: 3px solid #e74c3c; }
     tr.ligne-chute td { background: #e8f4f8; border-bottom-color: #aed6f1; }
@@ -2644,18 +2654,18 @@
             <option value="Soudure">Soudure</option>
           </select>
         </div>
-        <div class="fr">
+        <div class="fr conso-autocomplete-zone">
           <label>Référence</label>
-          <input type="text" id="conso-reference" list="dl-conso-reference" placeholder="ex: BUS-45-P70" autocomplete="off">
+          <input type="text" id="conso-reference" placeholder="ex: BUS-45-P70" autocomplete="off">
+          <div class="conso-suggest" id="conso-suggest-reference"></div>
         </div>
       </div>
 
-      <div class="fr">
+      <div class="fr conso-autocomplete-zone">
         <label>Description <span style="color:var(--rouge)">*</span></label>
-        <input type="text" id="conso-description" list="dl-conso-description" placeholder="ex: Buse plasma 45A" autocomplete="off">
+        <input type="text" id="conso-description" placeholder="ex: Buse plasma 45A" autocomplete="off">
+        <div class="conso-suggest" id="conso-suggest-description"></div>
       </div>
-      <datalist id="dl-conso-description"></datalist>
-      <datalist id="dl-conso-reference"></datalist>
 
       <div class="form-cols2">
         <div class="fr">
@@ -3731,7 +3741,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260729g"></script>
+  <script src="../js/stock.js?v=20260729h"></script>
 
 </body>
 </html>
