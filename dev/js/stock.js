@@ -9065,23 +9065,45 @@ ${hasT ? `
     }
   }
 
-  /** Alimente les datalists Description/Référence à partir des consommables existants. */
-  function _majDatalistsConsommables() {
-    const dlDesc = document.getElementById('dl-conso-description');
-    const dlRef  = document.getElementById('dl-conso-reference');
-    if (!dlDesc || !dlRef) return;
+  /** Suggestions Description/Référence — dropdown maison (le <datalist> natif est trop
+   *  inconsistant sur mobile, notamment iOS Safari qui ne l'affiche quasiment jamais). */
+  function _consoValeursExistantes(champ) {
+    return [...new Set(_consommables.map(c => c[champ]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  }
 
-    const descriptions = [...new Set(_consommables.map(c => c.description).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
-    const references   = [...new Set(_consommables.map(c => c.reference).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  function _brancherAutocompleteConso(inputId, suggestId, champ) {
+    const input = document.getElementById(inputId);
+    const box   = document.getElementById(suggestId);
+    if (!input || !box) return;
 
-    dlDesc.innerHTML = descriptions.map(d => `<option value="${_e(d)}">`).join('');
-    dlRef.innerHTML  = references.map(r => `<option value="${_e(r)}">`).join('');
+    const fermer = () => { box.classList.remove('open'); box.innerHTML = ''; };
+
+    const afficher = () => {
+      const val = input.value.trim().toLowerCase();
+      const valeurs = _consoValeursExistantes(champ)
+        .filter(v => !val || v.toLowerCase().includes(val))
+        .slice(0, 8);
+      if (!valeurs.length) { fermer(); return; }
+      box.innerHTML = valeurs.map(v => `<div class="conso-suggest-item">${_e(v)}</div>`).join('');
+      box.classList.add('open');
+    };
+
+    input.addEventListener('input', afficher);
+    input.addEventListener('focus', afficher);
+    input.addEventListener('blur', () => setTimeout(fermer, 150));
+
+    box.addEventListener('mousedown', e => {
+      const item = e.target.closest('.conso-suggest-item');
+      if (!item) return;
+      e.preventDefault();
+      input.value = item.textContent;
+      fermer();
+    });
   }
 
   function _ouvrirModaleConsommable(id = null) {
     const m = document.getElementById('m-consommable');
     if (!m) return;
-    _majDatalistsConsommables();
     const c = id ? _consommables.find(x => x.id === id) : null;
 
     document.getElementById('conso-modale-titre').textContent = c ? 'Modifier le consommable' : 'Ajouter un consommable';
@@ -9315,6 +9337,9 @@ ${hasT ? `
     document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
     document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
     document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
+
+    _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
+    _brancherAutocompleteConso('conso-reference', 'conso-suggest-reference', 'reference');
 
     document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
     document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
