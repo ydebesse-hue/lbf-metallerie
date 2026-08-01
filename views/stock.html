@@ -2631,14 +2631,16 @@
         </div>
         <div class="fr">
           <label>Référence</label>
-          <input type="text" id="conso-reference" placeholder="ex: BUS-45-P70">
+          <input type="text" id="conso-reference" list="dl-conso-reference" placeholder="ex: BUS-45-P70" autocomplete="off">
         </div>
       </div>
 
       <div class="fr">
         <label>Description <span style="color:var(--rouge)">*</span></label>
-        <input type="text" id="conso-description" placeholder="ex: Buse plasma 45A">
+        <input type="text" id="conso-description" list="dl-conso-description" placeholder="ex: Buse plasma 45A" autocomplete="off">
       </div>
+      <datalist id="dl-conso-description"></datalist>
+      <datalist id="dl-conso-reference"></datalist>
 
       <div class="form-cols2">
         <div class="fr">
@@ -3714,7 +3716,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260729e"></script>
+  <script src="../js/stock.js?v=20260729f"></script>
 
 </body>
 </html>
