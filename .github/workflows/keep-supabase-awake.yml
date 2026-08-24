@@ -1,25 +1,26 @@
-name: Keep Supabase Awake
+name: Keep Supabase Awake (secours)
 
 # ───────────────────────────────────────────────────────────────
-#  Empêche la mise en pause du projet Supabase (plan gratuit).
-#  Le projet se met en pause après 7 jours SANS activité.
-#  Ce workflow envoie une petite requête tous les 2 jours pour que
-#  le compteur d'inactivité ne tombe jamais à zéro.
+#  Le anti-pause Supabase (plan gratuit, pause après 7 jours sans
+#  activité) est désormais assuré par un job pg_cron interne à
+#  chaque projet Supabase (dev + prod), qui touche une vraie table
+#  chaque jour — voir migration "enable_pg_cron_keepalive".
 #
-#  Requête volontairement SANS clé apikey/Authorization : diagnostiqué
-#  le 23/07/2026 — les requêtes authentifiées (apikey + Bearer) émises
-#  depuis les runners GitHub Actions échouent systématiquement sans
-#  réponse (probable filtrage anti-bot Cloudflare sur ce pattern),
-#  alors qu'une requête nue sur /rest/v1/ atteint bien la passerelle
-#  Supabase et obtient une vraie réponse 401 "No API key found" —
-#  cela suffit à compter comme activité pour la passerelle API.
+#  Pourquoi ce changement (24/08/2026) : ce workflow envoyait un ping
+#  HTTP nu (sans apikey) sur /rest/v1/, qui recevait bien une réponse
+#  401 "No API key found" — mais cette requête est très probablement
+#  rejetée par la passerelle avant d'atteindre Postgres, donc elle ne
+#  compte pas forcément comme activité réelle pour Supabase. La base
+#  s'est mise en pause malgré des runs "réussis". pg_cron s'exécute
+#  DANS la base elle-même : c'est fiable par construction et ne
+#  dépend plus du réseau GitHub Actions (source des échecs précédents,
+#  probable filtrage anti-bot Cloudflare sur les requêtes authentifiées).
+#
+#  Ce workflow reste disponible en secours / vérification manuelle
+#  uniquement (plus de déclenchement automatique).
 # ───────────────────────────────────────────────────────────────
 
 on:
-  schedule:
-    # Tous les 2 jours à 06:00 UTC. (Bien < 7 jours de marge.)
-    - cron: '0 6 */2 * *'
-  # Permet aussi de lancer le réveil manuellement depuis l'onglet Actions.
   workflow_dispatch:
 
 jobs:
@@ -46,12 +47,10 @@ jobs:
             done
 
             echo "  Code HTTP renvoyé : ${HTTP_CODE:-aucun (échec réseau)}"
-            # N'importe quelle vraie réponse HTTP (même 401 "no api key") prouve que
-            # la passerelle Supabase a été atteinte — c'est tout ce qui compte ici.
             if [ -n "$HTTP_CODE" ] && [ "$HTTP_CODE" != "000" ]; then
-              echo "  ✅ Base $NAME atteinte, ping réussi."
+              echo "  ✅ Base $NAME atteinte."
             else
-              echo "  ❌ Aucune réponse de $NAME — la base est peut-être en pause, ou problème réseau persistant."
+              echo "  ❌ Aucune réponse de $NAME — vérifier le job pg_cron 'keepalive-daily' dans chaque projet."
               FAIL=1
             fi
           done
