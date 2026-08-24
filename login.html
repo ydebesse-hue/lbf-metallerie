@@ -454,6 +454,7 @@
     function _afficherCarteConfirmer() {
       document.getElementById('carte-login').style.display = 'none';
       document.getElementById('carte-confirmer-lien').style.display = '';
+      document.title = 'Stock Métallerie — LBF';
 
       const estRecovery = _typeLien === 'recovery';
       document.getElementById('cl-titre').textContent = estRecovery
