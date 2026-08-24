@@ -383,7 +383,9 @@
       >
     </div>
 
-    <div class="module-titre">Choisir votre mot de passe</div>
+    <div class="module-titre">Stock Métallerie</div>
+    <p style="text-align:center; font-weight:600; font-size:14px; margin:0 0 4px">Choisir votre mot de passe</p>
+    <p style="text-align:center; color:#999; font-size:12px; margin:0 0 18px; display:none" id="np-email"></p>
 
     <div class="champ">
       <label for="np-mdp">Nouveau mot de passe</label>
@@ -451,6 +453,21 @@
       document.getElementById('carte-confirmer-lien').style.display = 'none';
       document.getElementById('carte-nouveau-mdp').style.display = '';
       document.getElementById('np-mdp').focus();
+
+      const elEmail = document.getElementById('np-email');
+      if (_emailLien) {
+        elEmail.textContent = _emailLien;
+        elEmail.style.display = '';
+      } else {
+        // Repli : pas d'email dans l'URL (ancien lien) — on le lit depuis
+        // la session déjà ouverte par Supabase à ce stade.
+        window.SB?.client?.auth.getUser().then(({ data }) => {
+          if (data?.user?.email) {
+            elEmail.textContent = data.user.email;
+            elEmail.style.display = '';
+          }
+        });
+      }
     }
 
     function _afficherCarteConfirmer() {
