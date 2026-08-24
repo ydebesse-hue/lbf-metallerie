@@ -357,10 +357,11 @@
       >
     </div>
 
-    <div class="module-titre">Confirmer votre email</div>
-    <p style="text-align:center; color:#666; font-size:14px; margin:0 0 18px">
+    <div class="module-titre" id="cl-titre">Confirmer votre email</div>
+    <p style="text-align:center; color:#666; font-size:14px; margin:0 0 4px" id="cl-description">
       Cliquez ci-dessous pour continuer et choisir votre mot de passe.
     </p>
+    <p style="text-align:center; color:#999; font-size:12px; margin:0 0 18px; display:none" id="cl-email"></p>
 
     <button class="btn-connexion" id="btn-confirmer-lien" onclick="confirmerLienEmail()">
       Confirmer
@@ -427,8 +428,9 @@
     // (voir confirmerLienEmail()). Ça neutralise les scanners de sécurité
     // de messagerie qui pré-chargent les liens des emails sans jamais
     // cliquer sur un bouton ni exécuter de JS.
-    const _tokenHash = _queryParams.get('token_hash');
-    const _typeLien  = _queryParams.get('type') || 'invite';
+    const _tokenHash  = _queryParams.get('token_hash');
+    const _typeLien   = _queryParams.get('type') || 'invite';
+    const _emailLien  = _queryParams.get('email');
 
     const _lienAuth = Boolean(
       _hashParams.get('access_token') || _hashParams.get('type') ||
@@ -452,6 +454,20 @@
     function _afficherCarteConfirmer() {
       document.getElementById('carte-login').style.display = 'none';
       document.getElementById('carte-confirmer-lien').style.display = '';
+
+      const estRecovery = _typeLien === 'recovery';
+      document.getElementById('cl-titre').textContent = estRecovery
+        ? 'Réinitialiser votre mot de passe'
+        : 'Activer votre compte';
+      document.getElementById('cl-description').textContent = estRecovery
+        ? 'Une demande de réinitialisation de mot de passe a été effectuée. Cliquez ci-dessous pour continuer et choisir un nouveau mot de passe.'
+        : 'Un compte vient d\'être créé pour vous. Cliquez ci-dessous pour continuer et choisir votre mot de passe.';
+
+      const elEmail = document.getElementById('cl-email');
+      if (_emailLien) {
+        elEmail.textContent = _emailLien;
+        elEmail.style.display = '';
+      }
     }
 
     // Appelé uniquement au clic — jamais au chargement de la page.
