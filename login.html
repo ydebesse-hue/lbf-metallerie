@@ -339,6 +339,36 @@
     <div class="login-footer">Le Bras Frères — Atelier Métallerie<br><span class="app-version">v2026.07.15</span></div>
   </div>
 
+  <!-- Carte "Confirmer" — étape intermédiaire volontaire avant de consommer le lien
+       d'invitation/réinitialisation. Certains scanners de sécurité de messagerie
+       (Outlook Safe Links, antivirus d'entreprise…) "pré-cliquent" automatiquement
+       les liens des emails pour les analyser, ce qui consomme le jeton à usage unique
+       avant que l'utilisateur ne clique réellement. En n'appelant verifyOtp() qu'au
+       clic explicite sur un bouton (jamais au chargement de la page), ces robots —
+       qui ne font que suivre le lien, sans exécuter de JS ni cliquer — n'ont plus
+       aucun effet sur le jeton. -->
+  <div class="login-card" role="main" id="carte-confirmer-lien" style="display:none">
+
+    <div class="logo-zone">
+      <img
+        src="assets/Logo_LBF.png"
+        alt="Le Bras Frères"
+        onerror="this.style.display='none'"
+      >
+    </div>
+
+    <div class="module-titre">Confirmer votre email</div>
+    <p style="text-align:center; color:#666; font-size:14px; margin:0 0 18px">
+      Cliquez ci-dessous pour continuer et choisir votre mot de passe.
+    </p>
+
+    <button class="btn-connexion" id="btn-confirmer-lien" onclick="confirmerLienEmail()">
+      Confirmer
+    </button>
+
+    <div class="msg-erreur" id="cl-erreur" role="alert" aria-live="polite"></div>
+  </div>
+
   <!-- Carte "Définir votre mot de passe" — affichée depuis un lien d'invitation ou de réinitialisation -->
   <div class="login-card" role="main" id="carte-nouveau-mdp" style="display:none">
 
@@ -388,9 +418,21 @@
     // invite, recovery, signup...) — plus robuste.
     const _hashParams  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const _queryParams = new URLSearchParams(window.location.search);
+
+    // ─── Lien "nouvelle méthode" (token_hash) ──────────────
+    // Le template email pointe désormais vers CETTE page (et non plus
+    // directement vers la passerelle Supabase qui consomme le jeton au
+    // simple chargement). Le jeton n'est donc PAS consommé automatiquement
+    // au chargement : il ne l'est qu'au clic explicite sur "Confirmer"
+    // (voir confirmerLienEmail()). Ça neutralise les scanners de sécurité
+    // de messagerie qui pré-chargent les liens des emails sans jamais
+    // cliquer sur un bouton ni exécuter de JS.
+    const _tokenHash = _queryParams.get('token_hash');
+    const _typeLien  = _queryParams.get('type') || 'invite';
+
     const _lienAuth = Boolean(
       _hashParams.get('access_token') || _hashParams.get('type') ||
-      _queryParams.get('code') || _queryParams.get('type')
+      _queryParams.get('code')
     );
     // Supabase renvoie parfois une erreur dans l'URL (lien expiré, déjà
     // utilisé...) au lieu d'un token valide — typiquement quand le lien
@@ -402,8 +444,40 @@
 
     function _afficherCarteNouveauMdp() {
       document.getElementById('carte-login').style.display = 'none';
+      document.getElementById('carte-confirmer-lien').style.display = 'none';
       document.getElementById('carte-nouveau-mdp').style.display = '';
       document.getElementById('np-mdp').focus();
+    }
+
+    function _afficherCarteConfirmer() {
+      document.getElementById('carte-login').style.display = 'none';
+      document.getElementById('carte-confirmer-lien').style.display = '';
+    }
+
+    // Appelé uniquement au clic — jamais au chargement de la page.
+    async function confirmerLienEmail() {
+      const btn  = document.getElementById('btn-confirmer-lien');
+      const erEl = document.getElementById('cl-erreur');
+      erEl.classList.remove('visible');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Confirmation…';
+
+      const { error } = await window.SB.client.auth.verifyOtp({
+        token_hash: _tokenHash,
+        type: _typeLien,
+      });
+
+      history.replaceState(null, '', window.location.pathname);
+
+      if (error) {
+        btn.disabled = false;
+        btn.textContent = 'Confirmer';
+        erEl.textContent = "Ce lien a expiré ou a déjà été utilisé. Demandez à un administrateur de vous renvoyer une invitation.";
+        erEl.classList.add('visible');
+        return;
+      }
+
+      _afficherCarteNouveauMdp();
     }
 
     // Filet de sécurité : si le SDK détecte un lien de récupération
@@ -416,6 +490,11 @@
     // ─── Démarrage ────────────────────────────────────────
     (async function() {
       await window.Auth.ready();
+
+      if (_tokenHash) {
+        _afficherCarteConfirmer();
+        return;
+      }
 
       if (_erreurAuth) {
         const msgErreur = document.getElementById('msg-erreur');
