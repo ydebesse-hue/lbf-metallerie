@@ -9328,8 +9328,8 @@ ${hasT ? `
     if (mode === 'nouveau') {
       return `<td data-mode="nouveau">
         <div style="display:flex;flex-direction:column;gap:4px">
-          <div style="display:flex;gap:4px">
-            <select class="cco-nouv-categorie" style="flex:0 0 110px">
+          <div class="cco-nouv-ligne1">
+            <select class="cco-nouv-categorie">
               ${_CONSO_CATEGORIES.map(c => `<option value="${_e(c)}">${_e(c)}</option>`).join('')}
             </select>
             <input type="text" class="cco-nouv-reference" placeholder="Référence">

@@ -781,10 +781,14 @@
     .conso-suggest.open { display:block; }
     .conso-suggest-item { padding:7px 10px; font-size:13px; cursor:pointer; }
     .conso-suggest-item:hover, .conso-suggest-item.actif { background:#f5f5f5; }
-    .conso-cmd-table { width:100%; border-collapse:collapse; margin-top:4px; }
+    .conso-cmd-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:4px; }
+    .conso-cmd-table { width:100%; min-width:480px; border-collapse:collapse; }
     .conso-cmd-table th { text-align:left; font-size:11px; color:#888; text-transform:uppercase; padding:4px 6px; border-bottom:1px solid #eee; }
     .conso-cmd-table td { padding:4px 6px; vertical-align:middle; }
     .conso-cmd-table select, .conso-cmd-table input { width:100%; padding:6px 8px; border:1px solid var(--gris-bord); border-radius:3px; font-family:Tahoma; font-size:13px; box-sizing:border-box; }
+    .conso-cmd-table .cco-nouv-ligne1 { display:flex; gap:4px; }
+    .conso-cmd-table .cco-nouv-categorie { flex:0 0 110px; width:110px; }
+    .conso-cmd-table .cco-nouv-reference { flex:1 1 auto; width:auto; min-width:0; }
     .conso-cmd-table .cco-btn-suppr { background:none; border:none; color:var(--rouge); cursor:pointer; font-size:15px; padding:2px 4px; }
     .conso-cmd-table .cco-btn-toggle-mode { display:block; background:none; border:none; color:var(--vert); cursor:pointer; font-size:11px; padding:3px 0 0; text-align:left; text-decoration:underline; }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
@@ -2772,6 +2776,7 @@
         </div>
       </div>
 
+      <div class="conso-cmd-table-wrap">
       <table class="conso-cmd-table">
         <thead>
           <tr>
@@ -2783,6 +2788,7 @@
         </thead>
         <tbody id="cco-lignes-tbody"></tbody>
       </table>
+      </div>
       <button type="button" class="btn-modale btn-modale-gris" id="cco-btn-ajouter-ligne" style="margin-top:8px">+ Ligne</button>
 
       <div class="msg-erreur" id="cco-erreur" role="alert" aria-live="polite"></div>
@@ -3803,7 +3809,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923k"></script>
+  <script src="../js/stock.js?v=20260923l"></script>
 
 </body>
 </html>
