@@ -2730,43 +2730,6 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════
-       MODALE — ACHAT CONSOMMABLE
-       ══════════════════════════════════════════════════════════════ -->
-  <div id="m-conso-achat" class="modale-bg" role="dialog" aria-modal="true" aria-label="Achat consommable">
-    <div class="modale">
-      <div class="modale-titre">Enregistrer un achat</div>
-      <div id="ca-info" style="font-size:13px;color:#555;margin-bottom:12px"></div>
-      <input type="hidden" id="ca-conso-id">
-
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Quantité achetée <span style="color:var(--rouge)">*</span></label>
-          <input type="number" id="ca-qte" min="1" step="1" value="1">
-        </div>
-        <div class="fr">
-          <label>Prix unitaire (€) <span style="color:var(--rouge)">*</span></label>
-          <input type="number" id="ca-prix" min="0" step="0.01" placeholder="ex: 12.50">
-        </div>
-      </div>
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Date d'achat</label>
-          <input type="date" id="ca-date">
-        </div>
-        <div class="fr">
-          <label>Commentaire</label>
-          <input type="text" id="ca-commentaire" placeholder="Fournisseur, réf. commande…">
-        </div>
-      </div>
-
-      <div class="modale-footer">
-        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-achat').classList.remove('open')">Annuler</button>
-        <button class="btn-modale btn-modale-rouge btn-soumettre-achat">Enregistrer</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════
        MODALE — COMMANDE (achat multi-références)
        ══════════════════════════════════════════════════════════════ -->
   <div id="m-conso-commande" class="modale-bg" role="dialog" aria-modal="true" aria-label="Commande consommables">
@@ -3816,7 +3779,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923n"></script>
+  <script src="../js/stock.js?v=20260923o"></script>
 
 </body>
 </html>

@@ -9056,7 +9056,6 @@ ${hasT ? `
           <td class="conso-num conso-col-seuil">${c.seuil_alerte ?? 0}</td>
           <td class="conso-num">${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
           <td class="conso-col-actions" style="text-align:center; white-space:nowrap">
-            <button class="conso-btn-icone" title="Enregistrer un achat" data-conso-action="achat">🛒</button>
             <button class="conso-btn-icone" title="Enregistrer une consommation" data-conso-action="consommation">↓</button>
             <button class="conso-btn-icone" title="Tendances" data-conso-action="tendances">📈</button>
             <button class="conso-btn-icone" title="Modifier" data-conso-action="editer">✎</button>
@@ -9210,50 +9209,6 @@ ${hasT ? `
       const i = _consommables.findIndex(c => c.id === id);
       if (i !== -1) _consommables[i] = maj;
       _rendreConsommables();
-    } catch (e) {
-      _notif('Erreur : ' + e.message, 'erreur');
-    }
-  }
-
-  function _ouvrirModaleAchat(id) {
-    const c = _consommables.find(x => x.id === id);
-    if (!c) return;
-    document.getElementById('ca-conso-id').value = id;
-    document.getElementById('ca-info').textContent = `${_consoLabelRefDesc(c)} (stock actuel : ${c.qte ?? 0})`;
-    document.getElementById('ca-qte').value = 1;
-    document.getElementById('ca-prix').value = '';
-    document.getElementById('ca-date').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('ca-commentaire').value = '';
-    document.getElementById('m-conso-achat').classList.add('open');
-  }
-
-  async function _enregistrerAchat() {
-    const id  = document.getElementById('ca-conso-id').value;
-    const qte = parseInt(document.getElementById('ca-qte').value, 10);
-    const prix = parseFloat(document.getElementById('ca-prix').value);
-    const date = document.getElementById('ca-date').value || new Date().toISOString().slice(0, 10);
-    const commentaire = document.getElementById('ca-commentaire').value.trim() || null;
-
-    if (!qte || qte <= 0)   { _notif('Quantité invalide', 'erreur'); return; }
-    if (isNaN(prix) || prix < 0) { _notif('Prix unitaire invalide', 'erreur'); return; }
-
-    const c = _consommables.find(x => x.id === id);
-    if (!c) return;
-
-    try {
-      const mvt = await window.SB.inserer('consommables_mouvements', {
-        consommable_id: id, type: 'achat', quantite: qte, prix_unitaire: prix,
-        date_mouvement: date, commentaire,
-      });
-      _consoMouvements.push(mvt);
-
-      const maj = await window.SB.mettreAJour('consommables', id, { qte: (c.qte || 0) + qte });
-      const i = _consommables.findIndex(x => x.id === id);
-      if (i !== -1) _consommables[i] = maj;
-
-      document.getElementById('m-conso-achat').classList.remove('open');
-      _rendreConsommables();
-      _notif('Achat enregistré', 'ok');
     } catch (e) {
       _notif('Erreur : ' + e.message, 'erreur');
     }
@@ -9711,7 +9666,6 @@ ${hasT ? `
     });
 
     document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
-    document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
     document.querySelector('#m-conso-commande .btn-soumettre-commande')?.addEventListener('click', _enregistrerCommande);
     document.querySelector('#m-conso-consommation .btn-soumettre-consommation')?.addEventListener('click', _enregistrerConsommation);
 
@@ -9743,7 +9697,6 @@ ${hasT ? `
         const id = tr.dataset.consoId;
         if (btn.dataset.consoAction === 'editer')       _ouvrirModaleConsommable(id);
         if (btn.dataset.consoAction === 'supprimer')    _supprimerConsommable(id);
-        if (btn.dataset.consoAction === 'achat')        _ouvrirModaleAchat(id);
         if (btn.dataset.consoAction === 'consommation') _ouvrirModaleConsommation(id);
         if (btn.dataset.consoAction === 'tendances')    _ouvrirModaleTendances(id);
       });
