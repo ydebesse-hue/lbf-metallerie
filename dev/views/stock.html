@@ -777,6 +777,11 @@
     .conso-suggest.open { display:block; }
     .conso-suggest-item { padding:7px 10px; font-size:13px; cursor:pointer; }
     .conso-suggest-item:hover, .conso-suggest-item.actif { background:#f5f5f5; }
+    .conso-cmd-table { width:100%; border-collapse:collapse; margin-top:4px; }
+    .conso-cmd-table th { text-align:left; font-size:11px; color:#888; text-transform:uppercase; padding:4px 6px; border-bottom:1px solid #eee; }
+    .conso-cmd-table td { padding:4px 6px; vertical-align:middle; }
+    .conso-cmd-table select, .conso-cmd-table input { width:100%; padding:6px 8px; border:1px solid var(--gris-bord); border-radius:3px; font-family:Tahoma; font-size:13px; box-sizing:border-box; }
+    .conso-cmd-table .cco-btn-suppr { background:none; border:none; color:var(--rouge); cursor:pointer; font-size:15px; padding:2px 4px; }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
     tr.ligne-stock-bas td:first-child { border-left: 3px solid #e74c3c; }
     tr.ligne-chute td { background: #e8f4f8; border-bottom-color: #aed6f1; }
@@ -2122,6 +2127,7 @@
   <!-- ── TOOLBAR CONSOMMABLES ─────────────────────────────────── -->
   <div class="toolbar" id="toolbar-consommables" style="display:none">
     <button id="btn-ajout-consommable" class="btn-action btn-rouge" data-require="can_add">+ Consommable</button>
+    <button id="btn-commande-consommables" class="btn-action btn-gris" data-require="can_add" title="Enregistrer un achat portant sur plusieurs références">🛒 Commande</button>
     <div class="toolbar-sep"></div>
     <div class="conso-filtre-cat">
       <button class="conso-cat-btn actif" data-conso-cat="">Tous</button>
@@ -2734,6 +2740,47 @@
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-achat').classList.remove('open')">Annuler</button>
         <button class="btn-modale btn-modale-rouge btn-soumettre-achat">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       MODALE — COMMANDE (achat multi-références)
+       ══════════════════════════════════════════════════════════════ -->
+  <div id="m-conso-commande" class="modale-bg" role="dialog" aria-modal="true" aria-label="Commande consommables">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Enregistrer une commande</div>
+      <p style="font-size:13px;color:#666;margin:0 0 14px">Une ligne par référence reçue dans cette commande.</p>
+
+      <div class="form-cols2">
+        <div class="fr">
+          <label>Date d'achat</label>
+          <input type="date" id="cco-date">
+        </div>
+        <div class="fr">
+          <label>Commentaire (fournisseur, n° commande…)</label>
+          <input type="text" id="cco-commentaire" placeholder="ex: Air Liquide — CMD-2026-042">
+        </div>
+      </div>
+
+      <table class="conso-cmd-table">
+        <thead>
+          <tr>
+            <th>Référence</th>
+            <th style="width:90px">Qté</th>
+            <th style="width:110px">Prix unit. (€)</th>
+            <th style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="cco-lignes-tbody"></tbody>
+      </table>
+      <button type="button" class="btn-modale btn-modale-gris" id="cco-btn-ajouter-ligne" style="margin-top:8px">+ Ligne</button>
+
+      <div class="msg-erreur" id="cco-erreur" role="alert" aria-live="polite"></div>
+
+      <div class="modale-footer">
+        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-commande').classList.remove('open')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge btn-soumettre-commande">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -3746,7 +3793,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923e"></script>
+  <script src="../js/stock.js?v=20260923f"></script>
 
 </body>
 </html>
