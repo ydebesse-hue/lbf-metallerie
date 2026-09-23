@@ -1165,8 +1165,8 @@ const Stock = (() => {
     return h + '</tbody></table>';
   }
 
-  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée' };
-  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee' };
+  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée', corten: 'Corten' };
+  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee', corten: 'chip-tole-corten' };
 
   function _badgeTypeTole(type) {
     if (!type) return '<span style="color:#aaa">—</span>';
@@ -1258,7 +1258,7 @@ const Stock = (() => {
       let filtre = '';
       if (c.key === 'type') {
         const set = _filtresT.type; const n = set.size;
-        const lbl = n === 0 ? '— type —' : n === 1 ? ({ noir: 'Noir', inox: 'Inox', larmee: 'Larmée' }[[...set][0]] || [...set][0]) : `${n} ✓`;
+        const lbl = n === 0 ? '— type —' : n === 1 ? (_LABEL_TYPE_TOLE[[...set][0]] || [...set][0]) : `${n} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${n ? ' th-filtre-actif' : ''}" data-filtre="t-type">${_e(lbl)}</button>`;
       } else if (c.key === 'epaisseur') {
         const setE = _filtresT.epaisseur; const nE = setE.size;
@@ -3154,7 +3154,7 @@ ${hasT ? `
         return uniq(profils.filter(b => b.fournisseur).map(b => b.fournisseur))
           .map(v => ({ value: v, label: v }));
       case 't-type':
-        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }];
+        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }, { value: 'corten', label: 'Corten' }];
       case 't-epaisseur':
         return uniqN(toles.map(b => b.epaisseur_mm)).map(v => ({ value: String(v), label: `${v} mm` }));
       case 't-chantier':
