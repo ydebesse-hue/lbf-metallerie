@@ -785,6 +785,7 @@
     .cco-lignes-head { font-size:11px; color:#888; text-transform:uppercase; padding:4px 6px; border-bottom:1px solid #eee; }
     .cco-ligne { padding:6px; border-bottom:1px solid #eee; }
     .cco-ligne select, .cco-ligne input { width:100%; padding:6px 8px; border:1px solid var(--gris-bord); border-radius:3px; font-family:Tahoma; font-size:13px; box-sizing:border-box; }
+    .cco-cell-ref select.cco-categorie { margin-bottom:4px; }
     .cco-nouv-ligne1 { display:flex; gap:4px; }
     .cco-nouv-categorie { flex:0 0 110px; width:110px; }
     .cco-nouv-reference { flex:1 1 auto; width:auto; min-width:0; }
@@ -2148,8 +2149,7 @@
 
   <!-- ── TOOLBAR CONSOMMABLES ─────────────────────────────────── -->
   <div class="toolbar" id="toolbar-consommables" style="display:none">
-    <button id="btn-ajout-consommable" class="btn-action btn-rouge" data-require="can_add">+ Consommable</button>
-    <button id="btn-commande-consommables" class="btn-action btn-gris" data-require="can_add" title="Enregistrer un achat portant sur plusieurs références">🛒 Commande</button>
+    <button id="btn-commande-consommables" class="btn-action btn-rouge" data-require="can_add" title="Enregistrer un achat portant sur plusieurs références">🛒 Commande</button>
     <div class="toolbar-sep"></div>
     <div class="conso-filtre-cat">
       <button class="conso-cat-btn actif" data-conso-cat="">Tous</button>
@@ -3816,7 +3816,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923m"></script>
+  <script src="../js/stock.js?v=20260923n"></script>
 
 </body>
 </html>

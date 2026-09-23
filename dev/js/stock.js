@@ -9277,13 +9277,15 @@ ${hasT ? `
     return [..._consommables].sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
   }
 
-  function _htmlOptionsConsommables(selectionId = '') {
-    const existants = _optionsConsommablesTriees().map(c =>
-      `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(_consoLabelRefDesc(c))}</option>`
-    ).join('');
-    const pendantes = _ccoPending.map(p =>
-      `<option value="${_e(p.id)}"${p.id === selectionId ? ' selected' : ''}>🆕 ${_e(_consoLabelRefDesc(p))}</option>`
-    ).join('');
+  function _htmlOptionsConsommables(selectionId = '', categorie = '') {
+    const existants = _optionsConsommablesTriees()
+      .filter(c => !categorie || c.categorie === categorie)
+      .map(c => `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(_consoLabelRefDesc(c))}</option>`)
+      .join('');
+    const pendantes = _ccoPending
+      .filter(p => !categorie || p.categorie === categorie)
+      .map(p => `<option value="${_e(p.id)}"${p.id === selectionId ? ' selected' : ''}>🆕 ${_e(_consoLabelRefDesc(p))}</option>`)
+      .join('');
     return '<option value="">— Choisir —</option>' + existants
       + (pendantes ? `<optgroup label="Nouvelles (cette commande)">${pendantes}</optgroup>` : '');
   }
@@ -9291,7 +9293,8 @@ ${hasT ? `
   /** Rafraîchit tous les select "référence existante" de la commande (nouvelles refs en attente incluses). */
   function _ccoRafraichirSelects() {
     document.querySelectorAll('#cco-lignes-tbody select.cco-select').forEach(sel => {
-      sel.innerHTML = _htmlOptionsConsommables(sel.value);
+      const categorie = sel.closest('.cco-cell-ref')?.querySelector('.cco-categorie')?.value || '';
+      sel.innerHTML = _htmlOptionsConsommables(sel.value, categorie);
     });
   }
 
@@ -9323,7 +9326,7 @@ ${hasT ? `
     _ccoRafraichirSelects();
   }
 
-  /** Cellule "Référence" d'une ligne de commande — mode existant (select) ou nouvelle réf. (mini-form). */
+  /** Cellule "Référence" d'une ligne de commande — mode existant (catégorie puis référence) ou nouvelle réf. (mini-form). */
   function _htmlCelluleRefCommande(mode = 'existant') {
     if (mode === 'nouveau') {
       return `<div class="cco-cell cco-cell-ref" data-mode="nouveau">
@@ -9342,6 +9345,10 @@ ${hasT ? `
     }
     return `<div class="cco-cell cco-cell-ref" data-mode="existant">
       <label class="cco-mobile-label">Référence</label>
+      <select class="cco-categorie">
+        <option value="">— Type de produit —</option>
+        ${_CONSO_CATEGORIES.map(c => `<option value="${_e(c)}">${_e(c)}</option>`).join('')}
+      </select>
       <select class="cco-select">${_htmlOptionsConsommables()}</select>
       <button type="button" class="cco-btn-toggle-mode" data-mode-cible="nouveau">+ Nouvelle référence</button>
     </div>`;
@@ -9672,7 +9679,6 @@ ${hasT ? `
   }
 
   function _attacherEvenementsConsommables() {
-    document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
     document.getElementById('btn-commande-consommables')?.addEventListener('click', _ouvrirModaleCommande);
     document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
     document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
@@ -9689,8 +9695,11 @@ ${hasT ? `
       _ccoMajPending(e.target.closest('.cco-ligne'));
     });
     document.getElementById('cco-lignes-tbody')?.addEventListener('change', e => {
-      if (!e.target.matches('.cco-nouv-categorie')) return;
-      _ccoMajPending(e.target.closest('.cco-ligne'));
+      if (e.target.matches('.cco-nouv-categorie')) { _ccoMajPending(e.target.closest('.cco-ligne')); return; }
+      if (e.target.matches('.cco-categorie')) {
+        const sel = e.target.closest('.cco-cell-ref')?.querySelector('.cco-select');
+        if (sel) sel.innerHTML = _htmlOptionsConsommables('', e.target.value);
+      }
     });
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
