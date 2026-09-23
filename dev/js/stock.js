@@ -9263,14 +9263,59 @@ ${hasT ? `
 
   const _CONSO_CATEGORIES = ['Plasma', 'Finitions', 'Soudure'];
 
+  // Nouvelles références saisies dans la commande en cours (pas encore en base) —
+  // proposées dans la liste de choix des autres lignes le temps de la saisie.
+  let _ccoPending = [];
+  let _ccoPendingSeq = 0;
+
   function _optionsConsommablesTriees() {
     return [..._consommables].sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
   }
 
   function _htmlOptionsConsommables(selectionId = '') {
-    return '<option value="">— Choisir —</option>' + _optionsConsommablesTriees().map(c =>
+    const existants = _optionsConsommablesTriees().map(c =>
       `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(c.description)}${c.reference ? ' — ' + _e(c.reference) : ''}</option>`
     ).join('');
+    const pendantes = _ccoPending.map(p =>
+      `<option value="${_e(p.id)}"${p.id === selectionId ? ' selected' : ''}>🆕 ${_e(p.description)}${p.reference ? ' — ' + _e(p.reference) : ''}</option>`
+    ).join('');
+    return '<option value="">— Choisir —</option>' + existants
+      + (pendantes ? `<optgroup label="Nouvelles (cette commande)">${pendantes}</optgroup>` : '');
+  }
+
+  /** Rafraîchit tous les select "référence existante" de la commande (nouvelles refs en attente incluses). */
+  function _ccoRafraichirSelects() {
+    document.querySelectorAll('#cco-lignes-tbody select.cco-select').forEach(sel => {
+      sel.innerHTML = _htmlOptionsConsommables(sel.value);
+    });
+  }
+
+  /** Crée/actualise l'entrée "en attente" associée à une ligne en mode nouvelle référence. */
+  function _ccoMajPending(tr) {
+    const categorie   = tr.querySelector('.cco-nouv-categorie')?.value || '';
+    const reference   = tr.querySelector('.cco-nouv-reference')?.value.trim() || '';
+    const description = tr.querySelector('.cco-nouv-description')?.value.trim() || '';
+
+    if (!description) {
+      if (tr.dataset.pendingId) {
+        _ccoPending = _ccoPending.filter(p => p.id !== tr.dataset.pendingId);
+        delete tr.dataset.pendingId;
+        _ccoRafraichirSelects();
+      }
+      return;
+    }
+
+    let entry = tr.dataset.pendingId ? _ccoPending.find(p => p.id === tr.dataset.pendingId) : null;
+    if (!entry) {
+      entry = { id: `pending:${_ccoPendingSeq++}`, categorie, reference, description };
+      _ccoPending.push(entry);
+      tr.dataset.pendingId = entry.id;
+    } else {
+      entry.categorie = categorie;
+      entry.reference = reference;
+      entry.description = description;
+    }
+    _ccoRafraichirSelects();
   }
 
   /** Cellule "Référence" d'une ligne de commande — mode existant (select) ou nouvelle réf. (mini-form). */
@@ -9311,13 +9356,20 @@ ${hasT ? `
   function _basculerModeLigneCommande(tr, mode) {
     const cell = tr.querySelector('td[data-mode]');
     if (!cell) return;
+    if (cell.dataset.mode === 'nouveau' && mode === 'existant' && tr.dataset.pendingId) {
+      _ccoPending = _ccoPending.filter(p => p.id !== tr.dataset.pendingId);
+      delete tr.dataset.pendingId;
+    }
     cell.outerHTML = _htmlCelluleRefCommande(mode);
+    _ccoRafraichirSelects();
   }
 
   function _ouvrirModaleCommande() {
     const tbody = document.getElementById('cco-lignes-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
+    _ccoPending = [];
+    _ccoPendingSeq = 0;
     _ajouterLigneCommandeConso();
     document.getElementById('cco-date').value = new Date().toISOString().slice(0, 10);
     document.getElementById('cco-fournisseur').value = '';
@@ -9343,13 +9395,23 @@ ${hasT ? `
       };
       if (cell?.dataset.mode === 'nouveau') {
         return {
-          ...base, nouveau: true,
+          ...base, nouveau: true, pendingId: tr.dataset.pendingId || null,
           categorie:   tr.querySelector('.cco-nouv-categorie')?.value || '',
           reference:   tr.querySelector('.cco-nouv-reference')?.value.trim() || null,
           description: tr.querySelector('.cco-nouv-description')?.value.trim() || '',
         };
       }
-      return { ...base, nouveau: false, id: tr.querySelector('.cco-select')?.value || '' };
+      const selVal = tr.querySelector('.cco-select')?.value || '';
+      // Une "nouvelle référence" saisie sur une autre ligne peut être choisie ici
+      // depuis la liste — elle sera créée une seule fois puis réutilisée.
+      const pendante = selVal.startsWith('pending:') ? _ccoPending.find(p => p.id === selVal) : null;
+      if (pendante) {
+        return {
+          ...base, nouveau: true, pendingId: pendante.id,
+          categorie: pendante.categorie, reference: pendante.reference, description: pendante.description,
+        };
+      }
+      return { ...base, nouveau: false, id: selVal };
     });
 
     if (!lignes.length) { erEl.textContent = 'Ajoutez au moins une ligne.'; erEl.classList.add('visible'); return; }
@@ -9361,16 +9423,23 @@ ${hasT ? `
     if (lignes.some(l => isNaN(l.prix) || l.prix < 0)) { erEl.textContent = 'Prix unitaire invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
 
     try {
+      const pendingCreated = {}; // pendingId -> id réel déjà créé (une même nouvelle réf. peut apparaître sur plusieurs lignes)
       for (const l of lignes) {
         let id = l.id;
         let c;
         if (l.nouveau) {
-          c = await window.SB.inserer('consommables', {
-            categorie: l.categorie, reference: l.reference, description: l.description,
-            qte: 0, seuil_alerte: 0,
-          });
-          _consommables.push(c);
-          id = c.id;
+          if (l.pendingId && pendingCreated[l.pendingId]) {
+            id = pendingCreated[l.pendingId];
+            c = _consommables.find(x => x.id === id);
+          } else {
+            c = await window.SB.inserer('consommables', {
+              categorie: l.categorie, reference: l.reference, description: l.description,
+              qte: 0, seuil_alerte: 0,
+            });
+            _consommables.push(c);
+            id = c.id;
+            if (l.pendingId) pendingCreated[l.pendingId] = id;
+          }
         } else {
           c = _consommables.find(x => x.id === id);
           if (!c) continue;
@@ -9505,6 +9574,14 @@ ${hasT ? `
       if (btnSuppr) { btnSuppr.closest('tr')?.remove(); return; }
       const btnMode = e.target.closest('.cco-btn-toggle-mode');
       if (btnMode) _basculerModeLigneCommande(btnMode.closest('tr'), btnMode.dataset.modeCible);
+    });
+    document.getElementById('cco-lignes-tbody')?.addEventListener('input', e => {
+      if (!e.target.matches('.cco-nouv-reference, .cco-nouv-description, .cco-nouv-categorie')) return;
+      _ccoMajPending(e.target.closest('tr'));
+    });
+    document.getElementById('cco-lignes-tbody')?.addEventListener('change', e => {
+      if (!e.target.matches('.cco-nouv-categorie')) return;
+      _ccoMajPending(e.target.closest('tr'));
     });
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
