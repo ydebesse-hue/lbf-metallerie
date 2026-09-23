@@ -9056,7 +9056,6 @@ ${hasT ? `
           <td class="conso-num conso-col-seuil">${c.seuil_alerte ?? 0}</td>
           <td class="conso-num">${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
           <td class="conso-col-actions" style="text-align:center; white-space:nowrap">
-            <button class="conso-btn-icone" title="Enregistrer un achat" data-conso-action="achat">🛒</button>
             <button class="conso-btn-icone" title="Enregistrer une consommation" data-conso-action="consommation">↓</button>
             <button class="conso-btn-icone" title="Tendances" data-conso-action="tendances">📈</button>
             <button class="conso-btn-icone" title="Modifier" data-conso-action="editer">✎</button>
@@ -9215,47 +9214,229 @@ ${hasT ? `
     }
   }
 
-  function _ouvrirModaleAchat(id) {
-    const c = _consommables.find(x => x.id === id);
-    if (!c) return;
-    document.getElementById('ca-conso-id').value = id;
-    document.getElementById('ca-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
-    document.getElementById('ca-qte').value = 1;
-    document.getElementById('ca-prix').value = '';
-    document.getElementById('ca-date').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('ca-commentaire').value = '';
-    document.getElementById('m-conso-achat').classList.add('open');
+  /* ── Commande (achat multi-références) ─────────────────────────── */
+
+  const _CONSO_CATEGORIES = ['Plasma', 'Finitions', 'Soudure'];
+
+  // Nouvelles références saisies dans la commande en cours (pas encore en base) —
+  // proposées dans la liste de choix des autres lignes le temps de la saisie.
+  let _ccoPending = [];
+  let _ccoPendingSeq = 0;
+
+  /** Libellé "Référence — Description" (ou juste la description si pas de référence). */
+  function _consoLabelRefDesc(c) {
+    return c.reference ? `${c.reference} — ${c.description}` : c.description;
   }
 
-  async function _enregistrerAchat() {
-    const id  = document.getElementById('ca-conso-id').value;
-    const qte = parseInt(document.getElementById('ca-qte').value, 10);
-    const prix = parseFloat(document.getElementById('ca-prix').value);
-    const date = document.getElementById('ca-date').value || new Date().toISOString().slice(0, 10);
-    const commentaire = document.getElementById('ca-commentaire').value.trim() || null;
+  function _optionsConsommablesTriees() {
+    return [..._consommables].sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
+  }
 
-    if (!qte || qte <= 0)   { _notif('Quantité invalide', 'erreur'); return; }
-    if (isNaN(prix) || prix < 0) { _notif('Prix unitaire invalide', 'erreur'); return; }
+  function _htmlOptionsConsommables(selectionId = '', categorie = '') {
+    const existants = _optionsConsommablesTriees()
+      .filter(c => !categorie || c.categorie === categorie)
+      .map(c => `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(_consoLabelRefDesc(c))}</option>`)
+      .join('');
+    const pendantes = _ccoPending
+      .filter(p => !categorie || p.categorie === categorie)
+      .map(p => `<option value="${_e(p.id)}"${p.id === selectionId ? ' selected' : ''}>🆕 ${_e(_consoLabelRefDesc(p))}</option>`)
+      .join('');
+    return '<option value="">— Choisir —</option>' + existants
+      + (pendantes ? `<optgroup label="Nouvelles (cette commande)">${pendantes}</optgroup>` : '');
+  }
 
-    const c = _consommables.find(x => x.id === id);
-    if (!c) return;
+  /** Rafraîchit tous les select "référence existante" de la commande (nouvelles refs en attente incluses). */
+  function _ccoRafraichirSelects() {
+    document.querySelectorAll('#cco-lignes-tbody select.cco-select').forEach(sel => {
+      const categorie = sel.closest('.cco-cell-ref')?.querySelector('.cco-categorie')?.value || '';
+      sel.innerHTML = _htmlOptionsConsommables(sel.value, categorie);
+    });
+  }
+
+  /** Crée/actualise l'entrée "en attente" associée à une ligne en mode nouvelle référence. */
+  function _ccoMajPending(tr) {
+    const categorie   = tr.querySelector('.cco-nouv-categorie')?.value || '';
+    const reference   = tr.querySelector('.cco-nouv-reference')?.value.trim() || '';
+    const description = tr.querySelector('.cco-nouv-description')?.value.trim() || '';
+
+    if (!description) {
+      if (tr.dataset.pendingId) {
+        _ccoPending = _ccoPending.filter(p => p.id !== tr.dataset.pendingId);
+        delete tr.dataset.pendingId;
+        _ccoRafraichirSelects();
+      }
+      return;
+    }
+
+    let entry = tr.dataset.pendingId ? _ccoPending.find(p => p.id === tr.dataset.pendingId) : null;
+    if (!entry) {
+      entry = { id: `pending:${_ccoPendingSeq++}`, categorie, reference, description };
+      _ccoPending.push(entry);
+      tr.dataset.pendingId = entry.id;
+    } else {
+      entry.categorie = categorie;
+      entry.reference = reference;
+      entry.description = description;
+    }
+    _ccoRafraichirSelects();
+  }
+
+  /** Cellule "Référence" d'une ligne de commande — mode existant (catégorie puis référence) ou nouvelle réf. (mini-form). */
+  function _htmlCelluleRefCommande(mode = 'existant') {
+    if (mode === 'nouveau') {
+      return `<div class="cco-cell cco-cell-ref" data-mode="nouveau">
+        <label class="cco-mobile-label">Référence</label>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="cco-nouv-ligne1">
+            <select class="cco-nouv-categorie">
+              ${_CONSO_CATEGORIES.map(c => `<option value="${_e(c)}">${_e(c)}</option>`).join('')}
+            </select>
+            <input type="text" class="cco-nouv-reference" placeholder="Référence">
+          </div>
+          <input type="text" class="cco-nouv-description" placeholder="Description *">
+          <button type="button" class="cco-btn-toggle-mode" data-mode-cible="existant">↩ Référence existante</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="cco-cell cco-cell-ref" data-mode="existant">
+      <label class="cco-mobile-label">Référence</label>
+      <select class="cco-categorie">
+        <option value="">— Type de produit —</option>
+        ${_CONSO_CATEGORIES.map(c => `<option value="${_e(c)}">${_e(c)}</option>`).join('')}
+      </select>
+      <select class="cco-select">${_htmlOptionsConsommables()}</select>
+      <button type="button" class="cco-btn-toggle-mode" data-mode-cible="nouveau">+ Nouvelle référence</button>
+    </div>`;
+  }
+
+  function _ajouterLigneCommandeConso() {
+    const conteneur = document.getElementById('cco-lignes-tbody');
+    if (!conteneur) return;
+    const ligne = document.createElement('div');
+    ligne.className = 'cco-ligne';
+    ligne.innerHTML = `
+      ${_htmlCelluleRefCommande('existant')}
+      <div class="cco-cell cco-cell-qte">
+        <label class="cco-mobile-label">Qté</label>
+        <input type="number" class="cco-qte" min="1" step="1" value="1">
+      </div>
+      <div class="cco-cell cco-cell-prix">
+        <label class="cco-mobile-label">Prix unit. (€)</label>
+        <input type="number" class="cco-prix" min="0" step="0.01" placeholder="ex: 12.50">
+      </div>
+      <div class="cco-cell cco-cell-suppr">
+        <button type="button" class="cco-btn-suppr" title="Retirer cette ligne">🗑</button>
+      </div>`;
+    conteneur.appendChild(ligne);
+  }
+
+  /** Bascule une ligne entre "référence existante" et "nouvelle référence". */
+  function _basculerModeLigneCommande(ligne, mode) {
+    const cell = ligne.querySelector('.cco-cell-ref[data-mode]');
+    if (!cell) return;
+    if (cell.dataset.mode === 'nouveau' && mode === 'existant' && ligne.dataset.pendingId) {
+      _ccoPending = _ccoPending.filter(p => p.id !== ligne.dataset.pendingId);
+      delete ligne.dataset.pendingId;
+    }
+    cell.outerHTML = _htmlCelluleRefCommande(mode);
+    _ccoRafraichirSelects();
+  }
+
+  function _ouvrirModaleCommande() {
+    const tbody = document.getElementById('cco-lignes-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    _ccoPending = [];
+    _ccoPendingSeq = 0;
+    _ajouterLigneCommandeConso();
+    document.getElementById('cco-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('cco-fournisseur').value = '';
+    document.getElementById('cco-ref-commande').value = '';
+    document.getElementById('cco-erreur').classList.remove('visible');
+    document.getElementById('m-conso-commande').classList.add('open');
+  }
+
+  async function _enregistrerCommande() {
+    const erEl = document.getElementById('cco-erreur');
+    erEl.classList.remove('visible');
+
+    const date = document.getElementById('cco-date').value || new Date().toISOString().slice(0, 10);
+    const fournisseur  = document.getElementById('cco-fournisseur').value.trim();
+    const refCommande  = document.getElementById('cco-ref-commande').value.trim();
+    const commentaire  = [fournisseur, refCommande].filter(Boolean).join(' — ') || null;
+
+    const lignes = [...document.querySelectorAll('#cco-lignes-tbody .cco-ligne')].map(tr => {
+      const cell = tr.querySelector('.cco-cell-ref[data-mode]');
+      const base = {
+        qte:  parseInt(tr.querySelector('.cco-qte').value, 10),
+        prix: parseFloat(tr.querySelector('.cco-prix').value),
+      };
+      if (cell?.dataset.mode === 'nouveau') {
+        return {
+          ...base, nouveau: true, pendingId: tr.dataset.pendingId || null,
+          categorie:   tr.querySelector('.cco-nouv-categorie')?.value || '',
+          reference:   tr.querySelector('.cco-nouv-reference')?.value.trim() || null,
+          description: tr.querySelector('.cco-nouv-description')?.value.trim() || '',
+        };
+      }
+      const selVal = tr.querySelector('.cco-select')?.value || '';
+      // Une "nouvelle référence" saisie sur une autre ligne peut être choisie ici
+      // depuis la liste — elle sera créée une seule fois puis réutilisée.
+      const pendante = selVal.startsWith('pending:') ? _ccoPending.find(p => p.id === selVal) : null;
+      if (pendante) {
+        return {
+          ...base, nouveau: true, pendingId: pendante.id,
+          categorie: pendante.categorie, reference: pendante.reference, description: pendante.description,
+        };
+      }
+      return { ...base, nouveau: false, id: selVal };
+    });
+
+    if (!lignes.length) { erEl.textContent = 'Ajoutez au moins une ligne.'; erEl.classList.add('visible'); return; }
+    if (lignes.some(l => l.nouveau ? !l.description : !l.id)) {
+      erEl.textContent = 'Sélectionnez une référence (ou renseignez la description de la nouvelle) pour chaque ligne.';
+      erEl.classList.add('visible'); return;
+    }
+    if (lignes.some(l => !l.qte || l.qte <= 0)) { erEl.textContent = 'Quantité invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
+    if (lignes.some(l => isNaN(l.prix) || l.prix < 0)) { erEl.textContent = 'Prix unitaire invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
 
     try {
-      const mvt = await window.SB.inserer('consommables_mouvements', {
-        consommable_id: id, type: 'achat', quantite: qte, prix_unitaire: prix,
-        date_mouvement: date, commentaire,
-      });
-      _consoMouvements.push(mvt);
-
-      const maj = await window.SB.mettreAJour('consommables', id, { qte: (c.qte || 0) + qte });
-      const i = _consommables.findIndex(x => x.id === id);
-      if (i !== -1) _consommables[i] = maj;
-
-      document.getElementById('m-conso-achat').classList.remove('open');
+      const pendingCreated = {}; // pendingId -> id réel déjà créé (une même nouvelle réf. peut apparaître sur plusieurs lignes)
+      for (const l of lignes) {
+        let id = l.id;
+        let c;
+        if (l.nouveau) {
+          if (l.pendingId && pendingCreated[l.pendingId]) {
+            id = pendingCreated[l.pendingId];
+            c = _consommables.find(x => x.id === id);
+          } else {
+            c = await window.SB.inserer('consommables', {
+              categorie: l.categorie, reference: l.reference, description: l.description,
+              qte: 0, seuil_alerte: 0,
+            });
+            _consommables.push(c);
+            id = c.id;
+            if (l.pendingId) pendingCreated[l.pendingId] = id;
+          }
+        } else {
+          c = _consommables.find(x => x.id === id);
+          if (!c) continue;
+        }
+        const mvt = await window.SB.inserer('consommables_mouvements', {
+          consommable_id: id, type: 'achat', quantite: l.qte, prix_unitaire: l.prix,
+          date_mouvement: date, commentaire,
+        });
+        _consoMouvements.push(mvt);
+        const maj = await window.SB.mettreAJour('consommables', id, { qte: (c.qte || 0) + l.qte });
+        const i = _consommables.findIndex(x => x.id === id);
+        if (i !== -1) _consommables[i] = maj;
+      }
+      document.getElementById('m-conso-commande').classList.remove('open');
       _rendreConsommables();
-      _notif('Achat enregistré', 'ok');
+      _notif(`Commande enregistrée — ${lignes.length} référence(s)`, 'ok');
     } catch (e) {
-      _notif('Erreur : ' + e.message, 'erreur');
+      erEl.textContent = 'Erreur : ' + e.message;
+      erEl.classList.add('visible');
     }
   }
 
@@ -9263,7 +9444,7 @@ ${hasT ? `
     const c = _consommables.find(x => x.id === id);
     if (!c) return;
     document.getElementById('cc-conso-id').value = id;
-    document.getElementById('cc-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('cc-info').textContent = `${_consoLabelRefDesc(c)} (stock actuel : ${c.qte ?? 0})`;
     document.getElementById('cc-qte').value = 1;
     document.getElementById('cc-date').value = new Date().toISOString().slice(0, 10);
     document.getElementById('cc-commentaire').value = '';
@@ -9298,6 +9479,89 @@ ${hasT ? `
     } catch (e) {
       _notif('Erreur : ' + e.message, 'erreur');
     }
+  }
+
+  /** Petit graphique en ligne (SVG inline, sans dépendance) — évolution du prix d'achat. */
+  function _svgGraphiquePrix(achats) {
+    const pts = achats.filter(m => m.prix_unitaire != null);
+    if (pts.length < 2) return '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px 0;margin:0">Pas assez d\'achats avec prix pour un graphique</p>';
+
+    const W = 280, H = 130, padL = 34, padR = 8, padT = 10, padB = 18;
+    const xs = pts.map(m => new Date(m.date_mouvement).getTime());
+    const ys = pts.map(m => Number(m.prix_unitaire));
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xR = xMax - xMin || 1, yR = yMax - yMin || 1;
+    const xPix = t => padL + ((t - xMin) / xR) * (W - padL - padR);
+    const yPix = v => H - padB - ((v - yMin) / yR) * (H - padT - padB);
+
+    const poly = pts.map(m => `${xPix(new Date(m.date_mouvement).getTime()).toFixed(1)},${yPix(Number(m.prix_unitaire)).toFixed(1)}`).join(' ');
+    const points = pts.map(m => {
+      const x = xPix(new Date(m.date_mouvement).getTime()).toFixed(1);
+      const y = yPix(Number(m.prix_unitaire)).toFixed(1);
+      const titre = `${new Date(m.date_mouvement).toLocaleDateString('fr-FR')} — ${Number(m.prix_unitaire).toFixed(2)} €`;
+      return `<circle cx="${x}" cy="${y}" r="3" fill="#d22323"><title>${_e(titre)}</title></circle>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="#ddd"/>
+      <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#ddd"/>
+      <text x="${padL - 4}" y="${padT + 6}" font-size="9" fill="#888" text-anchor="end">${yMax.toFixed(2)}€</text>
+      <text x="${padL - 4}" y="${H - padB}" font-size="9" fill="#888" text-anchor="end">${yMin.toFixed(2)}€</text>
+      <polyline points="${poly}" fill="none" stroke="#d22323" stroke-width="2"/>
+      ${points}
+      <text x="${padL}" y="${H - 4}" font-size="9" fill="#888">${new Date(xMin).toLocaleDateString('fr-FR')}</text>
+      <text x="${W - padR}" y="${H - 4}" font-size="9" fill="#888" text-anchor="end">${new Date(xMax).toLocaleDateString('fr-FR')}</text>
+    </svg>`;
+  }
+
+  /** Petit graphique en barres (SVG inline) — quantités consommées dans le temps. */
+  function _svgGraphiqueConso(consos) {
+    if (!consos.length) return '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px 0;margin:0">Aucune consommation enregistrée</p>';
+
+    // Agrégation par mois (clé "YYYY-MM")
+    const parMois = {};
+    consos.forEach(m => {
+      const d = new Date(m.date_mouvement);
+      const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      parMois[cle] = (parMois[cle] || 0) + Number(m.quantite);
+    });
+    const mois = Object.keys(parMois).sort();
+    const valeurs = mois.map(cle => parMois[cle]);
+    const max = Math.max(...valeurs);
+    const libelleMois = cle => {
+      const [an, m] = cle.split('-');
+      return new Date(Number(an), Number(m) - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+    };
+
+    const W = 280, H = 130, padL = 28, padR = 8, padT = 10, padB = 18;
+    const n = mois.length;
+    const slot = (W - padL - padR) / n;
+    const barW = Math.max(6, Math.min(30, slot - 6));
+
+    const barres = mois.map((cle, i) => {
+      const v = parMois[cle];
+      const h = (v / (max || 1)) * (H - padT - padB);
+      const x = padL + i * slot + (slot - barW) / 2;
+      const y = H - padB - h;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="#e67e22"><title>${_e(libelleMois(cle))} — ${v}</title></rect>
+        <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" font-size="8" fill="#666" text-anchor="middle">${v}</text>`;
+    }).join('');
+
+    const xLabels = (n <= 6 ? mois : [mois[0], mois[Math.floor(n / 2)], mois[n - 1]]).map(cle => {
+      const i = mois.indexOf(cle);
+      const x = padL + i * slot + slot / 2;
+      return `<text x="${x.toFixed(1)}" y="${H - 4}" font-size="8" fill="#888" text-anchor="middle">${_e(libelleMois(cle))}</text>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="#ddd"/>
+      <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#ddd"/>
+      <text x="${padL - 4}" y="${padT + 6}" font-size="9" fill="#888" text-anchor="end">${max}</text>
+      <text x="${padL - 4}" y="${H - padB}" font-size="9" fill="#888" text-anchor="end">0</text>
+      ${barres}
+      ${xLabels}
+    </svg>`;
   }
 
   function _ouvrirModaleTendances(id) {
@@ -9340,6 +9604,16 @@ ${hasT ? `
       carte('Conso. moyenne / mois', consoMoisMoyenne != null ? consoMoisMoyenne : '—'),
     ].join('');
 
+    document.getElementById('ct-graphiques').innerHTML = `
+      <div class="ct-graph-bloc">
+        <div class="ct-graph-titre">Évolution du prix d'achat</div>
+        ${_svgGraphiquePrix(achats)}
+      </div>
+      <div class="ct-graph-bloc">
+        <div class="ct-graph-titre">Consommation</div>
+        ${_svgGraphiqueConso(consos)}
+      </div>`;
+
     if (!mouvements.length) {
       document.getElementById('ct-historique').innerHTML = '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px">Aucun mouvement enregistré</p>';
     } else {
@@ -9360,9 +9634,28 @@ ${hasT ? `
   }
 
   function _attacherEvenementsConsommables() {
-    document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
+    document.getElementById('btn-commande-consommables')?.addEventListener('click', _ouvrirModaleCommande);
     document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
     document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
+
+    document.getElementById('cco-btn-ajouter-ligne')?.addEventListener('click', _ajouterLigneCommandeConso);
+    document.getElementById('cco-lignes-tbody')?.addEventListener('click', e => {
+      const btnSuppr = e.target.closest('.cco-btn-suppr');
+      if (btnSuppr) { btnSuppr.closest('.cco-ligne')?.remove(); return; }
+      const btnMode = e.target.closest('.cco-btn-toggle-mode');
+      if (btnMode) _basculerModeLigneCommande(btnMode.closest('.cco-ligne'), btnMode.dataset.modeCible);
+    });
+    document.getElementById('cco-lignes-tbody')?.addEventListener('input', e => {
+      if (!e.target.matches('.cco-nouv-reference, .cco-nouv-description, .cco-nouv-categorie')) return;
+      _ccoMajPending(e.target.closest('.cco-ligne'));
+    });
+    document.getElementById('cco-lignes-tbody')?.addEventListener('change', e => {
+      if (e.target.matches('.cco-nouv-categorie')) { _ccoMajPending(e.target.closest('.cco-ligne')); return; }
+      if (e.target.matches('.cco-categorie')) {
+        const sel = e.target.closest('.cco-cell-ref')?.querySelector('.cco-select');
+        if (sel) sel.innerHTML = _htmlOptionsConsommables('', e.target.value);
+      }
+    });
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
     _brancherAutocompleteConso('conso-reference', 'conso-suggest-reference', 'reference', valeur => {
@@ -9373,7 +9666,7 @@ ${hasT ? `
     });
 
     document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
-    document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
+    document.querySelector('#m-conso-commande .btn-soumettre-commande')?.addEventListener('click', _enregistrerCommande);
     document.querySelector('#m-conso-consommation .btn-soumettre-consommation')?.addEventListener('click', _enregistrerConsommation);
 
     document.querySelectorAll('.conso-cat-btn').forEach(btn => {
@@ -9404,7 +9697,6 @@ ${hasT ? `
         const id = tr.dataset.consoId;
         if (btn.dataset.consoAction === 'editer')       _ouvrirModaleConsommable(id);
         if (btn.dataset.consoAction === 'supprimer')    _supprimerConsommable(id);
-        if (btn.dataset.consoAction === 'achat')        _ouvrirModaleAchat(id);
         if (btn.dataset.consoAction === 'consommation') _ouvrirModaleConsommation(id);
         if (btn.dataset.consoAction === 'tendances')    _ouvrirModaleTendances(id);
       });
