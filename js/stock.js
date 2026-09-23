@@ -9096,7 +9096,7 @@ ${hasT ? `
     return [...new Set(_consommables.map(c => c[champ]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
   }
 
-  function _brancherAutocompleteConso(inputId, suggestId, champ) {
+  function _brancherAutocompleteConso(inputId, suggestId, champ, onSelect) {
     const input = document.getElementById(inputId);
     const box   = document.getElementById(suggestId);
     if (!input || !box) return;
@@ -9123,6 +9123,7 @@ ${hasT ? `
       e.preventDefault();
       input.value = item.textContent;
       fermer();
+      onSelect?.(item.textContent);
     });
   }
 
@@ -9364,7 +9365,12 @@ ${hasT ? `
     document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
-    _brancherAutocompleteConso('conso-reference', 'conso-suggest-reference', 'reference');
+    _brancherAutocompleteConso('conso-reference', 'conso-suggest-reference', 'reference', valeur => {
+      // Une référence est normalement unique — en sélectionner une déjà
+      // connue rappatrie automatiquement sa description.
+      const match = _consommables.find(c => c.reference === valeur);
+      if (match) document.getElementById('conso-description').value = match.description || '';
+    });
 
     document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
     document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
