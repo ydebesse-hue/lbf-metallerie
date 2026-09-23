@@ -761,6 +761,10 @@
     .conso-tendances-stats .ct-carte { background:var(--gris-clair); border-radius:6px; padding:10px 12px; }
     .conso-tendances-stats .ct-carte .ct-label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; }
     .conso-tendances-stats .ct-carte .ct-val { font-size:18px; font-weight:bold; color:var(--noir); margin-top:2px; }
+    #ct-graphiques { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+    #ct-graphiques .ct-graph-bloc { background:var(--gris-clair); border-radius:6px; padding:10px 12px; }
+    #ct-graphiques .ct-graph-titre { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+    @media (max-width:640px) { #ct-graphiques { grid-template-columns:1fr; } }
     #ct-historique table { width:100%; border-collapse:collapse; font-size:12px; }
     #ct-historique th { text-align:left; padding:5px 8px; background:var(--noir); color:#fff; font-size:10px; }
     #ct-historique td { padding:4px 8px; border-bottom:1px solid #eee; }
@@ -2828,6 +2832,7 @@
     <div class="modale modale-lg">
       <div class="modale-titre" id="ct-titre">Tendances</div>
       <div id="ct-stats" class="conso-tendances-stats"></div>
+      <div id="ct-graphiques"></div>
       <div id="ct-historique"></div>
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-tendances').classList.remove('open')">Fermer</button>
@@ -3798,7 +3803,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923i"></script>
+  <script src="../js/stock.js?v=20260923j"></script>
 
 </body>
 </html>

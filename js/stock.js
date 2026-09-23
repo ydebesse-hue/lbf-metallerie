@@ -9508,6 +9508,66 @@ ${hasT ? `
     }
   }
 
+  /** Petit graphique en ligne (SVG inline, sans dépendance) — évolution du prix d'achat. */
+  function _svgGraphiquePrix(achats) {
+    const pts = achats.filter(m => m.prix_unitaire != null);
+    if (pts.length < 2) return '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px 0;margin:0">Pas assez d\'achats avec prix pour un graphique</p>';
+
+    const W = 280, H = 130, padL = 34, padR = 8, padT = 10, padB = 18;
+    const xs = pts.map(m => new Date(m.date_mouvement).getTime());
+    const ys = pts.map(m => Number(m.prix_unitaire));
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const xR = xMax - xMin || 1, yR = yMax - yMin || 1;
+    const xPix = t => padL + ((t - xMin) / xR) * (W - padL - padR);
+    const yPix = v => H - padB - ((v - yMin) / yR) * (H - padT - padB);
+
+    const poly = pts.map(m => `${xPix(new Date(m.date_mouvement).getTime()).toFixed(1)},${yPix(Number(m.prix_unitaire)).toFixed(1)}`).join(' ');
+    const points = pts.map(m => {
+      const x = xPix(new Date(m.date_mouvement).getTime()).toFixed(1);
+      const y = yPix(Number(m.prix_unitaire)).toFixed(1);
+      const titre = `${new Date(m.date_mouvement).toLocaleDateString('fr-FR')} — ${Number(m.prix_unitaire).toFixed(2)} €`;
+      return `<circle cx="${x}" cy="${y}" r="3" fill="#d22323"><title>${_e(titre)}</title></circle>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="#ddd"/>
+      <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#ddd"/>
+      <text x="${padL - 4}" y="${padT + 6}" font-size="9" fill="#888" text-anchor="end">${yMax.toFixed(2)}€</text>
+      <text x="${padL - 4}" y="${H - padB}" font-size="9" fill="#888" text-anchor="end">${yMin.toFixed(2)}€</text>
+      <polyline points="${poly}" fill="none" stroke="#d22323" stroke-width="2"/>
+      ${points}
+      <text x="${padL}" y="${H - 4}" font-size="9" fill="#888">${new Date(xMin).toLocaleDateString('fr-FR')}</text>
+      <text x="${W - padR}" y="${H - 4}" font-size="9" fill="#888" text-anchor="end">${new Date(xMax).toLocaleDateString('fr-FR')}</text>
+    </svg>`;
+  }
+
+  /** Petit graphique en barres (SVG inline) — quantités consommées dans le temps. */
+  function _svgGraphiqueConso(consos) {
+    if (!consos.length) return '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px 0;margin:0">Aucune consommation enregistrée</p>';
+
+    const W = 280, H = 130, padL = 26, padR = 8, padT = 10, padB = 18;
+    const max = Math.max(...consos.map(m => Number(m.quantite)));
+    const n = consos.length;
+    const slot = (W - padL - padR) / n;
+    const barW = Math.max(3, Math.min(28, slot - 4));
+
+    const barres = consos.map((m, i) => {
+      const h = (Number(m.quantite) / (max || 1)) * (H - padT - padB);
+      const x = padL + i * slot + (slot - barW) / 2;
+      const y = H - padB - h;
+      const titre = `${new Date(m.date_mouvement).toLocaleDateString('fr-FR')} — ${m.quantite}`;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="#e67e22"><title>${_e(titre)}</title></rect>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px">
+      <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#ddd"/>
+      ${barres}
+      <text x="${padL}" y="${H - 4}" font-size="9" fill="#888">${new Date(consos[0].date_mouvement).toLocaleDateString('fr-FR')}</text>
+      <text x="${W - padR}" y="${H - 4}" font-size="9" fill="#888" text-anchor="end">${new Date(consos[consos.length - 1].date_mouvement).toLocaleDateString('fr-FR')}</text>
+    </svg>`;
+  }
+
   function _ouvrirModaleTendances(id) {
     const c = _consommables.find(x => x.id === id);
     if (!c) return;
@@ -9547,6 +9607,16 @@ ${hasT ? `
       carte('Conso. totale', totalConso),
       carte('Conso. moyenne / mois', consoMoisMoyenne != null ? consoMoisMoyenne : '—'),
     ].join('');
+
+    document.getElementById('ct-graphiques').innerHTML = `
+      <div class="ct-graph-bloc">
+        <div class="ct-graph-titre">Évolution du prix d'achat</div>
+        ${_svgGraphiquePrix(achats)}
+      </div>
+      <div class="ct-graph-bloc">
+        <div class="ct-graph-titre">Consommation</div>
+        ${_svgGraphiqueConso(consos)}
+      </div>`;
 
     if (!mouvements.length) {
       document.getElementById('ct-historique').innerHTML = '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px">Aucun mouvement enregistré</p>';
