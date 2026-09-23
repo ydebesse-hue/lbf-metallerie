@@ -216,6 +216,7 @@ const Stock = (() => {
   let _sectionActive = 'stock';  // 'stock' | 'admin'
   let _ongletAdmin   = 'stockage';
   let _onglet        = 'synthese';
+  let _estVisiteurAnonyme = false; // visiteur "Consulter sans connexion" — accès très restreint
   let _synTab          = 'profils';
   let _synProfilsTous  = false;
   let _synTolesTous    = false;
@@ -285,6 +286,25 @@ const Stock = (() => {
      ────────────────────────────────────────────────────────────── */
 
   /**
+   * Visiteur "Consulter sans connexion" : accès volontairement réduit à
+   * Profilés + Tôles (pas de Synthèse, Plan stock ni Consommables — Archivées
+   * est déjà masqué via data-require="can_validate"). La bannière "Mes
+   * demandes" est aussi masquée : l'identifiant "visiteur" est partagé par
+   * tous les anonymes, donc la fonction de demande d'attribution n'a pas de
+   * sens sans identification individuelle.
+   */
+  function _restreindreVisiteurAnonyme() {
+    const session = Auth.getSession();
+    _estVisiteurAnonyme = session?.anonyme === true;
+    if (!_estVisiteurAnonyme) return;
+
+    ['synthese', 'plan', 'consommables'].forEach(onglet => {
+      document.querySelector(`.sous-onglet[data-onglet="${onglet}"]`)?.style.setProperty('display', 'none');
+    });
+    document.getElementById('stock-alerte-mes-demandes')?.style.setProperty('display', 'none');
+  }
+
+  /**
    * Point d'entrée — appelé au DOMContentLoaded
    */
   async function init() {
@@ -292,6 +312,7 @@ const Stock = (() => {
     Auth.requireAuth();
     Auth.afficherInfosSession('#header-user', '#header-badge');
     Auth.appliquerDroitsDOM();
+    _restreindreVisiteurAnonyme();
     await _chargerSeuils();
 
     try {
@@ -389,6 +410,8 @@ const Stock = (() => {
     _attacherEvenements();
     _initialiserModales();
     _initStickyTop();
+
+    if (_estVisiteurAnonyme) _basculerOnglet('profils');
 
     // Rafraîchissement automatique (demandes + ajouts en attente) pour les admins
     if (Auth.hasRight('can_validate')) {
@@ -3314,9 +3337,7 @@ ${hasT ? `
 
   function _mesDemandesActives() {
     const session = Auth.getSession();
-    if (!session) return [];
-    // Compte visiteur : identifiant 'visiteur' partagé par tous les anonymes —
-    // on affiche donc toutes les demandes faites en tant que visiteur, pas "les miennes".
+    if (!session || session.anonyme) return [];
     const identifiant = session.identifiant;
     const vus = _idsNotifsVus();
     return _demandesToutes.filter(d =>
