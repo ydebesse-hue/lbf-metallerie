@@ -9219,7 +9219,7 @@ ${hasT ? `
     const c = _consommables.find(x => x.id === id);
     if (!c) return;
     document.getElementById('ca-conso-id').value = id;
-    document.getElementById('ca-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('ca-info').textContent = `${_consoLabelRefDesc(c)} (stock actuel : ${c.qte ?? 0})`;
     document.getElementById('ca-qte').value = 1;
     document.getElementById('ca-prix').value = '';
     document.getElementById('ca-date').value = new Date().toISOString().slice(0, 10);
@@ -9268,16 +9268,21 @@ ${hasT ? `
   let _ccoPending = [];
   let _ccoPendingSeq = 0;
 
+  /** Libellé "Référence — Description" (ou juste la description si pas de référence). */
+  function _consoLabelRefDesc(c) {
+    return c.reference ? `${c.reference} — ${c.description}` : c.description;
+  }
+
   function _optionsConsommablesTriees() {
     return [..._consommables].sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
   }
 
   function _htmlOptionsConsommables(selectionId = '') {
     const existants = _optionsConsommablesTriees().map(c =>
-      `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(c.description)}${c.reference ? ' — ' + _e(c.reference) : ''}</option>`
+      `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(_consoLabelRefDesc(c))}</option>`
     ).join('');
     const pendantes = _ccoPending.map(p =>
-      `<option value="${_e(p.id)}"${p.id === selectionId ? ' selected' : ''}>🆕 ${_e(p.description)}${p.reference ? ' — ' + _e(p.reference) : ''}</option>`
+      `<option value="${_e(p.id)}"${p.id === selectionId ? ' selected' : ''}>🆕 ${_e(_consoLabelRefDesc(p))}</option>`
     ).join('');
     return '<option value="">— Choisir —</option>' + existants
       + (pendantes ? `<optgroup label="Nouvelles (cette commande)">${pendantes}</optgroup>` : '');
@@ -9466,7 +9471,7 @@ ${hasT ? `
     const c = _consommables.find(x => x.id === id);
     if (!c) return;
     document.getElementById('cc-conso-id').value = id;
-    document.getElementById('cc-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('cc-info').textContent = `${_consoLabelRefDesc(c)} (stock actuel : ${c.qte ?? 0})`;
     document.getElementById('cc-qte').value = 1;
     document.getElementById('cc-date').value = new Date().toISOString().slice(0, 10);
     document.getElementById('cc-commentaire').value = '';
