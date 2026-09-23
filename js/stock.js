@@ -9259,6 +9259,81 @@ ${hasT ? `
     }
   }
 
+  /* ── Commande (achat multi-références) ─────────────────────────── */
+
+  function _optionsConsommablesTriees() {
+    return [..._consommables].sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
+  }
+
+  function _htmlOptionsConsommables(selectionId = '') {
+    return '<option value="">— Choisir —</option>' + _optionsConsommablesTriees().map(c =>
+      `<option value="${_e(c.id)}"${c.id === selectionId ? ' selected' : ''}>${_e(c.description)}${c.reference ? ' — ' + _e(c.reference) : ''}</option>`
+    ).join('');
+  }
+
+  function _ajouterLigneCommande() {
+    const tbody = document.getElementById('cco-lignes-tbody');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><select class="cco-select">${_htmlOptionsConsommables()}</select></td>
+      <td><input type="number" class="cco-qte" min="1" step="1" value="1"></td>
+      <td><input type="number" class="cco-prix" min="0" step="0.01" placeholder="ex: 12.50"></td>
+      <td><button type="button" class="cco-btn-suppr" title="Retirer cette ligne">🗑</button></td>`;
+    tbody.appendChild(tr);
+  }
+
+  function _ouvrirModaleCommande() {
+    const tbody = document.getElementById('cco-lignes-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    _ajouterLigneCommande();
+    document.getElementById('cco-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('cco-commentaire').value = '';
+    document.getElementById('cco-erreur').classList.remove('visible');
+    document.getElementById('m-conso-commande').classList.add('open');
+  }
+
+  async function _enregistrerCommande() {
+    const erEl = document.getElementById('cco-erreur');
+    erEl.classList.remove('visible');
+
+    const date = document.getElementById('cco-date').value || new Date().toISOString().slice(0, 10);
+    const commentaire = document.getElementById('cco-commentaire').value.trim() || null;
+
+    const lignes = [...document.querySelectorAll('#cco-lignes-tbody tr')].map(tr => ({
+      id:   tr.querySelector('.cco-select').value,
+      qte:  parseInt(tr.querySelector('.cco-qte').value, 10),
+      prix: parseFloat(tr.querySelector('.cco-prix').value),
+    }));
+
+    if (!lignes.length) { erEl.textContent = 'Ajoutez au moins une ligne.'; erEl.classList.add('visible'); return; }
+    if (lignes.some(l => !l.id)) { erEl.textContent = 'Sélectionnez une référence pour chaque ligne.'; erEl.classList.add('visible'); return; }
+    if (lignes.some(l => !l.qte || l.qte <= 0)) { erEl.textContent = 'Quantité invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
+    if (lignes.some(l => isNaN(l.prix) || l.prix < 0)) { erEl.textContent = 'Prix unitaire invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
+
+    try {
+      for (const l of lignes) {
+        const c = _consommables.find(x => x.id === l.id);
+        if (!c) continue;
+        const mvt = await window.SB.inserer('consommables_mouvements', {
+          consommable_id: l.id, type: 'achat', quantite: l.qte, prix_unitaire: l.prix,
+          date_mouvement: date, commentaire,
+        });
+        _consoMouvements.push(mvt);
+        const maj = await window.SB.mettreAJour('consommables', l.id, { qte: (c.qte || 0) + l.qte });
+        const i = _consommables.findIndex(x => x.id === l.id);
+        if (i !== -1) _consommables[i] = maj;
+      }
+      document.getElementById('m-conso-commande').classList.remove('open');
+      _rendreConsommables();
+      _notif(`Commande enregistrée — ${lignes.length} référence(s)`, 'ok');
+    } catch (e) {
+      erEl.textContent = 'Erreur : ' + e.message;
+      erEl.classList.add('visible');
+    }
+  }
+
   function _ouvrirModaleConsommation(id) {
     const c = _consommables.find(x => x.id === id);
     if (!c) return;
@@ -9361,8 +9436,15 @@ ${hasT ? `
 
   function _attacherEvenementsConsommables() {
     document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
+    document.getElementById('btn-commande-consommables')?.addEventListener('click', _ouvrirModaleCommande);
     document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
     document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
+
+    document.getElementById('cco-btn-ajouter-ligne')?.addEventListener('click', _ajouterLigneCommande);
+    document.getElementById('cco-lignes-tbody')?.addEventListener('click', e => {
+      const btn = e.target.closest('.cco-btn-suppr');
+      if (btn) btn.closest('tr')?.remove();
+    });
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
     _brancherAutocompleteConso('conso-reference', 'conso-suggest-reference', 'reference', valeur => {
@@ -9374,6 +9456,7 @@ ${hasT ? `
 
     document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
     document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
+    document.querySelector('#m-conso-commande .btn-soumettre-commande')?.addEventListener('click', _enregistrerCommande);
     document.querySelector('#m-conso-consommation .btn-soumettre-consommation')?.addEventListener('click', _enregistrerConsommation);
 
     document.querySelectorAll('.conso-cat-btn').forEach(btn => {
