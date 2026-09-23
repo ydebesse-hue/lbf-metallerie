@@ -761,6 +761,10 @@
     .conso-tendances-stats .ct-carte { background:var(--gris-clair); border-radius:6px; padding:10px 12px; }
     .conso-tendances-stats .ct-carte .ct-label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; }
     .conso-tendances-stats .ct-carte .ct-val { font-size:18px; font-weight:bold; color:var(--noir); margin-top:2px; }
+    #ct-graphiques { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+    #ct-graphiques .ct-graph-bloc { background:var(--gris-clair); border-radius:6px; padding:10px 12px; }
+    #ct-graphiques .ct-graph-titre { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+    @media (max-width:640px) { #ct-graphiques { grid-template-columns:1fr; } }
     #ct-historique table { width:100%; border-collapse:collapse; font-size:12px; }
     #ct-historique th { text-align:left; padding:5px 8px; background:var(--noir); color:#fff; font-size:10px; }
     #ct-historique td { padding:4px 8px; border-bottom:1px solid #eee; }
@@ -777,6 +781,30 @@
     .conso-suggest.open { display:block; }
     .conso-suggest-item { padding:7px 10px; font-size:13px; cursor:pointer; }
     .conso-suggest-item:hover, .conso-suggest-item.actif { background:#f5f5f5; }
+    .cco-lignes-head, .cco-ligne { display:grid; grid-template-columns:1fr 80px 100px 32px; gap:6px; align-items:start; }
+    .cco-lignes-head { font-size:11px; color:#888; text-transform:uppercase; padding:4px 6px; border-bottom:1px solid #eee; }
+    .cco-ligne { padding:6px; border-bottom:1px solid #eee; }
+    .cco-ligne select, .cco-ligne input { width:100%; padding:6px 8px; border:1px solid var(--gris-bord); border-radius:3px; font-family:Tahoma; font-size:13px; box-sizing:border-box; }
+    .cco-cell-ref select.cco-categorie { margin-bottom:4px; }
+    .cco-nouv-ligne1 { display:flex; gap:4px; }
+    .cco-nouv-categorie { flex:0 0 110px; width:110px; }
+    .cco-nouv-reference { flex:1 1 auto; width:auto; min-width:0; }
+    .cco-btn-suppr { background:none; border:none; color:var(--rouge); cursor:pointer; font-size:15px; padding:2px 4px; }
+    .cco-btn-toggle-mode { display:block; background:none; border:none; color:var(--vert); cursor:pointer; font-size:11px; padding:3px 0 0; text-align:left; text-decoration:underline; }
+    .cco-mobile-label { display:none; }
+    @media (max-width:640px) {
+      .cco-lignes-head { display:none; }
+      .cco-ligne {
+        grid-template-columns:1fr 1fr;
+        grid-template-areas:"ref ref" "qte prix" "suppr suppr";
+        row-gap:8px; padding:12px 6px;
+      }
+      .cco-cell-ref { grid-area:ref; }
+      .cco-cell-qte { grid-area:qte; }
+      .cco-cell-prix { grid-area:prix; }
+      .cco-cell-suppr { grid-area:suppr; text-align:right; }
+      .cco-mobile-label { display:block; font-size:10px; color:#888; text-transform:uppercase; margin-bottom:2px; }
+    }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
     tr.ligne-stock-bas td:first-child { border-left: 3px solid #e74c3c; }
     tr.ligne-chute td { background: #e8f4f8; border-bottom-color: #aed6f1; }
@@ -2121,7 +2149,7 @@
 
   <!-- ── TOOLBAR CONSOMMABLES ─────────────────────────────────── -->
   <div class="toolbar" id="toolbar-consommables" style="display:none">
-    <button id="btn-ajout-consommable" class="btn-action btn-rouge" data-require="can_add">+ Consommable</button>
+    <button id="btn-commande-consommables" class="btn-action btn-rouge" data-require="can_add" title="Enregistrer un achat portant sur plusieurs références">🛒 Commande</button>
     <div class="toolbar-sep"></div>
     <div class="conso-filtre-cat">
       <button class="conso-cat-btn actif" data-conso-cat="">Tous</button>
@@ -2702,38 +2730,42 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════
-       MODALE — ACHAT CONSOMMABLE
+       MODALE — COMMANDE (achat multi-références)
        ══════════════════════════════════════════════════════════════ -->
-  <div id="m-conso-achat" class="modale-bg" role="dialog" aria-modal="true" aria-label="Achat consommable">
-    <div class="modale">
-      <div class="modale-titre">Enregistrer un achat</div>
-      <div id="ca-info" style="font-size:13px;color:#555;margin-bottom:12px"></div>
-      <input type="hidden" id="ca-conso-id">
+  <div id="m-conso-commande" class="modale-bg" role="dialog" aria-modal="true" aria-label="Commande consommables">
+    <div class="modale modale-lg">
+      <div class="modale-titre">Enregistrer une commande</div>
+      <p style="font-size:13px;color:#666;margin:0 0 14px">Une ligne par référence reçue dans cette commande.</p>
 
-      <div class="form-cols2">
-        <div class="fr">
-          <label>Quantité achetée <span style="color:var(--rouge)">*</span></label>
-          <input type="number" id="ca-qte" min="1" step="1" value="1">
-        </div>
-        <div class="fr">
-          <label>Prix unitaire (€) <span style="color:var(--rouge)">*</span></label>
-          <input type="number" id="ca-prix" min="0" step="0.01" placeholder="ex: 12.50">
-        </div>
-      </div>
-      <div class="form-cols2">
+      <div class="form-cols3">
         <div class="fr">
           <label>Date d'achat</label>
-          <input type="date" id="ca-date">
+          <input type="date" id="cco-date">
         </div>
         <div class="fr">
-          <label>Commentaire</label>
-          <input type="text" id="ca-commentaire" placeholder="Fournisseur, réf. commande…">
+          <label>Fournisseur</label>
+          <input type="text" id="cco-fournisseur" placeholder="ex: Air Liquide">
+        </div>
+        <div class="fr">
+          <label>Réf. commande</label>
+          <input type="text" id="cco-ref-commande" placeholder="ex: CMD-2026-042">
         </div>
       </div>
 
+      <div class="cco-lignes-head">
+        <div>Référence</div>
+        <div>Qté</div>
+        <div>Prix unit. (€)</div>
+        <div></div>
+      </div>
+      <div id="cco-lignes-tbody" class="cco-lignes-corps"></div>
+      <button type="button" class="btn-modale btn-modale-gris" id="cco-btn-ajouter-ligne" style="margin-top:8px">+ Ligne</button>
+
+      <div class="msg-erreur" id="cco-erreur" role="alert" aria-live="polite"></div>
+
       <div class="modale-footer">
-        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-achat').classList.remove('open')">Annuler</button>
-        <button class="btn-modale btn-modale-rouge btn-soumettre-achat">Enregistrer</button>
+        <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-commande').classList.remove('open')">Annuler</button>
+        <button class="btn-modale btn-modale-rouge btn-soumettre-commande">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -2776,6 +2808,7 @@
     <div class="modale modale-lg">
       <div class="modale-titre" id="ct-titre">Tendances</div>
       <div id="ct-stats" class="conso-tendances-stats"></div>
+      <div id="ct-graphiques"></div>
       <div id="ct-historique"></div>
       <div class="modale-footer">
         <button class="btn-modale btn-modale-gris" onclick="document.getElementById('m-conso-tendances').classList.remove('open')">Fermer</button>
@@ -3746,7 +3779,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923e"></script>
+  <script src="../js/stock.js?v=20260923o"></script>
 
 </body>
 </html>
