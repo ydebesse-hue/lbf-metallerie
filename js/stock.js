@@ -1654,11 +1654,14 @@ const Stock = (() => {
     // ── Contenu sous-onglet Tôles ─────────────────────────────────
     const _contenuToles = () => {
       const tolesActives  = barres.filter(b => b.categorie === 'tole' && b.statut !== 'archivee');
+      const _sommeQte     = arr => arr.reduce((s, b) => s + (b.quantite || 1), 0);
       const surfaceDispo  = tolesDispo.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
       const surfaceAfft   = tolesAffectees.reduce((s, b) => s + _surfaceTole(b) * (b.quantite || 1), 0);
       const poidsTolesTot = tolesDispo.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
       const pAfft         = tolesAffectees.reduce((s, b) => s + (b.poids_total_kg || 0), 0);
-      const nbTolTotal    = tolesDispo.length + tolesAffectees.length + tolesAttente.length;
+      const nbToleDispo   = _sommeQte(tolesDispo);
+      const nbToleAfft    = _sommeQte(tolesAffectees);
+      const nbTolTotal    = nbToleDispo + nbToleAfft + _sommeQte(tolesAttente);
 
       const canEdit = Auth.hasRight('can_validate');
 
@@ -1667,15 +1670,16 @@ const Stock = (() => {
       const scopeLabelT = _synTolesTous ? 'Tous' : 'Disponibles';
       const parType = {};
       sourceToles.forEach(b => {
-        const ty = b.type_tole || '?';
-        const ep = b.epaisseur_mm || '?';
+        const ty  = b.type_tole || '?';
+        const ep  = b.epaisseur_mm || '?';
+        const qte = b.quantite || 1;
         if (!parType[ty]) parType[ty] = { nb: 0, surface: 0, poids: 0, eps: {} };
-        parType[ty].nb++;
-        parType[ty].surface += _surfaceTole(b) * (b.quantite || 1);
+        parType[ty].nb += qte;
+        parType[ty].surface += _surfaceTole(b) * qte;
         parType[ty].poids   += b.poids_total_kg || 0;
         if (!parType[ty].eps[ep]) parType[ty].eps[ep] = { nb: 0, surface: 0, poids: 0 };
-        parType[ty].eps[ep].nb++;
-        parType[ty].eps[ep].surface += _surfaceTole(b) * (b.quantite || 1);
+        parType[ty].eps[ep].nb += qte;
+        parType[ty].eps[ep].surface += _surfaceTole(b) * qte;
         parType[ty].eps[ep].poids   += b.poids_total_kg || 0;
       });
       const lignesType = Object.entries(parType).sort((a, b) => b[1].surface - a[1].surface);
@@ -1785,13 +1789,13 @@ const Stock = (() => {
             <tbody>
               <tr>
                 <td><span class="syn-dot s-vert"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="disponible">Disponible →</span></td>
-                <td><strong>${tolesDispo.length}</strong></td>
+                <td><strong>${nbToleDispo}</strong></td>
                 <td>${fmt(surfaceDispo)} m²</td>
                 <td>${fmtT(poidsTolesTot)}</td>
               </tr>
               <tr>
                 <td><span class="syn-dot s-rouge"></span> <span class="syn-lien" data-syn-action="voir-dispo" data-syn-onglet="toles" data-syn-dispo="affecte">Affecté →</span></td>
-                <td><strong>${tolesAffectees.length}</strong></td>
+                <td><strong>${nbToleAfft}</strong></td>
                 <td>${fmt(surfaceAfft)} m²</td>
                 <td>${fmtT(pAfft)}</td>
               </tr>
