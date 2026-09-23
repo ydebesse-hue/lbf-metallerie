@@ -232,6 +232,9 @@ const Stock = (() => {
   let _lieux     = [...LIEUX_DEFAUT]; // calculés depuis _racks
   let _chantiers    = [];  // { id, nom, numero_affaire, ville } depuis Supabase
   let _fournisseurs = [];  // { id, nom } depuis Supabase
+  let _consommables    = [];  // { id, categorie, reference, description, qte, seuil_alerte } depuis Supabase
+  let _consoFiltreCat  = '';  // catégorie active du filtre ('' = toutes)
+  let _consoRecherche  = '';
   let _tri       = { col: null, ordre: 'asc' };
   let _selection = null;        // élément sélectionné (partagé avec les modales)
   let _demandes  = [];          // demandes en_attente chargées depuis Supabase (Conv. 6)
@@ -363,6 +366,12 @@ const Stock = (() => {
         const rows = await window.SB.lire('fournisseurs', { order: 'nom' });
         _fournisseurs = rows.filter(f => f.actif);
       } catch(e) {}
+      try {
+        _consommables = await window.SB.lire('consommables', { order: 'description' });
+      } catch(e) { _consommables = []; }
+      try {
+        _consoMouvements = await window.SB.lire('consommables_mouvements', { order: 'date_mouvement' });
+      } catch(e) { _consoMouvements = []; }
 
       // Charger les données du plan (positions + image) depuis Supabase
       await _chargerDonnesPlan();
@@ -1156,8 +1165,8 @@ const Stock = (() => {
     return h + '</tbody></table>';
   }
 
-  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée' };
-  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee' };
+  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée', corten: 'Corten' };
+  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee', corten: 'chip-tole-corten' };
 
   function _badgeTypeTole(type) {
     if (!type) return '<span style="color:#aaa">—</span>';
@@ -1249,7 +1258,7 @@ const Stock = (() => {
       let filtre = '';
       if (c.key === 'type') {
         const set = _filtresT.type; const n = set.size;
-        const lbl = n === 0 ? '— type —' : n === 1 ? ({ noir: 'Noir', inox: 'Inox', larmee: 'Larmée' }[[...set][0]] || [...set][0]) : `${n} ✓`;
+        const lbl = n === 0 ? '— type —' : n === 1 ? (_LABEL_TYPE_TOLE[[...set][0]] || [...set][0]) : `${n} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${n ? ' th-filtre-actif' : ''}" data-filtre="t-type">${_e(lbl)}</button>`;
       } else if (c.key === 'epaisseur') {
         const setE = _filtresT.epaisseur; const nE = setE.size;
@@ -3018,23 +3027,29 @@ ${hasT ? `
     const ttol = document.getElementById('toolbar-toles');
     const tarc = document.getElementById('toolbar-archivees');
     const tsyn = document.getElementById('toolbar-synthese');
-    if (tpro) tpro.style.display = onglet === 'profils'   ? '' : 'none';
-    if (ttol) ttol.style.display = onglet === 'toles'     ? '' : 'none';
-    if (tarc) tarc.style.display = onglet === 'archivees' ? '' : 'none';
-    if (tsyn) tsyn.style.display = onglet === 'synthese'  ? '' : 'none';
+    const tcon = document.getElementById('toolbar-consommables');
+    if (tpro) tpro.style.display = onglet === 'profils'      ? '' : 'none';
+    if (ttol) ttol.style.display = onglet === 'toles'        ? '' : 'none';
+    if (tarc) tarc.style.display = onglet === 'archivees'    ? '' : 'none';
+    if (tsyn) tsyn.style.display = onglet === 'synthese'     ? '' : 'none';
+    if (tcon) tcon.style.display = onglet === 'consommables' ? '' : 'none';
 
-    // Basculer entre tableau, zone synthèse et zone plan
+    // Basculer entre tableau, zone synthèse, zone plan et zone consommables
     const ztab  = document.getElementById('tableau-stock');
     const zpied = document.querySelector('.pied-tableau');
     const zsyn  = document.getElementById('zone-synthese');
     const zplan = document.getElementById('zone-plan');
+    const zcon  = document.getElementById('zone-consommables');
     const estSyn  = onglet === 'synthese';
     const estPlan = onglet === 'plan';
-    if (ztab)  ztab.style.display  = (estSyn || estPlan) ? 'none' : '';
-    if (zpied) zpied.style.display = (estSyn || estPlan) ? 'none' : '';
+    const estCon  = onglet === 'consommables';
+    if (ztab)  ztab.style.display  = (estSyn || estPlan || estCon) ? 'none' : '';
+    if (zpied) zpied.style.display = (estSyn || estPlan || estCon) ? 'none' : '';
     if (zsyn)  zsyn.style.display  = estSyn  ? '' : 'none';
     if (zplan) zplan.style.display = estPlan ? '' : 'none';
+    if (zcon)  zcon.style.display  = estCon  ? '' : 'none';
     if (estPlan) _rendrePlanStock();
+    if (estCon)  _rendreConsommables();
 
     requestAnimationFrame(_ajusterStickyTop);
 
@@ -3042,7 +3057,7 @@ ${hasT ? `
     const titres = {
       profils: 'Stock Profilés — LBF', toles: 'Stock Tôles — LBF',
       archivees: 'Stock Archivées — LBF', synthese: 'Synthèse Stock — LBF',
-      plan: 'Plan stock — LBF'
+      plan: 'Plan stock — LBF', consommables: 'Consommables — LBF'
     };
     document.title = titres[onglet] || 'Stock — LBF';
 
@@ -3075,6 +3090,12 @@ ${hasT ? `
       ['a-type','a-desig','a-epaisseur','a-type-tole','a-chantier','a-recherche'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
       });
+    } else if (onglet === 'consommables') {
+      _consoFiltreCat = '';
+      _consoRecherche = '';
+      const el = document.getElementById('conso-recherche');
+      if (el) el.value = '';
+      document.querySelectorAll('.conso-cat-btn').forEach(b => b.classList.toggle('actif', b.dataset.consoCat === ''));
     }
   }
 
@@ -3133,7 +3154,7 @@ ${hasT ? `
         return uniq(profils.filter(b => b.fournisseur).map(b => b.fournisseur))
           .map(v => ({ value: v, label: v }));
       case 't-type':
-        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }];
+        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }, { value: 'corten', label: 'Corten' }];
       case 't-epaisseur':
         return uniqN(toles.map(b => b.epaisseur_mm)).map(v => ({ value: String(v), label: `${v} mm` }));
       case 't-chantier':
@@ -3571,6 +3592,8 @@ ${hasT ? `
     document.querySelectorAll('.sous-onglet').forEach(b => {
       b.addEventListener('click', () => _basculerOnglet(b.dataset.onglet));
     });
+
+    _attacherEvenementsConsommables();
 
     // Bannière admin : clic pour ouvrir le panneau modifications récentes
     document.getElementById('stock-alerte-attente')?.addEventListener('click', () => {
@@ -8811,6 +8834,554 @@ ${hasT ? `
 
     if (noPlan) noPlan.style.display = 'none';
     if (planImg) planImg.src = img || PLAN_PROVISOIRE_SRC;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     CONSOMMABLES (Plasma / Finitions / Soudure)
+     ────────────────────────────────────────────────────────────── */
+
+  let _consoMouvements = [];  // { id, consommable_id, type, quantite, prix_unitaire, date_mouvement, commentaire }
+  let _consoTriCol = 'description';
+  let _consoTriDir = 'asc';
+
+  function _consoCatClasse(cat) {
+    return 'cat-' + (cat || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function _consoMouvementsDe(id) {
+    return _consoMouvements
+      .filter(m => m.consommable_id === id)
+      .sort((a, b) => new Date(a.date_mouvement) - new Date(b.date_mouvement));
+  }
+
+  /** Dernier prix unitaire payé pour un consommable (dernier achat connu). */
+  function _consoDernierPrix(id) {
+    const achats = _consoMouvementsDe(id).filter(m => m.type === 'achat' && m.prix_unitaire != null);
+    return achats.length ? achats[achats.length - 1].prix_unitaire : null;
+  }
+
+  const _CONSO_COLONNES = [
+    { col: 'categorie',    label: 'Catégorie',    num: false, cls: 'conso-col-cat'   },
+    { col: 'description',  label: 'Description',  num: false, cls: 'conso-col-desc'  },
+    { col: 'reference',    label: 'Référence',    num: false, cls: 'conso-col-ref'   },
+    { col: 'qte',          label: 'Qté',          num: true,  cls: 'conso-col-qte'   },
+    { col: 'seuil_alerte', label: 'Seuil alerte', num: true,  cls: 'conso-col-seuil' },
+    { col: 'dernier_prix', label: 'Dernier prix', num: true,  cls: 'conso-col-prix'  },
+  ];
+
+  function _consoValeurTri(c, col) {
+    if (col === 'dernier_prix') return _consoDernierPrix(c.id) ?? -1;
+    if (col === 'qte' || col === 'seuil_alerte') return c[col] ?? 0;
+    return (c[col] || '').toString().toLowerCase();
+  }
+
+  /** Liste des consommables filtrés (catégorie + recherche) et triés selon l'état courant. */
+  function _consommablesFiltresTries() {
+    const recherche = _consoRecherche.trim().toLowerCase();
+    return _consommables.filter(c => {
+      if (_consoFiltreCat && c.categorie !== _consoFiltreCat) return false;
+      if (recherche && !`${c.description} ${c.reference || ''}`.toLowerCase().includes(recherche)) return false;
+      return true;
+    }).sort((a, b) => {
+      const va = _consoValeurTri(a, _consoTriCol);
+      const vb = _consoValeurTri(b, _consoTriCol);
+      if (va < vb) return _consoTriDir === 'asc' ? -1 : 1;
+      if (va > vb) return _consoTriDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+  }
+
+  function _exporterConsommablesCSV() {
+    const SEP = ';';
+    const esc = v => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return (s.includes(SEP) || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    };
+
+    const champs = ['categorie', 'description', 'reference', 'qte', 'seuil_alerte', 'dernier_prix'];
+    const entetes = ['Catégorie', 'Description', 'Référence', 'Qté', 'Seuil alerte', 'Dernier prix (€)'];
+
+    const lignesData = _consommablesFiltresTries().map(c => {
+      const dp = _consoDernierPrix(c.id);
+      const row = { ...c, dernier_prix: dp != null ? dp.toFixed(2) : '' };
+      return champs.map(f => esc(row[f])).join(SEP);
+    });
+
+    const lignes = [entetes.join(SEP), ...lignesData];
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const blob = new Blob(['﻿' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const lien = Object.assign(document.createElement('a'), { href: url, download: `consommables-${dateStr}.csv` });
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+    URL.revokeObjectURL(url);
+
+    _notif(`Export réussi — ${lignesData.length} élément(s) téléchargé(s)`, 'succes');
+  }
+
+  function _imprimerConsommables() {
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
+    const resultats = _consommablesFiltresTries();
+
+    const filtresActifs = [];
+    if (_consoFiltreCat)      filtresActifs.push(`Catégorie : ${_consoFiltreCat}`);
+    if (_consoRecherche.trim()) filtresActifs.push(`Recherche : "${_consoRecherche.trim()}"`);
+
+    const dateStr = new Date().toLocaleDateString('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+
+    const enTetes = `<tr><th>Catégorie</th><th>Description</th><th>Référence</th><th>Qté</th><th>Seuil alerte</th><th>Dernier prix</th></tr>`;
+    const lignes = resultats.map(c => {
+      const dp = _consoDernierPrix(c.id);
+      return `<tr>
+        <td>${_e(c.categorie)}</td>
+        <td>${_e(c.description)}</td>
+        <td>${_e(c.reference || '—')}</td>
+        <td>${c.qte ?? 0}</td>
+        <td>${c.seuil_alerte ?? 0}</td>
+        <td>${dp != null ? dp.toFixed(2) + ' €' : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Consommables — Le Bras Frères</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 16px; }
+    .entete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 3px solid #d22323; padding-bottom: 10px; }
+    .entete > div { flex: 1; }
+    .entete > div:nth-child(2) { text-align: center; }
+    .entete .hdr-titre { font-size: 15px; font-weight: bold; color: #222; }
+    .entete .hdr-sous  { font-size: 11px; color: #666; margin-top: 2px; }
+    .entete .meta { font-size: 10px; color: #888; margin-top: 2px; }
+    .entete .edate { font-size: 10px; color: #888; text-align: right; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
+    td { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f7f7f7; }
+    @page { margin: 1.2cm; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="entete">
+    <div><img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block"></div>
+    <div>
+      <div class="hdr-titre">Stock Métallerie</div>
+      <div class="hdr-sous">Consommables</div>
+      <div class="meta">${resultats.length} élément(s)${filtresActifs.length ? ` · Filtres : ${filtresActifs.join(' · ')}` : ''}</div>
+    </div>
+    <div class="edate">Imprimé le<br>${dateStr}</div>
+  </div>
+  <table>
+    <thead>${enTetes}</thead>
+    <tbody>${lignes || '<tr><td colspan="6" style="text-align:center;padding:12px;color:#aaa">Aucun élément</td></tr>'}</tbody>
+  </table>
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) { _notif('Popup bloquée — autoriser les popups pour ce site', 'erreur'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
+  function _rendreConsommables() {
+    const wrap = document.getElementById('conso-tableau-wrap');
+    if (!wrap) return;
+
+    const lignes = _consommablesFiltresTries();
+
+    const ind = col => {
+      if (_consoTriCol !== col) return '<span class="tri-ind">⇅</span>';
+      return `<span class="tri-ind">${_consoTriDir === 'asc' ? '▲' : '▼'}</span>`;
+    };
+
+    const thead = `<thead><tr>
+      ${_CONSO_COLONNES.map(c => {
+        const actif = _consoTriCol === c.col;
+        return `<th data-conso-tri="${c.col}" class="${c.cls}${c.num ? ' conso-num' : ''}${actif ? ' conso-tri-actif' : ''}"><span class="th-label">${c.label} ${ind(c.col)}</span></th>`;
+      }).join('')}
+      <th class="conso-col-actions"></th>
+    </tr></thead>`;
+
+    let tbodyHtml;
+    if (!lignes.length) {
+      tbodyHtml = `<tbody><tr><td colspan="7" class="vide">Aucun consommable</td></tr></tbody>`;
+    } else {
+      tbodyHtml = '<tbody>' + lignes.map(c => {
+        const bas = (c.seuil_alerte > 0 && c.qte <= c.seuil_alerte);
+        const dernierPrix = _consoDernierPrix(c.id);
+        return `<tr data-conso-id="${_e(c.id)}" class="${bas ? 'conso-ligne-alerte' : ''}">
+          <td><span class="conso-badge-cat ${_consoCatClasse(c.categorie)}">${_e(c.categorie)}</span></td>
+          <td class="conso-col-desc">
+            ${_e(c.description)}
+            <div class="conso-sub-mobile">${_e(c.reference || '')}</div>
+          </td>
+          <td class="conso-col-ref">${_e(c.reference || '—')}</td>
+          <td class="conso-num conso-col-qte">
+            <input type="number" class="conso-inline" min="0" step="1" value="${c.qte ?? 0}" data-conso-field="qte">
+            <div class="conso-sub-mobile">seuil ${c.seuil_alerte ?? 0}</div>
+          </td>
+          <td class="conso-num conso-col-seuil">${c.seuil_alerte ?? 0}</td>
+          <td class="conso-num">${dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'}</td>
+          <td class="conso-col-actions" style="text-align:center; white-space:nowrap">
+            <button class="conso-btn-icone" title="Enregistrer un achat" data-conso-action="achat">🛒</button>
+            <button class="conso-btn-icone" title="Enregistrer une consommation" data-conso-action="consommation">↓</button>
+            <button class="conso-btn-icone" title="Tendances" data-conso-action="tendances">📈</button>
+            <button class="conso-btn-icone" title="Modifier" data-conso-action="editer">✎</button>
+            <button class="conso-btn-icone" title="Supprimer" data-conso-action="supprimer">🗑</button>
+          </td>
+        </tr>`;
+      }).join('') + '</tbody>';
+    }
+
+    wrap.innerHTML = `<table class="tableau" id="conso-tableau">${thead}${tbodyHtml}</table>`;
+
+    wrap.querySelectorAll('th[data-conso-tri]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.consoTri;
+        if (_consoTriCol === col) {
+          _consoTriDir = _consoTriDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          _consoTriCol = col;
+          _consoTriDir = 'asc';
+        }
+        _rendreConsommables();
+      });
+    });
+
+    const nbBas = _consommables.filter(c => c.seuil_alerte > 0 && c.qte <= c.seuil_alerte).length;
+    const badge = document.getElementById('badge-conso-bas');
+    if (badge) {
+      badge.style.display = nbBas ? 'inline-flex' : 'none';
+      const nb = badge.querySelector('.conso-bas-nb');
+      if (nb) nb.textContent = nbBas;
+    }
+  }
+
+  /** Suggestions Description/Référence — dropdown maison (le <datalist> natif est trop
+   *  inconsistant sur mobile, notamment iOS Safari qui ne l'affiche quasiment jamais). */
+  function _consoValeursExistantes(champ) {
+    return [...new Set(_consommables.map(c => c[champ]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  }
+
+  function _brancherAutocompleteConso(inputId, suggestId, champ) {
+    const input = document.getElementById(inputId);
+    const box   = document.getElementById(suggestId);
+    if (!input || !box) return;
+
+    const fermer = () => { box.classList.remove('open'); box.innerHTML = ''; };
+
+    const afficher = () => {
+      const val = input.value.trim().toLowerCase();
+      const valeurs = _consoValeursExistantes(champ)
+        .filter(v => !val || v.toLowerCase().includes(val))
+        .slice(0, 8);
+      if (!valeurs.length) { fermer(); return; }
+      box.innerHTML = valeurs.map(v => `<div class="conso-suggest-item">${_e(v)}</div>`).join('');
+      box.classList.add('open');
+    };
+
+    input.addEventListener('input', afficher);
+    input.addEventListener('focus', afficher);
+    input.addEventListener('blur', () => setTimeout(fermer, 150));
+
+    box.addEventListener('mousedown', e => {
+      const item = e.target.closest('.conso-suggest-item');
+      if (!item) return;
+      e.preventDefault();
+      input.value = item.textContent;
+      fermer();
+    });
+  }
+
+  function _ouvrirModaleConsommable(id = null) {
+    const m = document.getElementById('m-consommable');
+    if (!m) return;
+    const c = id ? _consommables.find(x => x.id === id) : null;
+
+    document.getElementById('conso-modale-titre').textContent = c ? 'Modifier le consommable' : 'Ajouter un consommable';
+    document.getElementById('conso-id').value          = c ? c.id : '';
+    document.getElementById('conso-categorie').value    = c ? c.categorie    : 'Plasma';
+    document.getElementById('conso-reference').value    = c ? (c.reference || '') : '';
+    document.getElementById('conso-description').value  = c ? c.description  : '';
+    document.getElementById('conso-qte').value          = c ? c.qte          : 0;
+    document.getElementById('conso-seuil').value        = c ? c.seuil_alerte : 0;
+
+    // La zone "1er achat" ne sert qu'à la création (le stock initial n'a pas
+    // encore d'historique de mouvement) — masquée en modification.
+    const zone1erAchat = document.getElementById('conso-zone-1er-achat');
+    if (zone1erAchat) zone1erAchat.style.display = c ? 'none' : '';
+    document.getElementById('conso-date-achat').value = c ? '' : new Date().toISOString().slice(0, 10);
+    document.getElementById('conso-prix-achat').value = '';
+
+    m.classList.add('open');
+  }
+
+  async function _enregistrerConsommable() {
+    const id          = document.getElementById('conso-id').value.trim();
+    const categorie   = document.getElementById('conso-categorie').value;
+    const reference   = document.getElementById('conso-reference').value.trim() || null;
+    const description = document.getElementById('conso-description').value.trim();
+    const qte         = parseInt(document.getElementById('conso-qte').value, 10) || 0;
+    const seuil       = parseInt(document.getElementById('conso-seuil').value, 10) || 0;
+
+    if (!description) { _notif('La description est obligatoire', 'erreur'); return; }
+
+    const data = { categorie, reference, description, qte, seuil_alerte: seuil };
+
+    try {
+      let consoId = id;
+      if (id) {
+        const maj = await window.SB.mettreAJour('consommables', id, data);
+        const i = _consommables.findIndex(c => c.id === id);
+        if (i !== -1) _consommables[i] = maj;
+      } else {
+        const cree = await window.SB.inserer('consommables', data);
+        _consommables.push(cree);
+        consoId = cree.id;
+
+        // Trace le stock initial comme premier achat si un prix a été renseigné
+        const dateAchat = document.getElementById('conso-date-achat').value;
+        const prixAchat = parseFloat(document.getElementById('conso-prix-achat').value);
+        if (qte > 0 && !isNaN(prixAchat)) {
+          const mvt = await window.SB.inserer('consommables_mouvements', {
+            consommable_id: consoId, type: 'achat', quantite: qte,
+            prix_unitaire: prixAchat, date_mouvement: dateAchat || new Date().toISOString().slice(0, 10),
+          });
+          _consoMouvements.push(mvt);
+        }
+      }
+      document.getElementById('m-consommable').classList.remove('open');
+      _rendreConsommables();
+      _notif('Consommable enregistré', 'ok');
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  async function _supprimerConsommable(id) {
+    if (!confirm('Supprimer définitivement ce consommable ? (son historique d\'achats/consommations sera aussi supprimé)')) return;
+    try {
+      await window.SB.supprimer('consommables', id);
+      _consommables = _consommables.filter(c => c.id !== id);
+      _consoMouvements = _consoMouvements.filter(m => m.consommable_id !== id);
+      _rendreConsommables();
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  async function _majQteConsommable(id, qte) {
+    try {
+      const maj = await window.SB.mettreAJour('consommables', id, { qte });
+      const i = _consommables.findIndex(c => c.id === id);
+      if (i !== -1) _consommables[i] = maj;
+      _rendreConsommables();
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  function _ouvrirModaleAchat(id) {
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('ca-conso-id').value = id;
+    document.getElementById('ca-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('ca-qte').value = 1;
+    document.getElementById('ca-prix').value = '';
+    document.getElementById('ca-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('ca-commentaire').value = '';
+    document.getElementById('m-conso-achat').classList.add('open');
+  }
+
+  async function _enregistrerAchat() {
+    const id  = document.getElementById('ca-conso-id').value;
+    const qte = parseInt(document.getElementById('ca-qte').value, 10);
+    const prix = parseFloat(document.getElementById('ca-prix').value);
+    const date = document.getElementById('ca-date').value || new Date().toISOString().slice(0, 10);
+    const commentaire = document.getElementById('ca-commentaire').value.trim() || null;
+
+    if (!qte || qte <= 0)   { _notif('Quantité invalide', 'erreur'); return; }
+    if (isNaN(prix) || prix < 0) { _notif('Prix unitaire invalide', 'erreur'); return; }
+
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+
+    try {
+      const mvt = await window.SB.inserer('consommables_mouvements', {
+        consommable_id: id, type: 'achat', quantite: qte, prix_unitaire: prix,
+        date_mouvement: date, commentaire,
+      });
+      _consoMouvements.push(mvt);
+
+      const maj = await window.SB.mettreAJour('consommables', id, { qte: (c.qte || 0) + qte });
+      const i = _consommables.findIndex(x => x.id === id);
+      if (i !== -1) _consommables[i] = maj;
+
+      document.getElementById('m-conso-achat').classList.remove('open');
+      _rendreConsommables();
+      _notif('Achat enregistré', 'ok');
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  function _ouvrirModaleConsommation(id) {
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('cc-conso-id').value = id;
+    document.getElementById('cc-info').textContent = `${c.description}${c.reference ? ' — ' + c.reference : ''} (stock actuel : ${c.qte ?? 0})`;
+    document.getElementById('cc-qte').value = 1;
+    document.getElementById('cc-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('cc-commentaire').value = '';
+    document.getElementById('m-conso-consommation').classList.add('open');
+  }
+
+  async function _enregistrerConsommation() {
+    const id  = document.getElementById('cc-conso-id').value;
+    const qte = parseInt(document.getElementById('cc-qte').value, 10);
+    const date = document.getElementById('cc-date').value || new Date().toISOString().slice(0, 10);
+    const commentaire = document.getElementById('cc-commentaire').value.trim() || null;
+
+    if (!qte || qte <= 0) { _notif('Quantité invalide', 'erreur'); return; }
+
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+
+    try {
+      const mvt = await window.SB.inserer('consommables_mouvements', {
+        consommable_id: id, type: 'consommation', quantite: qte,
+        date_mouvement: date, commentaire,
+      });
+      _consoMouvements.push(mvt);
+
+      const maj = await window.SB.mettreAJour('consommables', id, { qte: Math.max(0, (c.qte || 0) - qte) });
+      const i = _consommables.findIndex(x => x.id === id);
+      if (i !== -1) _consommables[i] = maj;
+
+      document.getElementById('m-conso-consommation').classList.remove('open');
+      _rendreConsommables();
+      _notif('Consommation enregistrée', 'ok');
+    } catch (e) {
+      _notif('Erreur : ' + e.message, 'erreur');
+    }
+  }
+
+  function _ouvrirModaleTendances(id) {
+    const c = _consommables.find(x => x.id === id);
+    if (!c) return;
+    const mouvements = _consoMouvementsDe(id);
+    const achats = mouvements.filter(m => m.type === 'achat');
+    const consos = mouvements.filter(m => m.type === 'consommation');
+
+    document.getElementById('ct-titre').textContent = `Tendances — ${c.description}`;
+
+    // Prix : dernier, moyen, fréquence d'achat moyenne
+    const prixConnus = achats.filter(m => m.prix_unitaire != null);
+    const dernierPrix = prixConnus.length ? prixConnus[prixConnus.length - 1].prix_unitaire : null;
+    const prixMoyen = prixConnus.length ? prixConnus.reduce((s, m) => s + Number(m.prix_unitaire), 0) / prixConnus.length : null;
+    let freqAchatJours = null;
+    if (achats.length > 1) {
+      const premiere = new Date(achats[0].date_mouvement);
+      const derniere = new Date(achats[achats.length - 1].date_mouvement);
+      freqAchatJours = Math.round((derniere - premiere) / 86400000 / (achats.length - 1));
+    }
+
+    // Consommation : total, moyenne mensuelle (sur la période couverte)
+    const totalConso = consos.reduce((s, m) => s + Number(m.quantite), 0);
+    let consoMoisMoyenne = null;
+    if (consos.length) {
+      const premiere = new Date(consos[0].date_mouvement);
+      const derniere = new Date(consos[consos.length - 1].date_mouvement);
+      const moisEcoules = Math.max(1, (derniere - premiere) / 86400000 / 30);
+      consoMoisMoyenne = (totalConso / moisEcoules).toFixed(1);
+    }
+
+    const carte = (label, val) => `<div class="ct-carte"><div class="ct-label">${label}</div><div class="ct-val">${val}</div></div>`;
+    document.getElementById('ct-stats').innerHTML = [
+      carte('Stock actuel', c.qte ?? 0),
+      carte('Dernier prix payé', dernierPrix != null ? dernierPrix.toFixed(2) + ' €' : '—'),
+      carte('Prix moyen', prixMoyen != null ? prixMoyen.toFixed(2) + ' €' : '—'),
+      carte('Fréquence d\'achat', freqAchatJours != null ? freqAchatJours + ' j' : '—'),
+      carte('Conso. totale', totalConso),
+      carte('Conso. moyenne / mois', consoMoisMoyenne != null ? consoMoisMoyenne : '—'),
+    ].join('');
+
+    if (!mouvements.length) {
+      document.getElementById('ct-historique').innerHTML = '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px">Aucun mouvement enregistré</p>';
+    } else {
+      const lignes = [...mouvements].reverse().map(m => `<tr>
+        <td>${new Date(m.date_mouvement).toLocaleDateString('fr-FR')}</td>
+        <td class="ct-type-${m.type}">${m.type === 'achat' ? 'Achat' : 'Consommation'}</td>
+        <td>${m.quantite}</td>
+        <td>${m.prix_unitaire != null ? Number(m.prix_unitaire).toFixed(2) + ' €' : '—'}</td>
+        <td>${_e(m.commentaire || '')}</td>
+      </tr>`).join('');
+      document.getElementById('ct-historique').innerHTML = `<table>
+        <thead><tr><th>Date</th><th>Type</th><th>Qté</th><th>Prix unit.</th><th>Commentaire</th></tr></thead>
+        <tbody>${lignes}</tbody>
+      </table>`;
+    }
+
+    document.getElementById('m-conso-tendances').classList.add('open');
+  }
+
+  function _attacherEvenementsConsommables() {
+    document.getElementById('btn-ajout-consommable')?.addEventListener('click', () => _ouvrirModaleConsommable());
+    document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
+    document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
+
+    _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
+    _brancherAutocompleteConso('conso-reference', 'conso-suggest-reference', 'reference');
+
+    document.querySelector('#m-consommable .btn-soumettre-conso')?.addEventListener('click', _enregistrerConsommable);
+    document.querySelector('#m-conso-achat .btn-soumettre-achat')?.addEventListener('click', _enregistrerAchat);
+    document.querySelector('#m-conso-consommation .btn-soumettre-consommation')?.addEventListener('click', _enregistrerConsommation);
+
+    document.querySelectorAll('.conso-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _consoFiltreCat = btn.dataset.consoCat;
+        document.querySelectorAll('.conso-cat-btn').forEach(b => b.classList.toggle('actif', b === btn));
+        _rendreConsommables();
+      });
+    });
+
+    document.getElementById('conso-recherche')?.addEventListener('input', e => {
+      _consoRecherche = e.target.value;
+      _rendreConsommables();
+    });
+
+    const wrap = document.getElementById('conso-tableau-wrap');
+    if (wrap) {
+      wrap.addEventListener('change', e => {
+        const tr = e.target.closest('tr[data-conso-id]');
+        if (!tr || e.target.dataset.consoField !== 'qte') return;
+        _majQteConsommable(tr.dataset.consoId, parseInt(e.target.value, 10) || 0);
+      });
+      wrap.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-conso-action]');
+        if (!btn) return;
+        const tr = e.target.closest('tr[data-conso-id]');
+        if (!tr) return;
+        const id = tr.dataset.consoId;
+        if (btn.dataset.consoAction === 'editer')       _ouvrirModaleConsommable(id);
+        if (btn.dataset.consoAction === 'supprimer')    _supprimerConsommable(id);
+        if (btn.dataset.consoAction === 'achat')        _ouvrirModaleAchat(id);
+        if (btn.dataset.consoAction === 'consommation') _ouvrirModaleConsommation(id);
+        if (btn.dataset.consoAction === 'tendances')    _ouvrirModaleTendances(id);
+      });
+    }
   }
 
   async function _imprimerPlanStock() {
