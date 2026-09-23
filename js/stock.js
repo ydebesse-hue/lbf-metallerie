@@ -298,7 +298,7 @@ const Stock = (() => {
     _estVisiteurAnonyme = session?.anonyme === true;
     if (!_estVisiteurAnonyme) return;
 
-    ['synthese', 'plan', 'consommables'].forEach(onglet => {
+    ['synthese', 'plan'].forEach(onglet => {
       document.querySelector(`.sous-onglet[data-onglet="${onglet}"]`)?.style.setProperty('display', 'none');
     });
     document.getElementById('stock-alerte-mes-demandes')?.style.setProperty('display', 'none');
