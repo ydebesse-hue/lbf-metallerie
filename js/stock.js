@@ -9261,6 +9261,8 @@ ${hasT ? `
 
   /* ── Commande (achat multi-références) ─────────────────────────── */
 
+  const _CONSO_CATEGORIES = ['Plasma', 'Finitions', 'Soudure'];
+
   function _optionsConsommablesTriees() {
     return [..._consommables].sort((a, b) => (a.description || '').localeCompare(b.description || '', 'fr'));
   }
@@ -9271,25 +9273,55 @@ ${hasT ? `
     ).join('');
   }
 
-  function _ajouterLigneCommande() {
+  /** Cellule "Référence" d'une ligne de commande — mode existant (select) ou nouvelle réf. (mini-form). */
+  function _htmlCelluleRefCommande(mode = 'existant') {
+    if (mode === 'nouveau') {
+      return `<td data-mode="nouveau">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;gap:4px">
+            <select class="cco-nouv-categorie" style="flex:0 0 110px">
+              ${_CONSO_CATEGORIES.map(c => `<option value="${_e(c)}">${_e(c)}</option>`).join('')}
+            </select>
+            <input type="text" class="cco-nouv-reference" placeholder="Référence">
+          </div>
+          <input type="text" class="cco-nouv-description" placeholder="Description *">
+          <button type="button" class="cco-btn-toggle-mode" data-mode-cible="existant">↩ Référence existante</button>
+        </div>
+      </td>`;
+    }
+    return `<td data-mode="existant">
+      <select class="cco-select">${_htmlOptionsConsommables()}</select>
+      <button type="button" class="cco-btn-toggle-mode" data-mode-cible="nouveau">+ Nouvelle référence</button>
+    </td>`;
+  }
+
+  function _ajouterLigneCommandeConso() {
     const tbody = document.getElementById('cco-lignes-tbody');
     if (!tbody) return;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><select class="cco-select">${_htmlOptionsConsommables()}</select></td>
+      ${_htmlCelluleRefCommande('existant')}
       <td><input type="number" class="cco-qte" min="1" step="1" value="1"></td>
       <td><input type="number" class="cco-prix" min="0" step="0.01" placeholder="ex: 12.50"></td>
       <td><button type="button" class="cco-btn-suppr" title="Retirer cette ligne">🗑</button></td>`;
     tbody.appendChild(tr);
   }
 
+  /** Bascule une ligne entre "référence existante" et "nouvelle référence". */
+  function _basculerModeLigneCommande(tr, mode) {
+    const cell = tr.querySelector('td[data-mode]');
+    if (!cell) return;
+    cell.outerHTML = _htmlCelluleRefCommande(mode);
+  }
+
   function _ouvrirModaleCommande() {
     const tbody = document.getElementById('cco-lignes-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    _ajouterLigneCommande();
+    _ajouterLigneCommandeConso();
     document.getElementById('cco-date').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('cco-commentaire').value = '';
+    document.getElementById('cco-fournisseur').value = '';
+    document.getElementById('cco-ref-commande').value = '';
     document.getElementById('cco-erreur').classList.remove('visible');
     document.getElementById('m-conso-commande').classList.add('open');
   }
@@ -9299,30 +9331,57 @@ ${hasT ? `
     erEl.classList.remove('visible');
 
     const date = document.getElementById('cco-date').value || new Date().toISOString().slice(0, 10);
-    const commentaire = document.getElementById('cco-commentaire').value.trim() || null;
+    const fournisseur  = document.getElementById('cco-fournisseur').value.trim();
+    const refCommande  = document.getElementById('cco-ref-commande').value.trim();
+    const commentaire  = [fournisseur, refCommande].filter(Boolean).join(' — ') || null;
 
-    const lignes = [...document.querySelectorAll('#cco-lignes-tbody tr')].map(tr => ({
-      id:   tr.querySelector('.cco-select').value,
-      qte:  parseInt(tr.querySelector('.cco-qte').value, 10),
-      prix: parseFloat(tr.querySelector('.cco-prix').value),
-    }));
+    const lignes = [...document.querySelectorAll('#cco-lignes-tbody tr')].map(tr => {
+      const cell = tr.querySelector('td[data-mode]');
+      const base = {
+        qte:  parseInt(tr.querySelector('.cco-qte').value, 10),
+        prix: parseFloat(tr.querySelector('.cco-prix').value),
+      };
+      if (cell?.dataset.mode === 'nouveau') {
+        return {
+          ...base, nouveau: true,
+          categorie:   tr.querySelector('.cco-nouv-categorie')?.value || '',
+          reference:   tr.querySelector('.cco-nouv-reference')?.value.trim() || null,
+          description: tr.querySelector('.cco-nouv-description')?.value.trim() || '',
+        };
+      }
+      return { ...base, nouveau: false, id: tr.querySelector('.cco-select')?.value || '' };
+    });
 
     if (!lignes.length) { erEl.textContent = 'Ajoutez au moins une ligne.'; erEl.classList.add('visible'); return; }
-    if (lignes.some(l => !l.id)) { erEl.textContent = 'Sélectionnez une référence pour chaque ligne.'; erEl.classList.add('visible'); return; }
+    if (lignes.some(l => l.nouveau ? !l.description : !l.id)) {
+      erEl.textContent = 'Sélectionnez une référence (ou renseignez la description de la nouvelle) pour chaque ligne.';
+      erEl.classList.add('visible'); return;
+    }
     if (lignes.some(l => !l.qte || l.qte <= 0)) { erEl.textContent = 'Quantité invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
     if (lignes.some(l => isNaN(l.prix) || l.prix < 0)) { erEl.textContent = 'Prix unitaire invalide sur une des lignes.'; erEl.classList.add('visible'); return; }
 
     try {
       for (const l of lignes) {
-        const c = _consommables.find(x => x.id === l.id);
-        if (!c) continue;
+        let id = l.id;
+        let c;
+        if (l.nouveau) {
+          c = await window.SB.inserer('consommables', {
+            categorie: l.categorie, reference: l.reference, description: l.description,
+            qte: 0, seuil_alerte: 0,
+          });
+          _consommables.push(c);
+          id = c.id;
+        } else {
+          c = _consommables.find(x => x.id === id);
+          if (!c) continue;
+        }
         const mvt = await window.SB.inserer('consommables_mouvements', {
-          consommable_id: l.id, type: 'achat', quantite: l.qte, prix_unitaire: l.prix,
+          consommable_id: id, type: 'achat', quantite: l.qte, prix_unitaire: l.prix,
           date_mouvement: date, commentaire,
         });
         _consoMouvements.push(mvt);
-        const maj = await window.SB.mettreAJour('consommables', l.id, { qte: (c.qte || 0) + l.qte });
-        const i = _consommables.findIndex(x => x.id === l.id);
+        const maj = await window.SB.mettreAJour('consommables', id, { qte: (c.qte || 0) + l.qte });
+        const i = _consommables.findIndex(x => x.id === id);
         if (i !== -1) _consommables[i] = maj;
       }
       document.getElementById('m-conso-commande').classList.remove('open');
@@ -9440,10 +9499,12 @@ ${hasT ? `
     document.getElementById('btn-imprimer-consommables')?.addEventListener('click', _imprimerConsommables);
     document.getElementById('btn-exporter-consommables')?.addEventListener('click', _exporterConsommablesCSV);
 
-    document.getElementById('cco-btn-ajouter-ligne')?.addEventListener('click', _ajouterLigneCommande);
+    document.getElementById('cco-btn-ajouter-ligne')?.addEventListener('click', _ajouterLigneCommandeConso);
     document.getElementById('cco-lignes-tbody')?.addEventListener('click', e => {
-      const btn = e.target.closest('.cco-btn-suppr');
-      if (btn) btn.closest('tr')?.remove();
+      const btnSuppr = e.target.closest('.cco-btn-suppr');
+      if (btnSuppr) { btnSuppr.closest('tr')?.remove(); return; }
+      const btnMode = e.target.closest('.cco-btn-toggle-mode');
+      if (btnMode) _basculerModeLigneCommande(btnMode.closest('tr'), btnMode.dataset.modeCible);
     });
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');

@@ -782,6 +782,7 @@
     .conso-cmd-table td { padding:4px 6px; vertical-align:middle; }
     .conso-cmd-table select, .conso-cmd-table input { width:100%; padding:6px 8px; border:1px solid var(--gris-bord); border-radius:3px; font-family:Tahoma; font-size:13px; box-sizing:border-box; }
     .conso-cmd-table .cco-btn-suppr { background:none; border:none; color:var(--rouge); cursor:pointer; font-size:15px; padding:2px 4px; }
+    .conso-cmd-table .cco-btn-toggle-mode { display:block; background:none; border:none; color:var(--vert); cursor:pointer; font-size:11px; padding:3px 0 0; text-align:left; text-decoration:underline; }
     tr.ligne-stock-bas:hover td { background: #fde0e0; }
     tr.ligne-stock-bas td:first-child { border-left: 3px solid #e74c3c; }
     tr.ligne-chute td { background: #e8f4f8; border-bottom-color: #aed6f1; }
@@ -2752,14 +2753,18 @@
       <div class="modale-titre">Enregistrer une commande</div>
       <p style="font-size:13px;color:#666;margin:0 0 14px">Une ligne par référence reçue dans cette commande.</p>
 
-      <div class="form-cols2">
+      <div class="form-cols3">
         <div class="fr">
           <label>Date d'achat</label>
           <input type="date" id="cco-date">
         </div>
         <div class="fr">
-          <label>Commentaire (fournisseur, n° commande…)</label>
-          <input type="text" id="cco-commentaire" placeholder="ex: Air Liquide — CMD-2026-042">
+          <label>Fournisseur</label>
+          <input type="text" id="cco-fournisseur" placeholder="ex: Air Liquide">
+        </div>
+        <div class="fr">
+          <label>Réf. commande</label>
+          <input type="text" id="cco-ref-commande" placeholder="ex: CMD-2026-042">
         </div>
       </div>
 
@@ -3793,7 +3798,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260923f"></script>
+  <script src="../js/stock.js?v=20260923g"></script>
 
 </body>
 </html>
