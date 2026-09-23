@@ -9326,7 +9326,8 @@ ${hasT ? `
   /** Cellule "Référence" d'une ligne de commande — mode existant (select) ou nouvelle réf. (mini-form). */
   function _htmlCelluleRefCommande(mode = 'existant') {
     if (mode === 'nouveau') {
-      return `<td data-mode="nouveau">
+      return `<div class="cco-cell cco-cell-ref" data-mode="nouveau">
+        <label class="cco-mobile-label">Référence</label>
         <div style="display:flex;flex-direction:column;gap:4px">
           <div class="cco-nouv-ligne1">
             <select class="cco-nouv-categorie">
@@ -9337,33 +9338,43 @@ ${hasT ? `
           <input type="text" class="cco-nouv-description" placeholder="Description *">
           <button type="button" class="cco-btn-toggle-mode" data-mode-cible="existant">↩ Référence existante</button>
         </div>
-      </td>`;
+      </div>`;
     }
-    return `<td data-mode="existant">
+    return `<div class="cco-cell cco-cell-ref" data-mode="existant">
+      <label class="cco-mobile-label">Référence</label>
       <select class="cco-select">${_htmlOptionsConsommables()}</select>
       <button type="button" class="cco-btn-toggle-mode" data-mode-cible="nouveau">+ Nouvelle référence</button>
-    </td>`;
+    </div>`;
   }
 
   function _ajouterLigneCommandeConso() {
-    const tbody = document.getElementById('cco-lignes-tbody');
-    if (!tbody) return;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
+    const conteneur = document.getElementById('cco-lignes-tbody');
+    if (!conteneur) return;
+    const ligne = document.createElement('div');
+    ligne.className = 'cco-ligne';
+    ligne.innerHTML = `
       ${_htmlCelluleRefCommande('existant')}
-      <td><input type="number" class="cco-qte" min="1" step="1" value="1"></td>
-      <td><input type="number" class="cco-prix" min="0" step="0.01" placeholder="ex: 12.50"></td>
-      <td><button type="button" class="cco-btn-suppr" title="Retirer cette ligne">🗑</button></td>`;
-    tbody.appendChild(tr);
+      <div class="cco-cell cco-cell-qte">
+        <label class="cco-mobile-label">Qté</label>
+        <input type="number" class="cco-qte" min="1" step="1" value="1">
+      </div>
+      <div class="cco-cell cco-cell-prix">
+        <label class="cco-mobile-label">Prix unit. (€)</label>
+        <input type="number" class="cco-prix" min="0" step="0.01" placeholder="ex: 12.50">
+      </div>
+      <div class="cco-cell cco-cell-suppr">
+        <button type="button" class="cco-btn-suppr" title="Retirer cette ligne">🗑</button>
+      </div>`;
+    conteneur.appendChild(ligne);
   }
 
   /** Bascule une ligne entre "référence existante" et "nouvelle référence". */
-  function _basculerModeLigneCommande(tr, mode) {
-    const cell = tr.querySelector('td[data-mode]');
+  function _basculerModeLigneCommande(ligne, mode) {
+    const cell = ligne.querySelector('.cco-cell-ref[data-mode]');
     if (!cell) return;
-    if (cell.dataset.mode === 'nouveau' && mode === 'existant' && tr.dataset.pendingId) {
-      _ccoPending = _ccoPending.filter(p => p.id !== tr.dataset.pendingId);
-      delete tr.dataset.pendingId;
+    if (cell.dataset.mode === 'nouveau' && mode === 'existant' && ligne.dataset.pendingId) {
+      _ccoPending = _ccoPending.filter(p => p.id !== ligne.dataset.pendingId);
+      delete ligne.dataset.pendingId;
     }
     cell.outerHTML = _htmlCelluleRefCommande(mode);
     _ccoRafraichirSelects();
@@ -9392,8 +9403,8 @@ ${hasT ? `
     const refCommande  = document.getElementById('cco-ref-commande').value.trim();
     const commentaire  = [fournisseur, refCommande].filter(Boolean).join(' — ') || null;
 
-    const lignes = [...document.querySelectorAll('#cco-lignes-tbody tr')].map(tr => {
-      const cell = tr.querySelector('td[data-mode]');
+    const lignes = [...document.querySelectorAll('#cco-lignes-tbody .cco-ligne')].map(tr => {
+      const cell = tr.querySelector('.cco-cell-ref[data-mode]');
       const base = {
         qte:  parseInt(tr.querySelector('.cco-qte').value, 10),
         prix: parseFloat(tr.querySelector('.cco-prix').value),
@@ -9669,17 +9680,17 @@ ${hasT ? `
     document.getElementById('cco-btn-ajouter-ligne')?.addEventListener('click', _ajouterLigneCommandeConso);
     document.getElementById('cco-lignes-tbody')?.addEventListener('click', e => {
       const btnSuppr = e.target.closest('.cco-btn-suppr');
-      if (btnSuppr) { btnSuppr.closest('tr')?.remove(); return; }
+      if (btnSuppr) { btnSuppr.closest('.cco-ligne')?.remove(); return; }
       const btnMode = e.target.closest('.cco-btn-toggle-mode');
-      if (btnMode) _basculerModeLigneCommande(btnMode.closest('tr'), btnMode.dataset.modeCible);
+      if (btnMode) _basculerModeLigneCommande(btnMode.closest('.cco-ligne'), btnMode.dataset.modeCible);
     });
     document.getElementById('cco-lignes-tbody')?.addEventListener('input', e => {
       if (!e.target.matches('.cco-nouv-reference, .cco-nouv-description, .cco-nouv-categorie')) return;
-      _ccoMajPending(e.target.closest('tr'));
+      _ccoMajPending(e.target.closest('.cco-ligne'));
     });
     document.getElementById('cco-lignes-tbody')?.addEventListener('change', e => {
       if (!e.target.matches('.cco-nouv-categorie')) return;
-      _ccoMajPending(e.target.closest('tr'));
+      _ccoMajPending(e.target.closest('.cco-ligne'));
     });
 
     _brancherAutocompleteConso('conso-description', 'conso-suggest-description', 'description');
