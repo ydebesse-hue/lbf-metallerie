@@ -9546,25 +9546,48 @@ ${hasT ? `
   function _svgGraphiqueConso(consos) {
     if (!consos.length) return '<p style="color:#aaa;font-style:italic;text-align:center;padding:20px 0;margin:0">Aucune consommation enregistrée</p>';
 
-    const W = 280, H = 130, padL = 26, padR = 8, padT = 10, padB = 18;
-    const max = Math.max(...consos.map(m => Number(m.quantite)));
-    const n = consos.length;
-    const slot = (W - padL - padR) / n;
-    const barW = Math.max(3, Math.min(28, slot - 4));
+    // Agrégation par mois (clé "YYYY-MM")
+    const parMois = {};
+    consos.forEach(m => {
+      const d = new Date(m.date_mouvement);
+      const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      parMois[cle] = (parMois[cle] || 0) + Number(m.quantite);
+    });
+    const mois = Object.keys(parMois).sort();
+    const valeurs = mois.map(cle => parMois[cle]);
+    const max = Math.max(...valeurs);
+    const libelleMois = cle => {
+      const [an, m] = cle.split('-');
+      return new Date(Number(an), Number(m) - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+    };
 
-    const barres = consos.map((m, i) => {
-      const h = (Number(m.quantite) / (max || 1)) * (H - padT - padB);
+    const W = 280, H = 130, padL = 28, padR = 8, padT = 10, padB = 18;
+    const n = mois.length;
+    const slot = (W - padL - padR) / n;
+    const barW = Math.max(6, Math.min(30, slot - 6));
+
+    const barres = mois.map((cle, i) => {
+      const v = parMois[cle];
+      const h = (v / (max || 1)) * (H - padT - padB);
       const x = padL + i * slot + (slot - barW) / 2;
       const y = H - padB - h;
-      const titre = `${new Date(m.date_mouvement).toLocaleDateString('fr-FR')} — ${m.quantite}`;
-      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="#e67e22"><title>${_e(titre)}</title></rect>`;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="#e67e22"><title>${_e(libelleMois(cle))} — ${v}</title></rect>
+        <text x="${(x + barW / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" font-size="8" fill="#666" text-anchor="middle">${v}</text>`;
+    }).join('');
+
+    const xLabels = (n <= 6 ? mois : [mois[0], mois[Math.floor(n / 2)], mois[n - 1]]).map(cle => {
+      const i = mois.indexOf(cle);
+      const x = padL + i * slot + slot / 2;
+      return `<text x="${x.toFixed(1)}" y="${H - 4}" font-size="8" fill="#888" text-anchor="middle">${_e(libelleMois(cle))}</text>`;
     }).join('');
 
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="#ddd"/>
       <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#ddd"/>
+      <text x="${padL - 4}" y="${padT + 6}" font-size="9" fill="#888" text-anchor="end">${max}</text>
+      <text x="${padL - 4}" y="${H - padB}" font-size="9" fill="#888" text-anchor="end">0</text>
       ${barres}
-      <text x="${padL}" y="${H - 4}" font-size="9" fill="#888">${new Date(consos[0].date_mouvement).toLocaleDateString('fr-FR')}</text>
-      <text x="${W - padR}" y="${H - 4}" font-size="9" fill="#888" text-anchor="end">${new Date(consos[consos.length - 1].date_mouvement).toLocaleDateString('fr-FR')}</text>
+      ${xLabels}
     </svg>`;
   }
 
