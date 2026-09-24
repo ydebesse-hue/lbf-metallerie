@@ -1298,6 +1298,7 @@
     .table-toles tr.ligne-selectee td.col-t-check { background: #e8f5e9; }
     .col-t-id         { width: 75px;  }
     .col-t-type       { width: 68px;  }
+    .col-t-classe     { width: 62px;  text-align: center; }
     .col-t-epaisseur  { width: 80px;  text-align: center; }
     .col-t-dimensions { width: 130px; text-align: center; }
     .col-t-surf_unit  { width: 82px;  text-align: center; }
@@ -1310,6 +1311,7 @@
     .col-t-dispo      { width: 108px; }
     .col-t-dispo:has(.infos-demande) { width: 180px; white-space: normal; overflow: visible; vertical-align: top; }
     .col-t-ref_cmd    { width: 110px; }
+    .col-t-commentaire { width: 130px; }
     .col-t-actions    { width: 108px; }
 
     /* ── SÉLECTEUR DE VUE ───────────────────────────────────── */
@@ -2611,8 +2613,8 @@
         </div>
       </div>
 
-      <!-- Ligne 2 : type, quantité, ref commande -->
-      <div class="form-cols3">
+      <!-- Ligne 2 : type, classe, quantité, ref commande -->
+      <div class="form-cols2">
         <div class="fr">
           <label>Type de tôle <span style="color:var(--rouge)">*</span></label>
           <select id="at-type-tole">
@@ -2624,6 +2626,20 @@
             <option value="galva">Galvanisé</option>
           </select>
         </div>
+        <div class="fr">
+          <label>Classe d'acier</label>
+          <select id="at-classe">
+            <option value="">— Classe —</option>
+            <option value="S235">S235</option>
+            <option value="S275">S275</option>
+            <option value="S355">S355</option>
+            <option value="S420">S420</option>
+            <option value="S460">S460</option>
+            <option value="S690">S690</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-cols2">
         <div class="fr">
           <label>Quantité</label>
           <input type="number" id="at-quantite" placeholder="1" min="1" value="1">
@@ -3018,7 +3034,7 @@
             <input type="number" id="mod-t-longueur" placeholder="2000" min="1">
           </div>
         </div>
-        <div class="form-cols3">
+        <div class="form-cols2">
           <div class="fr">
             <label>Type de tôle <span style="color:var(--rouge)">*</span></label>
             <select id="mod-t-type">
@@ -3030,6 +3046,20 @@
               <option value="galva">Galvanisé</option>
             </select>
           </div>
+          <div class="fr">
+            <label>Classe d'acier</label>
+            <select id="mod-t-classe">
+              <option value="">— Classe —</option>
+              <option value="S235">S235</option>
+              <option value="S275">S275</option>
+              <option value="S355">S355</option>
+              <option value="S420">S420</option>
+              <option value="S460">S460</option>
+              <option value="S690">S690</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-cols2">
           <div class="fr">
             <label>Quantité</label>
             <input type="number" id="mod-t-quantite" placeholder="1" min="1">
@@ -3157,6 +3187,10 @@
         <div class="fiche-info-item">
           <div class="fiche-info-label">Type</div>
           <div class="fiche-info-val" id="dtole-type">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Classe d'acier</div>
+          <div class="fiche-info-val" id="dtole-classe">—</div>
         </div>
         <div class="fiche-info-item">
           <div class="fiche-info-label">Épaisseur</div>
@@ -3787,7 +3821,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260924c"></script>
+  <script src="../js/stock.js?v=20260924f"></script>
 
 </body>
 </html>
