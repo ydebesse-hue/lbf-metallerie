@@ -112,6 +112,7 @@ const Stock = (() => {
   const COLS_TOLES = [
     { key: 'id',         label: 'ID',             tri: 'id',         defaut: true  },
     { key: 'type',       label: 'Type',           tri: 'type',       defaut: true  },
+    { key: 'classe',     label: 'Classe acier',   tri: null,         defaut: false },
     { key: 'epaisseur',  label: 'Épaisseur (mm)', tri: 'epaisseur',  defaut: true  },
     { key: 'dimensions', label: 'Dimensions',     tri: 'dimensions', defaut: true  },
     { key: 'surf_unit',  label: 'Surface unit.',  tri: 'surf_unit',  defaut: true  },
@@ -123,6 +124,7 @@ const Stock = (() => {
     { key: 'chantier',   label: 'Chantier',       tri: 'chantier',   defaut: true  },
     { key: 'dispo',      label: 'Statut',         tri: 'dispo',      defaut: true  },
     { key: 'ref_cmd',    label: 'Réf. commande',  tri: null,         defaut: false },
+    { key: 'commentaire',label: 'Commentaire',    tri: null,         defaut: false },
   ];
 
   const COLS_ESSENTIELLES_TOLES = new Set(['id','type','epaisseur','dimensions','surf_unit','quantite','surf_tot','lieu','chantier','dispo']);
@@ -245,7 +247,7 @@ const Stock = (() => {
   let _planPos   = {};          // positions racks sur le plan {rackId:{x,y}}, chargées au démarrage
   let _filtreEnAttente = false; // true quand l'admin clique l'alerte pour voir les en_attente
   const _filtresP = { type: new Set(), desig: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set(), classe: new Set(), origine: new Set(), fournisseur: new Set() };
-  const _filtresT = { type: new Set(), epaisseur: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set() };
+  const _filtresT = { type: new Set(), classe: new Set(), epaisseur: new Set(), chantier: new Set(), lieu: new Set(), dispo: new Set() };
   let _filtreActif = null; // { fid, btn } — panneau filtre multi-valeurs actuellement ouvert
   let _seuils = {};             // { [epaisseur_mm]: seuil_m2 } — persistés dans Supabase config
 
@@ -818,7 +820,7 @@ const Stock = (() => {
   }
 
   function _filtrerToles(source) {
-    const { type, epaisseur, chantier, lieu, dispo } = _filtresT;
+    const { type, classe, epaisseur, chantier, lieu, dispo } = _filtresT;
     const texte = _val('t-recherche').toLowerCase().trim();
     return source.filter(b => {
       if (_filtreEnAttente) {
@@ -826,6 +828,7 @@ const Stock = (() => {
         if (b.statut !== 'en_attente' && !aDemande) return false;
       }
       if (type.size      && !type.has(b.type_tole))                return false;
+      if (classe.size    && !classe.has(b.classe_acier))           return false;
       if (epaisseur.size && !epaisseur.has(String(b.epaisseur_mm))) return false;
       if (chantier.size  && !chantier.has(b.chantier_origine))     return false;
       if (lieu.size      && !lieu.has(b.lieu_stockage))            return false;
@@ -1228,6 +1231,8 @@ const Stock = (() => {
         return `<span class="chip-id">${_e(t.id)}</span>`;
       case 'type':
         return _badgeTypeTole(t.type_tole);
+      case 'classe':
+        return t.classe_acier ? `<span class="badge-classe-acier">${_e(t.classe_acier)}</span>` : '—';
       case 'epaisseur':
         return `<strong>${t.epaisseur_mm} mm</strong>`;
       case 'dimensions':
@@ -1257,6 +1262,8 @@ const Stock = (() => {
         return _badgeDispo(t);
       case 'ref_cmd':
         return t.ref_commande ? `<span style="font-size:11px;color:#666">${_e(t.ref_commande)}</span>` : '—';
+      case 'commentaire':
+        return `<span title="${_e(t.commentaire || '')}">${_e(t.commentaire) || '—'}</span>`;
       default:
         return '';
     }
@@ -1283,6 +1290,10 @@ const Stock = (() => {
         const set = _filtresT.type; const n = set.size;
         const lbl = n === 0 ? '— type —' : n === 1 ? (_LABEL_TYPE_TOLE[[...set][0]] || [...set][0]) : `${n} ✓`;
         filtre = `<button type="button" class="th-filtre-btn${n ? ' th-filtre-actif' : ''}" data-filtre="t-type">${_e(lbl)}</button>`;
+      } else if (c.key === 'classe') {
+        const setCl = _filtresT.classe; const nCl = setCl.size;
+        const lblCl = nCl === 0 ? '— classe —' : nCl === 1 ? [...setCl][0] : `${nCl} ✓`;
+        filtre = `<button type="button" class="th-filtre-btn${nCl ? ' th-filtre-actif' : ''}" data-filtre="t-classe">${_e(lblCl)}</button>`;
       } else if (c.key === 'epaisseur') {
         const setE = _filtresT.epaisseur; const nE = setE.size;
         const lblE = nE === 0 ? '— ép. —' : nE === 1 ? `${[...setE][0]} mm` : `${nE} ✓`;
@@ -3178,6 +3189,9 @@ ${hasT ? `
           .map(v => ({ value: v, label: v }));
       case 't-type':
         return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }, { value: 'corten', label: 'Corten' }, { value: 'galva', label: 'Galvanisé' }];
+      case 't-classe':
+        return uniq(toles.filter(b => b.classe_acier).map(b => b.classe_acier))
+          .map(v => ({ value: v, label: v }));
       case 't-epaisseur':
         return uniqN(toles.map(b => b.epaisseur_mm)).map(v => ({ value: String(v), label: `${v} mm` }));
       case 't-chantier':
@@ -5415,6 +5429,7 @@ ${hasT ? `
     const lng  = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty  = parseInt(m.querySelector('#at-quantite')?.value) || 1;
     const type    = m.querySelector('#at-type-tole')?.value?.trim() || '';
+    const classe  = m.querySelector('#at-classe')?.value?.trim() || null;
     const refCmd  = m.querySelector('#at-ref-cmd')?.value?.trim() || '';
     const isChute = m.querySelector('#at-chute')?.checked || false;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
@@ -5438,6 +5453,7 @@ ${hasT ? `
       id: nouvelleId,
       categorie: 'tole',
       type_tole: type,
+      classe_acier: classe,
       epaisseur_mm: ep,
       largeur_mm: lrg,
       longueur_mm: lng,
@@ -6220,6 +6236,7 @@ ${hasT ? `
     _setVal(m, '#mod-t-largeur',       tole.largeur_mm);
     _setVal(m, '#mod-t-longueur',      tole.longueur_mm);
     _setVal(m, '#mod-t-type',          tole.type_tole || '');
+    _setVal(m, '#mod-t-classe',        tole.classe_acier || '');
     _setVal(m, '#mod-t-quantite',      tole.quantite);
     _setVal(m, '#mod-t-ref-cmd',  tole.ref_commande || '');
     _monterPickerChantier('mod-t-chantier-picker', 'mod-t-chantier', tole.chantier_origine || '');
@@ -6335,6 +6352,7 @@ ${hasT ? `
       const lng  = parseFloat(m.querySelector('#mod-t-longueur')?.value);
       const qty  = parseInt(m.querySelector('#mod-t-quantite')?.value) || 1;
       const type    = m.querySelector('#mod-t-type')?.value?.trim() || '';
+      const classe  = m.querySelector('#mod-t-classe')?.value?.trim() || null;
       const refCmd  = m.querySelector('#mod-t-ref-cmd')?.value?.trim() || '';
       const chantier = m.querySelector('#mod-t-chantier')?.value?.trim();
       const lieu        = _lireLieu(m.querySelector('#mod-t-lieu'));
@@ -6352,6 +6370,7 @@ ${hasT ? `
       const modif = {
         ...original,
         type_tole: type,
+        classe_acier: classe,
         epaisseur_mm: ep,
         largeur_mm: lrg,
         longueur_mm: lng,
@@ -6377,6 +6396,7 @@ ${hasT ? `
         ['Largeur',        original.largeur_mm,   lrg],
         ['Longueur',       original.longueur_mm,  lng],
         ['Type',           original.type_tole,    type],
+        ['Classe acier',   original.classe_acier,  classe],
         ['Réf. commande',  original.ref_commande,  refCmd || null],
         ['Chantier',       _labelChantier(original.chantier_origine) || original.chantier_origine, _labelChantier(modif.chantier_origine) || modif.chantier_origine],
         ['Lieu',           original.lieu_stockage, lieu],
@@ -6541,6 +6561,8 @@ ${hasT ? `
     const surf = _surfaceTole(t);
     const typeEl = m.querySelector('#dtole-type');
     if (typeEl) typeEl.innerHTML = _badgeTypeTole(t.type_tole);
+    const classeEl = m.querySelector('#dtole-classe');
+    if (classeEl) classeEl.innerHTML = t.classe_acier ? `<span class="badge-classe-acier">${_e(t.classe_acier)}</span>` : '—';
     _afficherInfo(m, '#dtole-epaisseur',    `${t.epaisseur_mm} mm`);
     _afficherInfo(m, '#dtole-largeur',      `${t.largeur_mm} mm`);
     _afficherInfo(m, '#dtole-longueur',     `${t.longueur_mm} mm`);
@@ -10124,7 +10146,7 @@ ${hasT ? `
          'classe_acier','ref_commande','fournisseur',
          'chantier_origine','lieu_stockage','disponibilite','chantier_affectation',
          'statut','date_ajout','ajoute_par','valide_par','date_validation','commentaire']
-      : ['id','epaisseur_mm','largeur_mm','longueur_mm','quantite',
+      : ['id','classe_acier','epaisseur_mm','largeur_mm','longueur_mm','quantite',
          'poids_unitaire_kg','poids_total_kg',
          'chantier_origine','lieu_stockage','disponibilite','chantier_affectation',
          'is_chute','statut','date_ajout','ajoute_par','valide_par','date_validation','commentaire'];
@@ -10191,6 +10213,7 @@ ${hasT ? `
       if (_val('p-recherche'))         filtresActifs.push(`Recherche : "${_val('p-recherche')}"`);
     } else if (_onglet === 'toles') {
       if (_filtresT.type.size)      filtresActifs.push(`Type : ${[..._filtresT.type].map(v => _LABEL_TYPE_TOLE[v] || v).join(', ')}`);
+      if (_filtresT.classe.size)    filtresActifs.push(`Classe : ${[..._filtresT.classe].join(', ')}`);
       if (_filtresT.epaisseur.size) filtresActifs.push(`Épaisseur : ${[..._filtresT.epaisseur].join(', ')} mm`);
       if (_filtresT.chantier.size)  filtresActifs.push(`Chantier : ${[..._filtresT.chantier].map(_labelChantier).join(', ')}`);
       if (_filtresT.lieu.size)      filtresActifs.push(`Lieu : ${[..._filtresT.lieu].join(', ')}`);
@@ -10239,7 +10262,7 @@ ${hasT ? `
       }).join('');
     } else if (_onglet === 'toles') {
       enTetes = `<tr>
-        <th>ID</th><th>Type</th><th>Ép. (mm)</th><th>Dimensions (mm)</th>
+        <th>ID</th><th>Type</th><th>Classe</th><th>Ép. (mm)</th><th>Dimensions (mm)</th>
         <th>Surface unit.</th><th>Qté</th><th>Surface tot.</th>
         <th>Poids unit. (kg)</th><th>Réf. cmd</th>
         <th>Statut</th><th>Lieu stockage</th><th>Chantier</th>
@@ -10254,6 +10277,7 @@ ${hasT ? `
         return `<tr>
           <td>${_e(b.id)}${b.is_chute ? ' (chute)' : ''}</td>
           <td>${_LABEL_TYPE_TOLE[b.type_tole] || (b.type_tole ? _e(b.type_tole) : '—')}</td>
+          <td>${_e(b.classe_acier || '—')}</td>
           <td>${b.epaisseur_mm}</td>
           <td>${b.largeur_mm} × ${b.longueur_mm}</td>
           <td>${surfU}</td>
