@@ -8859,7 +8859,7 @@ ${hasT ? `
     return _racks.filter(r => positions[r.id]).map(r => {
       const pos = positions[r.id];
       const cx = `${pos.x}%`, cy = `${pos.y}%`;
-      return `<circle cx="${cx}" cy="${cy}" r="9" fill="rgb(210,35,42)" fill-opacity=".85" stroke="#fff" stroke-width="1.5" pointer-events="all" style="cursor:pointer"><title>${_e(_descriptifRack(r))}</title></circle>`;
+      return `<circle cx="${cx}" cy="${cy}" r="9" fill="rgb(210,35,42)" fill-opacity=".85" stroke="#fff" stroke-width="1.5" pointer-events="all" style="cursor:pointer" data-rack-id="${_e(r.id)}"><title>${_e(_descriptifRack(r))}</title></circle>`;
     }).join('');
   }
 
@@ -9773,6 +9773,15 @@ ${hasT ? `
   }
 
   document.getElementById('btn-imprimer-plan')?.addEventListener('click', _imprimerPlanStock);
+
+  // Sur mobile, le survol (title SVG) ne se déclenche pas au tap — on affiche
+  // le descriptif dans une notification au clic/tap sur une pastille.
+  document.getElementById('plan-stock-svg')?.addEventListener('click', e => {
+    const cercle = e.target.closest('circle[data-rack-id]');
+    if (!cercle) return;
+    const rack = _racks.find(r => r.id === cercle.dataset.rackId);
+    if (rack) _notif(_descriptifRack(rack), 'info');
+  });
 
   /* ── Gestion admin du plan ───────────────────────────────────── */
 
