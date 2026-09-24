@@ -1188,8 +1188,8 @@ const Stock = (() => {
     return h + '</tbody></table>';
   }
 
-  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée', corten: 'Corten' };
-  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee', corten: 'chip-tole-corten' };
+  const _LABEL_TYPE_TOLE = { noir: 'Noir', inox: 'Inox', larmee: 'Larmée', corten: 'Corten', galva: 'Galvanisé' };
+  const _CLASSE_TYPE_TOLE = { noir: 'chip-tole-noir', inox: 'chip-tole-inox', larmee: 'chip-tole-larmee', corten: 'chip-tole-corten', galva: 'chip-tole-galva' };
 
   function _badgeTypeTole(type) {
     if (!type) return '<span style="color:#aaa">—</span>';
@@ -3177,7 +3177,7 @@ ${hasT ? `
         return uniq(profils.filter(b => b.fournisseur).map(b => b.fournisseur))
           .map(v => ({ value: v, label: v }));
       case 't-type':
-        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }, { value: 'corten', label: 'Corten' }];
+        return [{ value: 'noir', label: 'Noir' }, { value: 'inox', label: 'Inox' }, { value: 'larmee', label: 'Larmée' }, { value: 'corten', label: 'Corten' }, { value: 'galva', label: 'Galvanisé' }];
       case 't-epaisseur':
         return uniqN(toles.map(b => b.epaisseur_mm)).map(v => ({ value: String(v), label: `${v} mm` }));
       case 't-chantier':
