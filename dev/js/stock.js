@@ -5429,6 +5429,7 @@ ${hasT ? `
     const lng  = parseFloat(m.querySelector('#at-longueur')?.value);
     const qty  = parseInt(m.querySelector('#at-quantite')?.value) || 1;
     const type    = m.querySelector('#at-type-tole')?.value?.trim() || '';
+    const classe  = m.querySelector('#at-classe')?.value?.trim() || null;
     const refCmd  = m.querySelector('#at-ref-cmd')?.value?.trim() || '';
     const isChute = m.querySelector('#at-chute')?.checked || false;
     const chantier    = m.querySelector('#at-chantier')?.value?.trim();
@@ -5452,6 +5453,7 @@ ${hasT ? `
       id: nouvelleId,
       categorie: 'tole',
       type_tole: type,
+      classe_acier: classe,
       epaisseur_mm: ep,
       largeur_mm: lrg,
       longueur_mm: lng,
