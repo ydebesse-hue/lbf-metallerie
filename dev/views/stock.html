@@ -3018,7 +3018,7 @@
             <input type="number" id="mod-t-longueur" placeholder="2000" min="1">
           </div>
         </div>
-        <div class="form-cols3">
+        <div class="form-cols2">
           <div class="fr">
             <label>Type de tôle <span style="color:var(--rouge)">*</span></label>
             <select id="mod-t-type">
@@ -3030,6 +3030,20 @@
               <option value="galva">Galvanisé</option>
             </select>
           </div>
+          <div class="fr">
+            <label>Classe d'acier</label>
+            <select id="mod-t-classe">
+              <option value="">— Classe —</option>
+              <option value="S235">S235</option>
+              <option value="S275">S275</option>
+              <option value="S355">S355</option>
+              <option value="S420">S420</option>
+              <option value="S460">S460</option>
+              <option value="S690">S690</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-cols2">
           <div class="fr">
             <label>Quantité</label>
             <input type="number" id="mod-t-quantite" placeholder="1" min="1">
@@ -3157,6 +3171,10 @@
         <div class="fiche-info-item">
           <div class="fiche-info-label">Type</div>
           <div class="fiche-info-val" id="dtole-type">—</div>
+        </div>
+        <div class="fiche-info-item">
+          <div class="fiche-info-label">Classe d'acier</div>
+          <div class="fiche-info-val" id="dtole-classe">—</div>
         </div>
         <div class="fiche-info-item">
           <div class="fiche-info-label">Épaisseur</div>
@@ -3787,7 +3805,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260924c"></script>
+  <script src="../js/stock.js?v=20260924d"></script>
 
 </body>
 </html>
