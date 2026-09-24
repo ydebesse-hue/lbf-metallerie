@@ -8848,13 +8848,30 @@ ${hasT ? `
 
   /* ── Onglet "Plan stock" (visible à tous) ────────────────────── */
 
+  /** Descriptif "allées / étages" d'un rack, affiché au survol de sa pastille sur le plan. */
+  function _descriptifRack(r) {
+    if (!r.nb_allees || !r.nb_etages) return `${r.nom} — zone sans allées/étages`;
+    return `${r.nom} — Allées A–${_labelAllee(r.nb_allees - 1)} (${r.nb_allees}) · Étages 1–${r.nb_etages}`;
+  }
+
+  /** Pastilles du plan stock (vue publique) — juste un repère + descriptif au survol (title SVG natif). */
+  function _svgMarqueursPlanStock(positions) {
+    return _racks.filter(r => positions[r.id]).map(r => {
+      const pos = positions[r.id];
+      const cx = `${pos.x}%`, cy = `${pos.y}%`;
+      return `<circle cx="${cx}" cy="${cy}" r="9" fill="rgb(210,35,42)" fill-opacity=".85" stroke="#fff" stroke-width="1.5" pointer-events="all" style="cursor:pointer"><title>${_e(_descriptifRack(r))}</title></circle>`;
+    }).join('');
+  }
+
   function _rendrePlanStock() {
     const img      = _chargerPlanImg();
     const noPlan   = document.getElementById('plan-stock-no-plan');
     const planImg  = document.getElementById('plan-stock-img');
+    const planSvg  = document.getElementById('plan-stock-svg');
 
     if (noPlan) noPlan.style.display = 'none';
     if (planImg) planImg.src = img || PLAN_PROVISOIRE_SRC;
+    if (planSvg) planSvg.innerHTML = _svgMarqueursPlanStock(_chargerPlanPos());
   }
 
   /* ──────────────────────────────────────────────────────────────
