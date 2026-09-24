@@ -124,6 +124,7 @@ const Stock = (() => {
     { key: 'chantier',   label: 'Chantier',       tri: 'chantier',   defaut: true  },
     { key: 'dispo',      label: 'Statut',         tri: 'dispo',      defaut: true  },
     { key: 'ref_cmd',    label: 'Réf. commande',  tri: null,         defaut: false },
+    { key: 'commentaire',label: 'Commentaire',    tri: null,         defaut: false },
   ];
 
   const COLS_ESSENTIELLES_TOLES = new Set(['id','type','epaisseur','dimensions','surf_unit','quantite','surf_tot','lieu','chantier','dispo']);
@@ -1261,6 +1262,8 @@ const Stock = (() => {
         return _badgeDispo(t);
       case 'ref_cmd':
         return t.ref_commande ? `<span style="font-size:11px;color:#666">${_e(t.ref_commande)}</span>` : '—';
+      case 'commentaire':
+        return `<span title="${_e(t.commentaire || '')}">${_e(t.commentaire) || '—'}</span>`;
       default:
         return '';
     }
