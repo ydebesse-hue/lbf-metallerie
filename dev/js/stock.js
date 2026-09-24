@@ -2340,6 +2340,8 @@ const Stock = (() => {
     });
     const btnBilan = document.getElementById('syn-btn-bilan');
     if (btnBilan) btnBilan.style.display = adminSyn ? '' : 'none';
+    const btnImprSynTole = document.getElementById('btn-imprimer-synthese-toles');
+    if (btnImprSynTole) btnImprSynTole.style.display = _synTab === 'toles' ? '' : 'none';
 
     zone.innerHTML = `<div class="syn-page">${
       _synTab === 'bilan'   ? _contenuBilan()   :
@@ -9795,6 +9797,7 @@ ${hasT ? `
   }
 
   document.getElementById('btn-imprimer-plan')?.addEventListener('click', _imprimerPlanStock);
+  document.getElementById('btn-imprimer-synthese-toles')?.addEventListener('click', _imprimerSyntheseToles);
 
   // Sur mobile, le survol (title SVG) ne se déclenche pas au tap — on affiche
   // le descriptif dans une notification au clic/tap sur une pastille.
@@ -10175,6 +10178,104 @@ ${hasT ? `
   /* ──────────────────────────────────────────────────────────────
      IMPRESSION / PDF
      ────────────────────────────────────────────────────────────── */
+
+  function _imprimerSyntheseToles() {
+    if (!_data) return;
+    const logoUrl = new URL('../assets/Logo_LBF.png', window.location.href).href;
+
+    const tolesActives = _data.barres.filter(b => b.categorie === 'tole' && b.statut !== 'archivee');
+    const sourceToles  = _synTolesTous ? tolesActives : tolesActives.filter(b => b.statut === 'valide' && b.disponibilite === 'disponible');
+
+    const parType = {};
+    sourceToles.forEach(b => {
+      const ty  = b.type_tole || '?';
+      const ep  = b.epaisseur_mm || '?';
+      const qte = b.quantite || 1;
+      if (!parType[ty]) parType[ty] = { nb: 0, surface: 0, poids: 0, eps: {} };
+      parType[ty].nb += qte;
+      parType[ty].surface += _surfaceTole(b) * qte;
+      parType[ty].poids   += b.poids_total_kg || 0;
+      if (!parType[ty].eps[ep]) parType[ty].eps[ep] = { nb: 0, surface: 0, poids: 0 };
+      parType[ty].eps[ep].nb += qte;
+      parType[ty].eps[ep].surface += _surfaceTole(b) * qte;
+      parType[ty].eps[ep].poids   += b.poids_total_kg || 0;
+    });
+    const lignesType = Object.entries(parType).sort((a, b) => b[1].surface - a[1].surface);
+
+    let lignesHtml = '';
+    let nbAlertes = 0;
+    lignesType.forEach(([type, d]) => {
+      const epsEntries = Object.entries(d.eps).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+      epsEntries.forEach(([ep, sd]) => {
+        const seuil  = _seuils[ep] || 0;
+        const alerte = seuil > 0 && sd.surface < seuil;
+        if (alerte) nbAlertes++;
+        lignesHtml += `<tr class="${alerte ? 'alerte' : ''}">
+          <td>${_LABEL_TYPE_TOLE[type] || type}</td>
+          <td>${_e(String(ep))} mm</td>
+          <td>${sd.nb}</td>
+          <td>${sd.surface.toFixed(2)} m²</td>
+          <td>${seuil > 0 ? seuil.toFixed(2) + ' m²' : '—'}</td>
+          <td>${Math.ceil(sd.poids)} kg</td>
+        </tr>`;
+      });
+    });
+
+    const dateStr = new Date().toLocaleString('fr-FR', {
+      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const scopeLabel = _synTolesTous ? 'Toutes (disponibles + affectées)' : 'Disponibles uniquement';
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Synthèse Tôles — Le Bras Frères</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #222; padding: 16px; }
+    .entete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 3px solid #d22323; padding-bottom: 10px; }
+    .entete > div { flex: 1; }
+    .entete > div:nth-child(2) { text-align: center; }
+    .entete .hdr-titre { font-size: 15px; font-weight: bold; color: #222; }
+    .entete .hdr-sous  { font-size: 11px; color: #666; margin-top: 2px; }
+    .entete .meta { font-size: 10px; color: #888; margin-top: 2px; }
+    .entete .edate { font-size: 10px; color: #888; text-align: right; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #222; color: white; padding: 5px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
+    td { padding: 4px 6px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+    tr:nth-child(even) td { background: #f7f7f7; }
+    tr.alerte td { background: #fdecea !important; color: #c0392b; font-weight: bold; }
+    .legende { margin-top: 10px; font-size: 10px; color: #c0392b; }
+    .legende span { display: inline-block; width: 10px; height: 10px; background: #fdecea; border: 1px solid #c0392b; vertical-align: middle; margin-right: 4px; }
+    @page { margin: 1.2cm; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="entete">
+    <div><img src="${logoUrl}" alt="LBF" style="height:36px;object-fit:contain;display:block"></div>
+    <div>
+      <div class="hdr-titre">Stock Métallerie</div>
+      <div class="hdr-sous">Synthèse Tôles — par type et épaisseur</div>
+      <div class="meta">Périmètre : ${scopeLabel}${nbAlertes ? ` · ${nbAlertes} référence(s) sous le seuil` : ''}</div>
+    </div>
+    <div class="edate">Imprimé le<br>${dateStr}</div>
+  </div>
+  <table>
+    <thead><tr><th>Type</th><th>Épaisseur</th><th>Qté</th><th>Surface</th><th>Seuil</th><th>Poids</th></tr></thead>
+    <tbody>${lignesHtml || '<tr><td colspan="6" style="text-align:center;padding:12px;color:#aaa">Aucune tôle</td></tr>'}</tbody>
+  </table>
+  ${nbAlertes ? '<div class="legende"><span></span> Sous le seuil d\'alerte — à réapprovisionner</div>' : ''}
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) { _notif('Popup bloquée — autoriser les popups pour ce site', 'erreur'); return; }
+    w.document.write(html);
+    w.document.close();
+  }
 
   function _imprimerListe() {
     if (!_data) return;
