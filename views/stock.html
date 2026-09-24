@@ -2613,8 +2613,8 @@
         </div>
       </div>
 
-      <!-- Ligne 2 : type, quantité, ref commande -->
-      <div class="form-cols3">
+      <!-- Ligne 2 : type, classe, quantité, ref commande -->
+      <div class="form-cols2">
         <div class="fr">
           <label>Type de tôle <span style="color:var(--rouge)">*</span></label>
           <select id="at-type-tole">
@@ -2626,6 +2626,20 @@
             <option value="galva">Galvanisé</option>
           </select>
         </div>
+        <div class="fr">
+          <label>Classe d'acier</label>
+          <select id="at-classe">
+            <option value="">— Classe —</option>
+            <option value="S235">S235</option>
+            <option value="S275">S275</option>
+            <option value="S355">S355</option>
+            <option value="S420">S420</option>
+            <option value="S460">S460</option>
+            <option value="S690">S690</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-cols2">
         <div class="fr">
           <label>Quantité</label>
           <input type="number" id="at-quantite" placeholder="1" min="1" value="1">
@@ -3807,7 +3821,7 @@
   <script src="../auth/auth.js?v=20260422"></script>
   <script src="../js/profils-utils.js?v=20260422"></script>
   <script src="../js/comptes.js?v=20260505"></script>
-  <script src="../js/stock.js?v=20260924e"></script>
+  <script src="../js/stock.js?v=20260924f"></script>
 
 </body>
 </html>
